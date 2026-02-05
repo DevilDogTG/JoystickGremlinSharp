@@ -458,6 +458,8 @@ class CodeRunner:
             vjoy_state[vjoy_dev.vjoy_id] = {}
             cache_dev = input_cache.Joystick()[vjoy_dev.device_guid.uuid]
             for entry in vjoy_dev.axis_map:
+                if entry.axis_index == 0:
+                    continue
                 vjoy_state[vjoy_dev.vjoy_id][entry.axis_index] = \
                     cache_dev.axis(entry.axis_index).value
 
