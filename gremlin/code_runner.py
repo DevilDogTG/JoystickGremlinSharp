@@ -67,7 +67,7 @@ class VirtualButton(metaclass=ABCMeta):
         return fsm.FiniteStateMachine("up", states, actions, transitions)
 
     @abstractmethod
-    def __call__(self, event: event_handler.Event) -> List[bool]:
+    def __call__(self, event: event_handler.Event) -> list[bool]:
         """Process the input event and updates the value as needed.
 
         Args:
@@ -147,7 +147,7 @@ class VirtualHatButton(VirtualButton):
         super().__init__()
         self._directions = directions
 
-    def __call__(self, event: event_handler.Event) -> List[bool]:
+    def __call__(self, event: event_handler.Event) -> list[bool]:
         is_pressed = event.value in self._directions
         action = "press" if is_pressed else "release"
         has_changed = self._fsm.perform(action)[0]
@@ -350,21 +350,21 @@ class CodeRunner:
         self._reset_state()
 
         # Check if we want to override the start mode as determined by the
-        # heuristic
+        # heuristic.
         settings = self._profile.settings
         if settings.startup_mode is not None:
             if settings.startup_mode in self._profile.modes.mode_names():
                 start_mode = settings.startup_mode
 
-        # Set default macro action delay
+        # Set default macro action delay.
         macro.MacroManager().default_delay = settings.macro_default_delay
 
         try:
-            # Process actions define in user plugins
+            # Process actions defined in user plugins.
             self._setup_user_scripts()
 
             # Add a fake keyboard action which does nothing to the callbacks
-            # in every mode in order to have empty modes be "present"
+            # in every mode in order to have empty modes be "present".
             for mode_name in self._profile.modes.mode_names():
                 self.event_handler.add_callback(
                     0,
@@ -373,7 +373,7 @@ class CodeRunner:
                     lambda x: x
                 )
 
-            # Create callbacks fom the user code
+            # Create callbacks fom the user scripts and other code.
             callback_count = 0
             for dev_id, modes in user_script.callback_registry.registry.items():
                 for mode, events in modes.items():
@@ -387,14 +387,14 @@ class CodeRunner:
                             )
                             callback_count += 1
 
-            # Process action sequences defined via the UI
+            # Process action sequences defined via the UI.
             self._setup_profile()
 
             # Use inheritance to build duplicate parent actions in children
-            # if the child mode does not override the parent's action
+            # if the child mode does not override the parent's action.
             self.event_handler.build_event_lookup(self._profile.modes.mode_list())
 
-            # Connect signals
+            # Connect signals.
             evt_listener = event_handler.EventListener()
             evt_listener.keyboard_event.connect(
                 self.event_handler.process_event
@@ -407,12 +407,13 @@ class CodeRunner:
             )
             evt_listener.gremlin_active = True
 
+            # Start various manager-style classes.
             user_script.periodic_registry.start()
             macro.MacroManager().start()
             audio_player.AudioPlayer().start()
 
             mode_manager.ModeManager().switch_to(
-                mode_manager.Mode(start_mode, "global")
+                mode_manager.Mode(start_mode, "Default")
             )
             self.event_handler.resume()
             self._running = True
@@ -427,7 +428,7 @@ class CodeRunner:
 
     def stop(self) -> None:
         """Stops listening to events and unloads all callbacks."""
-        # Disconnect all signals
+        # Disconnect all signals.
         if self._running:
             evt_lst = event_handler.EventListener()
             evt_lst.keyboard_event.disconnect(self.event_handler.process_event)
@@ -436,19 +437,20 @@ class CodeRunner:
             evt_lst.gremlin_active = False
         self._running = False
 
-        # Empty callback registry
+        # Empty callback registry.
         user_script.callback_registry.clear()
         self.event_handler.clear()
 
-        # Stop periodic events and clear registry
+        # Stop periodic events and clear registry.
         user_script.periodic_registry.stop()
         user_script.periodic_registry.clear()
 
+        # Stop all manager classes.
         macro.MacroManager().stop()
         sendinput.MouseController().stop()
         audio_player.AudioPlayer().stop()
 
-        # Remove all claims on VJoy devices
+        # Remove all claims on VJoy devices.
         VJoyProxy.reset()
 
     def _reset_state(self) -> None:
@@ -465,6 +467,7 @@ class CodeRunner:
             vjoy_state[vjoy_dev.vjoy_id] = {}
             cache_dev = input_cache.Joystick()[vjoy_dev.device_guid.uuid]
             for entry in vjoy_dev.axis_map:
+                # The axis_map may have empty entries, which need to be ignored.
                 if entry.axis_index == 0:
                     continue
                 vjoy_state[vjoy_dev.vjoy_id][entry.axis_index] = \
@@ -486,26 +489,25 @@ class CodeRunner:
 
     def _setup_user_scripts(self) -> None:
         """Handles loading and configuring of user scripts."""
-        # Retrieve the list of current paths searched by Python
+        # Retrieve the list of current paths searched by Python.
         system_paths = [os.path.normcase(os.path.abspath(p)) for p in sys.path]
 
         user_script.periodic_registry.clear()
-        # Populate custom module variable registry <-- nope
-        # Update system path for the user scripts
+        # Update system path for the user scripts.
         for script in self._profile.scripts.scripts:
             if not script.is_configured:
                 continue
 
-            # Perform system path mangling for import statements
+            # Perform system path mangling for import statements.
             script_folder = str(script.path.parent)
             if script_folder not in system_paths:
                 system_paths.append(script_folder)
 
-            # Ensure script has up to date variable content
+            # Ensure script has up to date variable content.
             script.reload()
 
         # Update the system path list searched by Python in order to locate the
-        # plugins properly
+        # plugins properly.
         sys.path = system_paths
 
     def _setup_profile(self) -> None:
@@ -514,9 +516,9 @@ class CodeRunner:
         item_list = sum(self._profile.inputs.values(), [])
         action_sequences = sum([e.action_sequences for e in item_list], [])
 
-        # Create executable unit for each action
+        # Create executable unit for each action.
         for action in action_sequences:
-            # Event on which to trigger this action
+            # Event on which to trigger this action.
             event = event_handler.Event(
                 event_type=action.input_item.input_type,
                 device_guid=action.input_item.device_id,
@@ -524,7 +526,7 @@ class CodeRunner:
                 mode=action.input_item.mode
             )
 
-            # Generate executable unit for the linked library item
+            # Generate executable unit for the linked library item.
             self.event_handler.add_callback(
                 event.device_guid,
                 action.input_item.mode,
