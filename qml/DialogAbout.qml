@@ -27,7 +27,7 @@ Window {
         }
 
         DisplayLabel {
-            text: "Release 14"
+            text: "Release 14.1"
             font.pointSize: 14
         }
 
