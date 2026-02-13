@@ -101,7 +101,6 @@ def joystick_devices_initialization() -> None:
     # Query all vJoy devices in sequence until all have been processed and
     # their matching Direct Input counterparts have been found.
     vjoy_proxy = VJoyProxy()
-    should_terminate = False
     for i in range(1, 17):
         # Only process devices that actually exist.
         if not vjoy.device_exists(i):
@@ -116,10 +115,10 @@ def joystick_devices_initialization() -> None:
         )
 
         if not vjoy.hat_configuration_valid(i):
-            error_string = f"vJoy id {i}: Hats are set to discrete but have " \
-                           f"to be set as continuous."
-            syslog.debug(error_string)
-            signal.display_error(error_string)
+            raise error.GremlinError(
+                f"vJoy id {i}: Hats are set to discrete but have to be set "
+                f"to continuous."
+            )
 
         # As we are ensured that no duplicate vJoy devices exist from
         # the previous step we can directly link the Direct Input and
@@ -128,16 +127,10 @@ def joystick_devices_initialization() -> None:
             vjoy_lookup[hash_value].set_vjoy_id(i)
             syslog.debug(f"vjoy id {i}: {hash_value} - MATCH")
         else:
-            should_terminate = True
-            syslog.debug(
-                f"vjoy id {i}: {hash_value} - ERROR - vJoy device exists "
-                "but DILL does not see it."
+            raise error.GremlinError(
+                f"vJoy id {i}: {hash_value} - vJoy device exists but "
+                "DILL does not see it."
             )
-
-    if should_terminate:
-        raise error.GremlinError(
-            "Unable to match vJoy devices to windows devices."
-        )
 
     # Reset all devices so we don't hog the ones we aren't actually using.
     vjoy_proxy.reset()

@@ -283,18 +283,31 @@ class JoystickGremlinApp(QtWidgets.QApplication):
             sys.excepthook = exception_hook
         sys.excepthook = exception_hook
 
+
         # Initialize joystick device handling.
         self.syslog.info("Initializing joystick devices")
         dill.DILL.init()
+        device_initialization_error = None
         try:
             gremlin.device_initialization.joystick_devices_initialization()
         except gremlin.error.GremlinError as e:
-            gremlin.signal.display_error(
-                "Device initialization failed.", str(e)
-            )
-            sys.exit(0)
+            device_initialization_error = str(e)[1:-1]
 
         self.initialize_qt()
+
+        # If an error was detected during device initialization, the error
+        # will be displayed before Gremlin quits.
+        if device_initialization_error is not None:
+            self.engine.load(QtCore.QUrl.fromLocalFile(
+                gremlin.util.resource_path("qml/MainFailure.qml"))
+            )
+            self.engine.rootContext().setContextProperty(
+                "errorString",
+                device_initialization_error
+            )
+
+            self.aboutToQuit.connect(shutdown_cleanup)
+            return
 
         # Load plugin code and UI elements
         self.syslog.info("Initializing plugins")
