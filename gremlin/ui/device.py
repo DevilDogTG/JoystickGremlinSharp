@@ -1150,7 +1150,7 @@ class DeviceAxisSeries(QtCore.QObject):
     deviceChanged = Signal()
     axisCountChanged = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
 
         el = event_handler.EventListener()
@@ -1188,7 +1188,8 @@ class DeviceAxisSeries(QtCore.QObject):
             self._window_size = value
             self.windowSizeChanged.emit()
 
-    def _event_callback(self, event: event_handler.Event):
+    @Slot(event_handler.Event)
+    def _event_callback(self, event: event_handler.Event) -> None:
         if event.device_guid != self._device_uuid:
             return
 
@@ -1203,7 +1204,7 @@ class DeviceAxisSeries(QtCore.QObject):
         return self._device.axis_count
 
     @Slot(QtCharts.QLineSeries, int)
-    def updateSeries(self, series: QtCharts.QLineSeries, identifier: int):
+    def updateSeries(self, series: QtCharts.QLineSeries, identifier: int) -> None:
         data = self._state[identifier]["timeSeries"]
 
         if len(data) < 2:
@@ -1460,6 +1461,7 @@ class AxisCalibration(QtCore.QAbstractListModel):
             self._active_calibrations.append({"center": False, "extrema": False})
             self._update_calibration(i)
 
+    @Slot(event_handler.Event)
     def _event_callback(self, event: event_handler.Event) -> None:
         if event.device_guid != self._device_uuid:
             return

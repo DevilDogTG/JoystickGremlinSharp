@@ -11,6 +11,8 @@ import Gremlin.Device
 import Gremlin.Style
 
 Window {
+    id: _inputViewer
+
     width: 1400
     height: 800
     minimumWidth: 900
@@ -20,6 +22,17 @@ Window {
     Universal.theme: Style.theme
 
     title: "Input Viewer"
+
+    Connections {
+        target: _inputViewer
+
+        function onClosing() {
+            _stateDisplay.children.forEach((child) => {
+                child.destroy()
+            })
+            _deviceData.destroy()
+        }
+    }
 
     DeviceListModel {
         id: _deviceData

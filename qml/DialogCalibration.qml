@@ -11,6 +11,8 @@ import Gremlin.Device
 import Gremlin.Style
 
 Window {
+    id: _calibrationDialog
+
     minimumWidth: 850
     maximumWidth: 850
     minimumHeight: 600
@@ -20,6 +22,16 @@ Window {
 
     title: "Calibration"
 
+
+    Connections {
+        target: _calibrationDialog
+
+        function onClosing() {
+            _axisView.model.destroy()
+            _axisView.destroy()
+            _deviceData.destroy()
+        }
+    }
 
     DeviceListModel {
         id: _deviceData
