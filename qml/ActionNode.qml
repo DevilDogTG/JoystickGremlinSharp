@@ -7,6 +7,7 @@ import QtQuick.Controls.Universal
 import QtQuick.Layouts
 
 import Gremlin.Profile
+import Gremlin.Style
 
 
 Item {
@@ -184,6 +185,16 @@ Item {
                 onReleaseCheckedChanged: function() {
                     _root.action.activateOnRelease = releaseChecked
                 }
+            }
+
+            Label {
+                visible: _root.action.isValid != true
+
+                font.family: "bootstrap-icons"
+                font.pixelSize: 24
+
+                text: bsi.icons.error
+                color: Style.error
             }
 
             IconButton {

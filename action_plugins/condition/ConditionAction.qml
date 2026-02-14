@@ -418,6 +418,16 @@ Item {
 
         LayoutHorizontalSpacer {}
 
+        Label {
+            visible: modelData.isValid != true
+
+            font.family: "bootstrap-icons"
+            font.pixelSize: 24
+
+            text: bsi.icons.error
+            color: Style.error
+        }
+
         DeleteConditionButton {}
     }
 }

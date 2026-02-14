@@ -121,6 +121,10 @@ class ActionModel(QtCore.QObject):
     def icon(self) -> str:
         return self._data.icon
 
+    @Property(type=bool, notify=actionChanged)
+    def isValid(self) -> bool:
+        return self._data.is_valid()
+
     @Property(type=str, notify=actionChanged)
     def id(self) -> str:
         return str(self._data.id)

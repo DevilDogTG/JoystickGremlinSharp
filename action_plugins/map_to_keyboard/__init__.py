@@ -101,6 +101,7 @@ class MapToKeyboardModel(ActionModel):
                 normal_keys.append(key)
         self._data.keys = modifier_keys + normal_keys
         self.changed.emit()
+        super().actionChanged.emit()
 
 
 class MapToKeyboardData(AbstractActionData):

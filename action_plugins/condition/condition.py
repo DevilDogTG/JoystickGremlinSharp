@@ -152,8 +152,20 @@ class AbstractCondition(QtCore.QObject):
         Returns:
             True if the condition is properly specified, False otherwise.
         """
-        # TODO: Ensure condition type and comparator are compatible.
-        return (self._comparator is not None) and (len(self._states) > 0)
+        if self._condition_type == ConditionType.CurrentInput:
+            return True
+        else:
+            # TODO: Ensure condition type and comparator are compatible.
+            return (self._comparator is not None) and (len(self._states) > 0)
+
+    @QtCore.Property(bool, notify=comparatorChanged)
+    def isValid(self) -> bool:
+        """Returns whether or not the condition is validly specified.
+
+        Returns:
+            True if the condition is properly specified, False otherwise.
+        """
+        return self.is_valid()
 
     @QtCore.Property(AbstractComparatorModel, notify=comparatorChanged)
     def comparator(self) -> AbstractComparatorModel | None:
@@ -283,6 +295,7 @@ class AbstractCondition(QtCore.QObject):
         if set(state_list) != set(self._states):
             self._states = state_list
             self.statesChanged.emit(self.states)
+            self.comparatorChanged.emit()
 
     def swap_uuid(self, old_uuid: uuid.UUID, new_uuid: uuid.UUID) -> bool:
         """Swaps occurrences of the old UUID with the new one for this condition."""
