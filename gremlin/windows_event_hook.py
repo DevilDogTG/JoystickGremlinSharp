@@ -4,9 +4,11 @@
 
 import ctypes
 from ctypes import wintypes
+from dataclasses import dataclass
 import threading
+from typing import Callable
 
-from gremlin.common import SingletonDecorator
+from gremlin.common import SingletonMetaclass
 from gremlin.types import MouseButton
 
 user32 = ctypes.WinDLL("user32")
@@ -198,112 +200,82 @@ def process_mouse_event(n_code, w_param, l_param):
     return user32.CallNextHookEx(None, n_code, w_param, l_param)
 
 
+@dataclass
 class KeyEvent:
 
-    """Structure containing details about a key event."""
+    """Structure containing details about a key event.
 
-    def __init__(self, scan_code, is_extended, is_pressed, is_injected):
-        """Creates a new instance with the given data.
+    - scan_code is the hardware scan code of this event
+    - is_extended indicates whether the scan code is an extended one
+    - is_pressed is a flag indicating if the key is pressed
+    - is_injected indicates if the event has been injected
+    """
 
-        :param scan_code the hardware scan code of this event
-        :param is_extended whether or not the scan code is an extended one
-        :param is_pressed flag indicating if the key is pressed
-        :param is_injected flag indicating if the event has been injected
-        """
-        self._scan_code = scan_code
-        self._is_extended = is_extended
-        self._is_pressed = is_pressed
-        self._is_injected = is_injected
+    scan_code : int
+    is_extended : bool
+    is_pressed : bool
+    is_injected : bool
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Returns a string representation of the event.
 
         :return string representation of the event
         """
-        return "({} {}) {}, {}".format(
-            hex(self._scan_code),
-            self._is_extended,
-            "down" if self._is_pressed else "up",
-            "injected" if self.is_injected else ""
-        )
-
-    @property
-    def scan_code(self):
-        return self._scan_code
-
-    @property
-    def is_extended(self):
-        return self._is_extended
-
-    @property
-    def is_pressed(self):
-        return self._is_pressed
-
-    @property
-    def is_injected(self):
-        return self._is_injected
+        up_or_down = "down" if self.is_pressed else "up"
+        injected_str = "injected" if self.is_injected else ""
+        return f"({hex(self.scan_code)} {self.is_extended}) " \
+               f"{up_or_down}, {injected_str}"
 
 
+@dataclass
 class MouseEvent:
 
     """Structure containing information about a mouse event."""
 
-    def __init__(self, button_id, is_pressed, is_injected):
-        self._button_id = button_id
-        self._is_pressed = is_pressed
-        self._is_injected = is_injected
-
-    @property
-    def button_id(self):
-        return self._button_id
-
-    @property
-    def is_pressed(self):
-        return self._is_pressed
-
-    @property
-    def is_injected(self):
-        return self._is_injected
+    button_id : MouseButton
+    is_pressed : bool
+    is_injected : bool
 
 
-@SingletonDecorator
-class KeyboardHook:
+class KeyboardHook(metaclass=SingletonMetaclass):
 
     """Hooks into the event stream and grabs keyboard related events
     and passes them on to registered callback functions.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initializes the hook and the listening instance."""
         self._running = False
         self._listen_thread = threading.Thread(target=self._listen)
 
-    def register(self, callback):
+    def register(self, callback: Callable[[KeyEvent], None]) -> None:
         """Registers a new message callback.
 
-        :param callback the new callback to register
+        Args:
+            callback: callback to add to the list of functions to receive events
         """
         global g_keyboard_callbacks
         g_keyboard_callbacks.append(callback)
 
-    def start(self):
+    def start(self) -> None:
         """Starts the hook if it is not yet running."""
         if self._running:
             return
         self._running = True
         self._listen_thread.start()
 
-    def stop(self):
-        """Stops the hook from running."""
+    def stop(self) -> None:
+        """Terminates the hook and event listening thread."""
         if self._running:
             self._running = False
             user32.PostThreadMessageW(self._listen_thread.ident, WM_QUIT, 0, 0)
+            # Wait for the thread to terminate and then recreate for next use.
             self._listen_thread.join()
-            # Recreate thread so we can launch it again
             self._listen_thread = threading.Thread(target=self._listen)
 
-    def _listen(self):
+    def _listen(self) -> None:
         """Configures the hook and starts listening."""
-        self.hook_id = user32.SetWindowsHookExW(
+        hook_id = user32.SetWindowsHookExW(
             WH_KEYBOARD_LL,
             process_keyboard_event,
             None,
@@ -311,7 +283,7 @@ class KeyboardHook:
         )
 
         msg = wintypes.MSG()
-        while True:
+        while self._running:
             result = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
             if not result:
                 break
@@ -320,19 +292,20 @@ class KeyboardHook:
             user32.TranslateMessage(ctypes.byref(msg))
             user32.DispatchMessageW(ctypes.byref(msg))
 
+        user32.UnhookWindowsHookEx(hook_id)
 
-@SingletonDecorator
-class MouseHook:
 
-    """Hooks into the event stream and grabs mouse related events
-    and passes them on to registered callback functions.
+class MouseHook(metaclass=SingletonMetaclass):
+
+    """Hooks into the event stream and grabs mouse related events and passes
+    them on to registered callback functions.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._running = False
         self._listen_thread = threading.Thread(target=self._listen)
 
-    def register(self, callback):
+    def register(self, callback: Callable[[MouseEvent], None]) -> None:
         """Registers a new message callback.
 
         :param callback the new callback to register
@@ -340,25 +313,25 @@ class MouseHook:
         global g_mouse_callbacks
         g_mouse_callbacks.append(callback)
 
-    def start(self):
+    def start(self) -> None:
         """Starts the hook if it is not yet running."""
         if self._running:
             return
         self._running = True
         self._listen_thread.start()
 
-    def stop(self):
+    def stop(self) -> None:
         """Stops the hook from running."""
         if self._running:
             self._running = False
             user32.PostThreadMessageW(self._listen_thread.ident, WM_QUIT, 0, 0)
+            # Wait for the thread to terminate and then recreate for next use.
             self._listen_thread.join()
-            # Recreate thread so we can launch it again
             self._listen_thread = threading.Thread(target=self._listen)
 
-    def _listen(self):
+    def _listen(self) -> None:
         """Configures the hook and starts listening."""
-        self.hook_id = user32.SetWindowsHookExW(
+        hook_id = user32.SetWindowsHookExW(
             WH_MOUSE_LL,
             process_mouse_event,
             None,
@@ -366,7 +339,7 @@ class MouseHook:
         )
 
         msg = wintypes.MSG()
-        while True:
+        while self._running:
             result = user32.GetMessageW(ctypes.byref(msg), None, 0, 0)
             if not result:
                 break
@@ -374,3 +347,5 @@ class MouseHook:
                 raise ctypes.WinError(get_last_error())
             user32.TranslateMessage(ctypes.byref(msg))
             user32.DispatchMessageW(ctypes.byref(msg))
+
+        user32.UnhookWindowsHookEx(hook_id)

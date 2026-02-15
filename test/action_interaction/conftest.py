@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 import threading
 from typing import (
     cast,
@@ -12,9 +13,11 @@ from typing import (
     Generator,
 )
 
+from PySide6 import QtCore
 import pytest
 import pytestqt.qtbot
 
+import dill
 from gremlin import (
     code_runner,
     config,
@@ -104,9 +107,11 @@ class EventSpec:
         return not (event == self)
 
 
-class EventLogger:
+class EventLogger(QtCore.QObject):
 
     """Helper class which logs all events received from Gremlin."""
+
+    receivedValidSignal = QtCore.Signal()
 
     def __init__(self, qtbot: pytestqt.qtbot.QtBot) -> None:
         """Creates a new EventLogger instance.
@@ -114,6 +119,7 @@ class EventLogger:
         Args:
             qtbot: The QtBot instance used for timing and event processing.
         """
+        super().__init__()
         self._qtbot = qtbot
         self.logged_events: list[event_handler.Event] = []
         self.emitted_events: list[event_handler.Event] = []
@@ -140,11 +146,15 @@ class EventLogger:
         # delayed) is received.
         while len(self.logged_events) == 0:
             self._qtbot.waitSignal(
-                event_handler.EventListener().joystick_event,
+                self.receivedValidSignal,
                 timeout=500,
                 raising=True
             ).wait()
         return self.logged_events.pop(0)
+
+    def _timeout(self) -> None:
+        sys.exit(1)
+        # raise Exception("Timeout waiting for event")
 
     def _process_event(self, event: event_handler.Event) -> None:
         """Record all events we receive unless they were actively emitted.
@@ -152,12 +162,17 @@ class EventLogger:
         Args:
             event: The event to process.
         """
+        # Ignore any physical device events.
+        if event.device_guid not in [dill.UUID_LogicalDevice, dill.UUID_Virtual]:
+            return
+
         # If the event is one that we've emitted ourselves, ignore it.
         for evt in self.emitted_events:
             if evt == event:
                 self.emitted_events.remove(evt)
                 return
         self.logged_events.append(event)
+        self.receivedValidSignal.emit()
 
 
 class JoystickGremlinBot:

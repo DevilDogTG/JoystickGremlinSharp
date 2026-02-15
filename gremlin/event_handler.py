@@ -8,10 +8,8 @@ import functools
 import inspect
 import logging
 import time
-from threading import (
-    Thread,
-    Timer,
-)
+import threading
+import traceback
 from typing import (
     Any,
     Callable,
@@ -243,24 +241,29 @@ class EventListener(QtCore.QObject):
         self._keyboard = Keyboard()
 
         self._running = True
+        self._stop_event = threading.Event()
         self.gremlin_active = False
 
         self._init_joysticks()
         self.keyboard_hook.start()
 
-        Thread(target=self._run).start()
+        threading.Thread(target=self._run).start()
 
     def terminate(self) -> None:
         """Stops the loop from running."""
         self._running = False
+        self._stop_event.set()
         self.keyboard_hook.stop()
+        dill.DILL.set_device_change_callback(lambda x: None)
+        dill.DILL.set_input_event_callback(lambda x: None)
 
     def restart(self) -> None:
         """Restarts the event listener."""
         if not self._running:
             self._running = True
             self.keyboard_hook.start()
-            Thread(target=self._run).start()
+            self._stop_event.clear()
+            threading.Thread(target=self._run).start()
 
     def reload_calibration(self, uuid: uuid.UUID, axis_index: int) -> None:
         """Reloads the calibration data of the specified axis."""
@@ -276,7 +279,7 @@ class EventListener(QtCore.QObject):
         dill.DILL.set_input_event_callback(self._joystick_event_handler)
         while self._running:
             # Keep this thread alive until we are done
-            time.sleep(0.1)
+            self._stop_event.wait()
 
     def _joystick_event_handler(self, data: dill.InputEvent) -> None:
         """Callback for joystick events.
@@ -346,7 +349,8 @@ class EventListener(QtCore.QObject):
         """
         if self._device_update_timer is not None:
             self._device_update_timer.cancel()
-        self._device_update_timer = Timer(0.2, self._run_device_list_update)
+        self._device_update_timer = \
+            threading.Timer(0.2, self._run_device_list_update)
         self._device_update_timer.start()
 
     def _run_device_list_update(self) -> None:

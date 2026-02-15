@@ -117,9 +117,11 @@ def test_release_out_of_rder(jgbot: JoystickGremlinBot, profile_dir: Path) -> No
     jgbot.load_profile(profile_dir / "tempo.xml")
 
     assert jgbot.current_mode() == "Default"
-    jgbot.hold_button(IN_BUTTON_3, 0.25)
+    jgbot.press_button(IN_BUTTON_3)
     jgbot.wait(0.25)
+    jgbot.release_button(IN_BUTTON_3)
     assert jgbot.current_mode() == "Second"
-    jgbot.hold_button(IN_BUTTON_3, 0.25)
+    jgbot.press_button(IN_BUTTON_3)
     jgbot.wait(0.25)
+    jgbot.release_button(IN_BUTTON_3)
     assert jgbot.current_mode() == "Default"
