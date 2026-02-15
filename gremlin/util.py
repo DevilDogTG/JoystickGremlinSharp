@@ -1076,3 +1076,16 @@ def get_code_version() -> str:
         return json.load(open(version_file))["version"]
     except json.decoder.JSONDecodeError:
         return "0.0.0"
+
+
+def get_code_release() -> str:
+    """Returns the release string derived from the semantic version number,
+
+    Returns:
+        Gremlin's release number.
+    """
+    version = [int(v) for v in get_code_version().split(".")]
+    if version[1] == 0:
+        return f"R{version[0]}"
+    else:
+        return f"R{version[0]}.{version[1]}"

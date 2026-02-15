@@ -78,7 +78,7 @@ def configure_logger(config: Dict[str, Any]) -> None:
 
     logger.debug("-" * 80)
     logger.debug(time.strftime("%Y-%m-%d %H:%M"))
-    logger.debug("Starting Joystick Gremlin R14")
+    logger.debug(f"Starting Joystick Gremlin {gremlin.util.get_code_release()}")
     logger.debug("-" * 80)
 
 
