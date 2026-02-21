@@ -101,7 +101,7 @@ Item {
 
             Label {
                 id: _inputOverview
-                text: actionCount ? actionCount : ""
+                text: actionSequenceInfo
 
                 anchors.top: parent.top
                 anchors.right: _inputDisplay.right

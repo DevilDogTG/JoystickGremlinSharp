@@ -40,11 +40,12 @@ from gremlin import (
     shared_state,
     util,
 )
+from gremlin.base_classes import AbstractActionData
 from gremlin.config import Configuration
 from gremlin.error import GremlinError
 from gremlin.input_cache import DeviceDatabase
 from gremlin.logical_device import LogicalDevice
-from gremlin.profile import InputItem
+from gremlin.profile import InputItem, InputItemBinding
 from gremlin.signal import signal
 from gremlin.types import (
     InputType,
@@ -268,7 +269,7 @@ class Device(QtCore.QAbstractListModel):
 
     roles = {
         QtCore.Qt.ItemDataRole.UserRole + 1: QtCore.QByteArray(b"name"),
-        QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"actionCount"),
+        QtCore.Qt.ItemDataRole.UserRole + 2: QtCore.QByteArray(b"actionSequenceInfo"),
         QtCore.Qt.ItemDataRole.UserRole + 3: QtCore.QByteArray(b"description"),
     }
 
@@ -346,15 +347,33 @@ class Device(QtCore.QAbstractListModel):
         match cast(str, self.roles[role]):
             case "name":
                 return self._name(self._convert_index(index.row()))
-            case "actionCount":
+            case "actionSequenceInfo":
+                key = ("global", "general", "action-sequence-information")
                 input_info = self._convert_index(index.row())
-                value = shared_state.current_profile.get_input_count(
-                    self._device.device_guid.uuid,
-                    input_info[0],
-                    input_info[1],
-                    self._mode
-                )
-                return value
+                if Configuration().value(*key) == "Count":
+                    count = shared_state.current_profile.get_input_count(
+                        self._device.device_guid.uuid,
+                        input_info[0],
+                        input_info[1],
+                        self._mode
+                    )
+                    return str(count) if count > 0 else ""
+                else:
+                    item = shared_state.current_profile.get_input_item(
+                        self._device.device_guid.uuid,
+                        input_info[0],
+                        input_info[1],
+                        self._mode
+                    )
+
+                    icons = []
+                    if item is not None:
+                        for seq in item.action_sequences:
+                            [
+                                self.collect_action_icons(action, icons)
+                                for action in seq.root_action.get_actions()[0]
+                            ]
+                    return "".join(icons)
             case "description":
                 input_info = self._convert_index(index.row())
                 item = shared_state.current_profile.get_input_item(
@@ -373,6 +392,13 @@ class Device(QtCore.QAbstractListModel):
                     return ""
             case _:
                 return ""
+
+    def collect_action_icons(self, action: AbstractActionData, icons: list[str]) -> None:
+        icons.append(action.icon)
+        for selector in action._valid_selectors():
+            icons.append("\uF27A")
+            [self.collect_action_icons(child, icons) for child in action._get_container(selector)]
+            icons.append("\uF27B")
 
     @Slot(int, result=InputIdentifier)
     def inputIdentifier(self, index: int) -> InputIdentifier:
@@ -1640,6 +1666,19 @@ Configuration().register(
     "Defines how input name is displayed.",
     {
         "valid_options": ["Numerical", "Numerical and Label", "Label"]
+    },
+    True
+)
+
+Configuration().register(
+    "global",
+    "general",
+    "action-sequence-information",
+    PropertyType.Selection,
+    "Sequence",
+    "Defines how action sequences associated with inputs are displayed.",
+    {
+        "valid_options": ["Sequence", "Count"]
     },
     True
 )
