@@ -201,7 +201,7 @@ class HatButtonsModel(ActionModel):
 
     def _set_button_count(self, count: int) -> None:
         if self._data.button_count != count:
-            self._data.button_count = count
+            self._data.set_button_count(count)
             self.changed.emit()
 
     def _compatible_actions(self) -> List[str]:
@@ -249,6 +249,13 @@ class HatButtonsData(AbstractActionData):
         super().__init__(InputType.JoystickButton)
 
         self.button_count = 4
+        self.direction = {}
+        self.set_button_count(4)
+
+    def set_button_count(self, count: int) -> None:
+        if count not in HatButtonsData.name_list:
+            raise GremlinError(f"Invalid button count {count} for HatButtons")
+        self.button_count = count
         self.direction = {}
         for name in HatButtonsData.name_list[self.button_count]:
             self.direction[name] = []
