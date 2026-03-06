@@ -182,7 +182,8 @@ Window {
                         id: _sbLow
 
                         value: low
-                        to: 0
+                        from: -32768
+                        to: _sbCLow.value
 
                         onValueModified: model.low = Qt.binding(() => value)
                     }
@@ -193,7 +194,8 @@ Window {
 
                         visible: model.withCenter
                         value: centerLow
-                        to: 0
+                        from: _sbLow.value
+                        to: _sbCHigh.value
 
                         onValueModified: model.centerLow = Qt.binding(() => value)
                     }
@@ -202,7 +204,8 @@ Window {
 
                         visible: model.withCenter
                         value: centerHigh
-                        from: 0
+                        from: _sbCLow.value
+                        to: _sbHigh.value
 
                         onValueModified: model.centerHigh = Qt.binding(() => value)
                     }
@@ -212,7 +215,8 @@ Window {
                         id: _sbHigh
 
                         value: high
-                        from: 0
+                        from: _sbCHigh.value
+                        to: 32767
 
                         onValueModified: model.high = Qt.binding(() => value)
                     }
@@ -229,6 +233,7 @@ Window {
                         Layout.fillWidth: true
 
                         text: bsi.icons.reload
+                        font.family: "bootstrap-icons"
                         font.pixelSize: 20
                         font.bold: true
 
@@ -239,9 +244,10 @@ Window {
 
                         text: bsi.icons.save
                         font.pixelSize: 20
+                        font.family: "bootstrap-icons"
+                        font.bold: true
 
                         onClicked: () => _axisView.model.save(index)
-
 
                         Rectangle {
                             anchors.fill: parent
