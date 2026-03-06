@@ -27,6 +27,7 @@ from gremlin.base_classes import (
 from gremlin.error import GremlinError
 from gremlin.logical_device import LogicalDevice
 from gremlin.profile import Library
+from gremlin.signal import signal
 from gremlin.types import (
     ActionProperty,
     AxisMode,
@@ -124,6 +125,7 @@ class MapToLogicalDeviceModel(ActionModel):
             parent: QtCore.QObject
     ) -> None:
         super().__init__(data, binding_model, action_index, parent_index, parent)
+        signal.logicalDeviceModified.emit()
 
     def _qml_path_impl(self) -> str:
         return "file:///" + QtCore.QFile(
@@ -216,6 +218,7 @@ class MapToLogicalDeviceModel(ActionModel):
         notify=buttonInvertedChanged
     )
 
+
 class MapToLogicalDeviceData(AbstractActionData):
 
     """Action propagating data to the logical device inputs."""
@@ -228,15 +231,15 @@ class MapToLogicalDeviceData(AbstractActionData):
     functor = MapToLogicalDeviceFunctor
     model = MapToLogicalDeviceModel
 
-    properties = [
-        ActionProperty.ActivateOnBoth
-    ]
-    input_types = [
+    properties = (
+        ActionProperty.ActivateOnBoth,
+    )
+    input_types = (
         InputType.JoystickAxis,
         InputType.JoystickButton,
         InputType.JoystickHat,
-        InputType.Keyboard
-    ]
+        InputType.Keyboard,
+    )
 
     def __init__(
             self,

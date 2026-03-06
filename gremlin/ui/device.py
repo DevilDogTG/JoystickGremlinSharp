@@ -494,6 +494,7 @@ class LogicalDeviceManagementModel(QtCore.QAbstractListModel):
 
         signal.profileChanged.connect(self._profile_changed_cb)
         signal.inputItemChanged.connect(self.refreshInput)
+        signal.logicalDeviceModified.connect(self._full_refresh)
 
     @Slot(str)
     def createInput(self, type_str: str) -> None:
@@ -554,6 +555,10 @@ class LogicalDeviceManagementModel(QtCore.QAbstractListModel):
             self.createIndex(index, 0),
             self.createIndex(index, 0)
         )
+
+    def _full_refresh(self) -> None:
+        self.beginResetModel()
+        self.endResetModel()
 
     def _get_guid(self) -> str:
         return str(self._logical.device_guid)
