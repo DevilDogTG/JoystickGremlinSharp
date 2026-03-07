@@ -25,3 +25,13 @@ Another reason why macros might not work is that they send key presses too fast.
 A common misconception is that when a key is held down that this will result in a sequence of key presses. This stems from the fact that holding a physical key down a bunch of characters will appear in a text editor etc. What happens in reality is that Windows will, behind the scene, emit these characters at a set frequency, despite there being only one physical key press event.
 
 This means that you should not expect to see a macro that holds down a key to result in a bunch of characters appearing in a text field, but only one. This is the correct behavior and games expect and handle this properly. To check if a macro sends the correct key strokes you should use a keyboard testing program such as [https://keyboardtester.io/tester/](https://keyboardtester.io/tester/){:target="_blank"}, or any other one that a search turns up, to verify keys are pressed and released as expected.
+
+## My Xbox controller doesn't work
+
+A common issue with Xbox controller is that their DirectInput driver, which is how they are seen by Gremlin, is not working nicely. A common symptom is that inputs appear as if they only do something when Gremlin is focused.
+
+One possible workaround is to use a tool called [Xidi](https://github.com/samuelgr/Xidi){:target="_blank"} which effectively provides a better DirectInput behavior for Xbox controllers. You need to download the release and unpack it, then place the `dinput8.dll` file in the same folder as the Joystick Gremlin executable.
+
+
+{: .warning }
+Version [Xidi 4.2.0](https://github.com/samuelgr/Xidi/releases/tag/v4.2.0){:target="_blank"} is known to work so you should stick with that.
