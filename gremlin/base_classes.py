@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from abc import abstractmethod, ABC
 import copy
+import logging
 import time
 from typing import Any, Generic, List, Self, Tuple, Type, TypeVar, TYPE_CHECKING, Optional
 import uuid
@@ -211,7 +212,9 @@ class AbstractActionData(ABC):
             XML node containing the instance's contents, or None if invalid
         """
         if not self.is_valid():
-            print(f"This node is invalid {self.id}")
+            logging.getLogger("system").debug(
+                f"Disacarding invalid node with id: {self.id}"
+            )
             return None
 
         node = self._to_xml()

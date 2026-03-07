@@ -9,6 +9,7 @@ import copy
 import functools
 import heapq
 import importlib
+import importlib.util
 import inspect
 import logging
 import numbers
@@ -49,7 +50,8 @@ from gremlin import (
 
 
 def _resolve_path(script_path: Path) -> Path:
-    """If script_path is relative, resolve (not strictly) it to the standard scripts directory."""
+    """If script_path is relative, resolve (not strictly) it to the
+    standard scripts directory."""
     if script_path.is_absolute():
         return script_path
     return Path(util.resource_path("user_scripts")) / script_path
@@ -59,7 +61,7 @@ class CallbackRegistry:
 
     """Registry of all callbacks known to the system."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Creates a new callback registry instance."""
         self._registry = {}
         self._current_id = 0
@@ -107,7 +109,7 @@ class PeriodicRegistry:
 
     """Registry for periodically executed functions."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Creates a new instance."""
         self._registry = {}
         self._running = False
@@ -210,7 +212,7 @@ class JoystickDecorator:
 
     """Creates customized decorators for physical joystick devices."""
 
-    def __init__(self, name: str, device_guid: str, mode: str):
+    def __init__(self, name: str, device_guid: str, mode: str) -> None:
         """Creates a new instance with customized decorators.
 
         Args:
@@ -228,7 +230,7 @@ class JoystickDecorator:
             logging.getLogger("system").error(
                 f"Invalid guid value '{device_guid}' received."
             )
-            self.device_guid = diill.UUID_Invalid
+            self.device_guid = dill.UUID_Invalid
 
         # Create decorators for the different input types
         self.axis = functools.partial(
@@ -261,7 +263,7 @@ class VJoyPlugin:
 
     vjoy = VJoyProxy()
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.keyword = "vjoy"
 
     def install(self, callback: Callable, partial_fn: Callable) -> Callable:
@@ -291,7 +293,7 @@ class JoystickPlugin:
 
     joystick = Joystick()
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.keyword = "joy"
 
     def install(self, callback: Callable, partial_fn: Callable) -> Callable:
@@ -321,10 +323,10 @@ class KeyboardPlugin:
 
     keyboard = Keyboard()
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.keyword = "keyboard"
 
-    def install(self, callback, partial_fn):
+    def install(self, callback: Callable, partial_fn: Callable) -> Callable:
         """Decorates the given callback function to provide access to
         the Keyboard object.
 
@@ -340,10 +342,10 @@ class KeyboardPlugin:
 
 class ScriptVariableRegistry:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._registry = {}
 
-    def clear(self):
+    def clear(self) -> None:
         """Clears all registry entries."""
         self._registry = {}
 
@@ -400,7 +402,7 @@ class Script:
 
     variable_registry = ScriptVariableRegistry()
 
-    def __init__(self, path: Path=Path(), name: str=""):
+    def __init__(self, path: Path=Path(), name: str="") -> None:
         """Creates a new Script."""
         self._id = uuid.uuid4()
         self.path = _resolve_path(path)
@@ -491,7 +493,9 @@ class Script:
         }
 
         self._id = util.read_uuid(node, "script", "id")
-        self.path = _resolve_path(util.read_property(node, "path", PropertyType.Path))
+        self.path = _resolve_path(
+            util.read_property(node, "path", PropertyType.Path)
+        )
         self.name = util.read_property(node, "name", PropertyType.String)
 
         # Retrieve variable information from the script and instantiate them
@@ -538,7 +542,7 @@ class Script:
                 node.append(variable_node)
         return node
 
-    def reload(self):
+    def reload(self) -> None:
         """Reloads this script.
 
         Calling reload will currently register duplicate callbacks in the
@@ -549,7 +553,7 @@ class Script:
         self.module._script_id = self.id
         self.spec.loader.exec_module(self.module)
 
-    def _retrieve_variable_definitions(self):
+    def _retrieve_variable_definitions(self) -> None:
         """Returns all variable definitions used in the provided script.
 
         Args:
@@ -616,7 +620,7 @@ class AbstractVariable(ABC):
         self.name = util.read_property(node, "name", PropertyType.String)
         self._from_xml(node)
 
-    def to_xml(self) -> ElementTree.Element:
+    def to_xml(self) -> None | ElementTree.Element:
         if not self.is_valid():
             return None
         node = ElementTree.Element("variable")
@@ -677,7 +681,7 @@ class BoolVariable(AbstractVariable):
             description: str,
             is_optional: bool,
             initial_value: bool
-    ):
+    ) -> None:
         super().__init__(name, description, is_optional)
 
         self._value = initial_value
@@ -718,7 +722,7 @@ class FloatVariable(AbstractVariable):
             initial_value: float,
             min_value: float,
             max_value: float,
-    ):
+    ) -> None:
         super().__init__(name, description, is_optional)
 
         self._value = initial_value
@@ -773,7 +777,7 @@ class IntegerVariable(AbstractVariable):
             initial_value: int,
             min_value: int,
             max_value: int,
-    ):
+    ) -> None:
         super().__init__(name, description, is_optional)
 
         self._value = initial_value
@@ -901,7 +905,7 @@ class LogicalDeviceVariable(AbstractVariable):
                     f"Received invalid input type '{self._identifier.type}'"
                 )
 
-    def create_decorator(self, mode: str):
+    def create_decorator(self, mode: str) -> JoystickDecorator:
         if not self.is_valid():
             return JoystickDecorator(
                 "", str(dill.GUID_Invalid), ""
@@ -957,7 +961,7 @@ class ModeVariable(AbstractVariable):
             name: str,
             description: str,
             is_optional: bool
-    ):
+    ) -> None:
         super().__init__(name, description, is_optional)
 
         self._mode = shared_state.current_profile.modes.first_mode
@@ -997,7 +1001,7 @@ class SelectionVariable(AbstractVariable):
             is_optional: bool,
             option_list: list[str],
             default_index: int=0
-    ):
+    ) -> None:
         super().__init__(name, description, is_optional)
 
         self._option_list = option_list
@@ -1043,7 +1047,7 @@ class StringVariable(AbstractVariable):
             description: str,
             is_optional: bool,
             initial_value: str
-    ):
+    ) -> None:
         super().__init__(name, description, is_optional)
 
         self._value = initial_value
@@ -1084,7 +1088,7 @@ class PhysicalInputVariable(AbstractVariable):
             description: str,
             is_optional: bool,
             valid_types: list[InputType],
-    ):
+    ) -> None:
         super().__init__(name, description, is_optional)
 
         self._valid_types = valid_types
@@ -1133,7 +1137,7 @@ class PhysicalInputVariable(AbstractVariable):
                     f"Received invalid input type '{self._input_type}'"
                 )
 
-    def create_decorator(self, mode: str):
+    def create_decorator(self, mode: str) -> JoystickDecorator:
         if not self.is_valid():
             return JoystickDecorator(
                 "", str(dill.GUID_Invalid), ""
@@ -1195,7 +1199,7 @@ class VirtualInputVariable(AbstractVariable):
             description: str,
             is_optional: bool,
             valid_types: List[InputType],
-    ):
+    ) -> None:
         super().__init__(name, description, is_optional)
 
         self._valid_types = valid_types
@@ -1297,7 +1301,7 @@ def keyboard(key_name: str, mode: str) -> Callable:
         mode: mode in which this callback is active
     """
 
-    def wrap(callback):
+    def wrap(callback: Callable) -> Callable:
 
         @functools.wraps(callback)
         def wrapper_fn(*args, **kwargs):
@@ -1319,7 +1323,7 @@ def periodic(interval: float) -> Callable:
         interval: the duration between executions of the function
     """
 
-    def wrap(callback):
+    def wrap(callback: Callable) -> Callable:
 
         @functools.wraps(callback)
         def wrapper_fn(*args, **kwargs):
@@ -1337,7 +1341,7 @@ def _input_callback(
         device_guid: uuid.UUID,
         input_type: InputType,
         mode: str
-):
+) -> Callable:
     """Decorator for a specific input on a physical device.
 
     Args:
@@ -1350,7 +1354,7 @@ def _input_callback(
     # The order of the input arguments has to be this specific one as otherwise
     # the positional argument part of the decorator breaks.
 
-    def wrap(callback):
+    def wrap(callback: Callable) -> Callable:
 
         @functools.wraps(callback)
         def wrapper_fn(*args, **kwargs):
