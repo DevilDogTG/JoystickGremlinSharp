@@ -7,7 +7,7 @@ nav_order: 2
 
 ## Installation & Setup
 
-On most sytems installing Joystick Gremlin only requires the installation of [vJoy](https://github.com/jshafer817/vJoy/releases/tag/v2.1.9.1){:target="_blank"} and [Joystick Gremlin](/download) itself. Once vJoy is installed it is advisable to configure the vJoy device(s), using <kbd>vJoyConf</kbd>, to contain the desired number of axes, buttons, and hats.
+On most sytems installing Joystick Gremlin only requires the installation of [vJoy](https://github.com/jshafer817/vJoy/releases/tag/v2.1.9.1){:target="_blank"} and [Joystick Gremlin]({{ site.baseurl }}/download) itself. Once vJoy is installed it is advisable to configure the vJoy device(s), using <kbd>vJoyConf</kbd>, to contain the desired number of axes, buttons, and hats.
 
 {: .text-center }
 ![VJoy configuration dialog]({{ site.baseurl }}/assets/images/vjoy_configuration.png)<br>
@@ -34,7 +34,7 @@ This is also reflected by the design of the UI which is divided into two halves.
 ![Main Window]({{ site.baseurl }}/assets/images/joystick_gremlin_main_window.png)<br>
 *Joystick Gremlin UI*
 
-The next few sections describe in simple terms some of the functionality provided by Gremlin that is the most useful for a basic setup. A more complete description is provided in [Interface](/interface). It is also worht getting familiar with the [Concepts](/introduction/concepts) used in Gremlin and the terms, as they are used throughout this documentation.
+The next few sections describe in simple terms some of the functionality provided by Gremlin that is the most useful for a basic setup. A more complete description is provided in [Interface]({{ site.baseurl }}/interface). It is also worht getting familiar with the [Concepts]({{ site.baseurl }}/introduction/concepts) used in Gremlin and the terms, as they are used throughout this documentation.
 
 ## Basic Mappings
 
@@ -43,8 +43,8 @@ The simplest type of mappings are remapping a physical input (joystick axis, but
 These actions allow merging of multiple physical devices into a single one which can be useful for games that only recognize a single joystick. Mapping joystick buttons to keyboard keys allows using the default bindings of a game without having to rebind everything or if a game doesn't support joystick input.
 
 ### Links
-- [Map to vJoy](/interface/actions#map-to-vjoy)
-- [Map to Keyboard](/interface/actions#map-to-keyboard)
+- [Map to vJoy]({{ site.baseurl }}/interface/actions#map-to-vjoy)
+- [Map to Keyboard]({{ site.baseurl }}/interface/actions#map-to-keyboard)
 
 ## Macros
 
@@ -57,7 +57,7 @@ Besides simply executing the macro once upon activation it is also possible to h
 - Repeat as long as the physical input is pressed.
 
 ### Links
-- [Macro](/interface/actions#macro)
+- [Macro]({{ site.baseurl }}/interface/actions#macro)
 
 ## Dealing with Axes
 
@@ -66,16 +66,16 @@ Axes often require additional configuration by adding deadzones to prevent accid
 A response curve always needs to be combined with a mapping to an output device as otherwise the changes due to the response curve will not be seen anywhere.
 
 ### Links
-- [Map to vJoy](/interface/actions#map-to-vjoy)
-- [Response Curve](/interface/actions#response-curve)
-- [Dual-Axis Deadzone](/interface/actions#dual-axis-deadzone)
+- [Map to vJoy]({{ site.baseurl }}/interface/actions#map-to-vjoy)
+- [Response Curve]({{ site.baseurl }}/interface/actions#response-curve)
+- [Dual-Axis Deadzone]({{ site.baseurl }}/interface/actions#dual-axis-deadzone)
 
 ## Condition
 
 Sometimes it can be helpful to control the condition under which an action or container is executed. The execution can thus be conditioned on the state of other input devices such as joysticks or keyboard, as well as the state of the input associated with the action or container. This can be used to implement a shift state which normally executes one action but if a certain button is pressed a different action is executed.
 
 ### Links
-- [Condition](/interface/actions#condition)
+- [Condition]({{ site.baseurl }}/interface/actions#condition)
 
 ## Modes
 
@@ -84,4 +84,4 @@ In certain situations it can be beneficial to split a profile into several parts
 A powerful feature of the modes is the ability to use inheritance. A mode (child) can inherit from a single parent which results in the child mode executing whatever action their parent defined for a given input, if the child has no actions of their own specified. This allows creating a basic mode and then fine tuning them in a child mode for particular usage scenarios without having to duplicate common actions.
 
 ### Links
-- [Modes](/interface/modes)
+- [Modes]({{ site.baseurl }}/interface/modes)

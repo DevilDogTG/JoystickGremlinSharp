@@ -8,7 +8,7 @@ nav_order: 1
 
 Joystick Gremlin has one major dependency, vJoy which provides virtual joysticks which Joystick Gremlin feeds with data. Download links to the programs needed are listed below:
 
-- [Joystick Gremlin](/download)
+- [Joystick Gremlin]({{ site.baseurl }}/download)
 - [vJoy](https://github.com/jshafer817/vJoy/releases/tag/v2.1.9.1){:target="_blank"}
 
 vJoy creates virtual joysticks which show up as a device in Windows and Joystick Gremlin uses these to forward inputs to them. Both Gremlin and vJoy require VC++ redistributables to be installed. This is likely already the case. In case of errors you can try to install VC++14 linked below which should take care of the issues related to this.

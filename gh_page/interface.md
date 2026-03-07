@@ -5,7 +5,7 @@ nav_order: 4
 
 # Interface
 
-In the following the various components of the user interface are introduced and their usage described. The UI should be sufficient for most common use cases. However, if functionality is missing, user created modules can provide these. Examples of how to achieve certain tasks using the tools provided by Joystick Gremlin are shown in [Examples](/examples/).
+In the following the various components of the user interface are introduced and their usage described. The UI should be sufficient for most common use cases. However, if functionality is missing, user created modules can provide these. Examples of how to achieve certain tasks using the tools provided by Joystick Gremlin are shown in [Examples]({{ site.baseurl }}/examples/).
 
 The following is a short overview of the different components that make up the main user interface, shown in the following image.
 
