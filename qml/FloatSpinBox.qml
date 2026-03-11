@@ -48,10 +48,16 @@ Item {
         _spinbox.width += 10
     }
 
+    // Handle external changes and prevent binding loops.
+    onValueChanged: () => {
+        _internalUpdate = true
+        _spinbox.value = toInt(value)
+        Qt.callLater(() => { _internalUpdate = false })
+    }
+
     SpinBox {
         id: _spinbox
 
-        value: toInt(_root.value)
         from: toInt(_root.minValue)
         to: toInt(_root.maxValue)
         stepSize: toInt(_root.stepSize)
@@ -76,7 +82,8 @@ Item {
 
         onValueChanged: () => {
             if (!_root._internalUpdate) {
-                _root.valueModified(toFloat(value))
+                _root.value = toFloat(value)
+                _root.valueModified(_root.value)
             }
         }
     }

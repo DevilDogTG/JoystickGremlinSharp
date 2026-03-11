@@ -35,7 +35,7 @@ Rectangle {
         }
         onPressed: () => {
             action.selectedPoint = index
-            _root.forceActiveFocus()
+            forceActiveFocus()
         }
         onReleased: () => { action.redrawElements() }
     }
