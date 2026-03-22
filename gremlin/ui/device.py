@@ -1058,20 +1058,21 @@ class VJoyDevices(QtCore.QObject):
             # selection if the input type is part of the new set of valid
             # types. If this is not possible, the selection is set to the
             # first entry of the available values.
-            old_vjoy_id = self._get_vjoy_id()
+            old_input_id  = self._get_input_id()
             old_input_type = self._get_input_type()
 
             # Refresh the UI elements.
             self.inputModel
 
+            old_input_index = self._current_input_index
             input_label = common.input_to_ui_string(
                 InputType.to_enum(old_input_type),
-                old_vjoy_id
+                old_input_id
             )
             if input_label in self._input_items:
                 self.setSelection(
                     self._get_vjoy_id(),
-                    old_vjoy_id,
+                    old_input_id,
                     old_input_type
                 )
             else:
@@ -1079,9 +1080,9 @@ class VJoyDevices(QtCore.QObject):
                 self._current_input_index = 0
                 self._current_input_type = self._valid_types[0]
 
-            # Prevent sending change of input indices and thus changing the
-            # model if the model hadn't been initialized yet.
-            if self._is_initialized:
+            # Emit once post-init only if the index actually changed.
+            if self._is_initialized and \
+                    self._current_input_index != old_input_index:
                 self.inputIndexChanged.emit()
             else:
                 self._is_initialized = True
@@ -1135,7 +1136,8 @@ class VJoyDevices(QtCore.QObject):
         if index != self._current_input_index:
             self._current_input_index = index
             self._current_input_type = self._input_data[index][0]
-            self.inputIndexChanged.emit()
+            if self._is_initialized:
+                self.inputIndexChanged.emit()
 
     def _get_input_type(self) -> str:
         return InputType.to_string(self._current_input_type)
