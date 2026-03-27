@@ -30,7 +30,7 @@ Item {
 
         onAccepted: function()
         {
-            scriptListModel.addScript(Helpers.pythonizePath(selectedFile))
+            scriptListModel.addScript(selectedFile)
         }
     }
 

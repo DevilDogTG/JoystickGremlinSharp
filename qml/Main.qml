@@ -90,7 +90,7 @@ ApplicationWindow {
         nameFilters: ["Profile files (*.xml)"]
 
         onAccepted: () => {
-            backend.saveProfile(Helpers.pythonizePath(currentFile))
+            backend.saveProfile(currentFile)
             if (quitAfterSave) {
                 Qt.quit()
             }
@@ -107,7 +107,7 @@ ApplicationWindow {
         nameFilters: ["Profile files (*.xml)"]
 
         onAccepted: () => {
-            backend.loadProfile(Helpers.pythonizePath(currentFile))
+            backend.loadProfile(currentFile)
         }
     }
 

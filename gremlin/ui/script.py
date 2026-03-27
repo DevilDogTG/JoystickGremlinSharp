@@ -460,9 +460,9 @@ class ScriptListModel(QtCore.QAbstractListModel):
         self._script_manager = script_manager
 
     @Slot(str)
-    def addScript(self, path: str) -> None:
+    def addScript(self, qml_url: str) -> None:
         self.layoutAboutToBeChanged.emit()
-        self._script_manager.add_script(Path(path))
+        self._script_manager.add_script(Path(QtCore.QUrl(qml_url).toLocalFile()))
         self.layoutChanged.emit()
 
     @Slot(str, str)

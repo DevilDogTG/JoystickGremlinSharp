@@ -520,15 +520,16 @@ class Backend(QtCore.QObject):
         signal.reloadUi.emit()
 
     @Slot(str)
-    def saveProfile(self, fpath: str) -> None:
+    def saveProfile(self, qml_url: str) -> None:
         """Saves the current profile in the given path.
 
         Args:
-            path: Path to the file in which to store the current profile
+            qml_url: QML url to the path to store the current profile in
         """
-        self.profile.fpath = fpath
+        path = QtCore.QUrl(qml_url).toLocalFile()
+        self.profile.fpath = path
         self.profile.to_xml(self.profile.fpath)
-        self.config.set("global", "internal", "last-profile", fpath)
+        self.config.set("global", "internal", "last-profile", path)
         self.windowTitleChanged.emit()
 
     @Slot(result=str)
@@ -542,14 +543,15 @@ class Backend(QtCore.QObject):
         return "" if path is None else str(path)
 
     @Slot(str)
-    def loadProfile(self, fpath: str) -> None:
+    def loadProfile(self, qml_url: str) -> None:
         """Loads a profile from the specified path.
 
         Args:
-            fpath: Path to the file containing the profile to load
+            qml_url: QML url to the profile file to load
         """
-        self._load_profile(fpath)
-        self.config.set("global", "internal", "last-profile", fpath)
+        path = QtCore.QUrl(qml_url).toLocalFile()
+        self._load_profile(path)
+        self.config.set("global", "internal", "last-profile", path)
         self.profileChanged.emit()
         signal.reloadCurrentInputItem.emit()
 
