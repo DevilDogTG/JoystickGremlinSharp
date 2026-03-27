@@ -27,7 +27,7 @@ Window {
         }
 
         DisplayLabel {
-            text: "Release 14.1"
+            text: "Release " + backend.gremlinVersion
             font.pointSize: 14
         }
 
