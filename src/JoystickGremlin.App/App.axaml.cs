@@ -5,6 +5,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using JoystickGremlin.App.ViewModels;
 using JoystickGremlin.App.Views;
+using JoystickGremlin.Interop;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace JoystickGremlin.App;
@@ -41,8 +42,10 @@ public partial class App : Application
         // ViewModels
         services.AddTransient<MainWindowViewModel>();
 
-        // TODO: Register Core services (DeviceManager, EventPipeline, ProfileRepository, etc.)
-        // TODO: Register Interop services (VJoyDevice, DillDevice wrappers)
+        // Interop layer: DILL physical device input + vJoy virtual device output
+        services.AddInteropServices();
+
+        // TODO: Register Core services (EventPipeline, ProfileRepository, etc.)
 
         return services;
     }
