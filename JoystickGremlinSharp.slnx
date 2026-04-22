@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/JoystickGremlin.App/JoystickGremlin.App.csproj" />
+    <Project Path="src/JoystickGremlin.Core/JoystickGremlin.Core.csproj" />
+    <Project Path="src/JoystickGremlin.Interop/JoystickGremlin.Interop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/JoystickGremlin.Core.Tests/JoystickGremlin.Core.Tests.csproj" />
+  </Folder>
+</Solution>

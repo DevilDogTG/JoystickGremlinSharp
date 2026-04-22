@@ -1,314 +1,376 @@
-# AGENTS.md - JoystickGremlin Developer Guide
+# AGENTS.md - JoystickGremlinSharp Developer Guide
 
-This file provides guidance for AI agents working on the JoystickGremlin codebase.
+This file provides guidance for AI agents working on the JoystickGremlinSharp codebase.
+
+> **Migration note**: The original Python/PySide6/QML source (under `gremlin/`, `action_plugins/`,
+> `vjoy/`, `dill/`) is retained as a **reference implementation** only. All new development
+> targets the C# solution described in this file.
 
 
 ## Project Overview
 
-JoystickGremlin is a Python application (PySide6/QML) for configuring joystick devices on Windows. It uses vJoy for virtual joystick emulation and supports macros, modes, and Python scripting.
+JoystickGremlinSharp is a **C# (.NET 10) rewrite** of JoystickGremlin — a Windows application
+for configuring joystick/gamepad devices. It maps physical device inputs to virtual outputs via
+vJoy, supporting macros, modes, response curves, and condition-based action pipelines.
+
+- **Platform**: Windows (vJoy/DILL are Windows-only drivers); Avalonia UI enables future portability
+- **UI Framework**: [Avalonia](https://avaloniaui.net/) 11.x with ReactiveUI MVVM
+- **Device I/O**: P/Invoke to `vJoyInterface.dll` (virtual output) and `dill.dll` (physical input)
+
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Runtime | .NET 10 |
+| UI | Avalonia 11.x |
+| MVVM / Reactive | ReactiveUI + Avalonia.ReactiveUI |
+| DI | Microsoft.Extensions.DependencyInjection |
+| Logging | Microsoft.Extensions.Logging + Serilog |
+| Serialization | System.Text.Json |
+| Native interop | P/Invoke (`vJoyInterface.dll`, `dill.dll`) |
+| Testing | xUnit + Moq + FluentAssertions |
 
 
 ## Build, Lint, and Test Commands
 
-### Running Tests
-
 ```powershell
+# Build the solution
+dotnet build
+
 # Run all tests
-poetry run pytest
+dotnet test
 
-# Run a single test file
-poetry run pytest test/unit/test_profile.py
+# Run a specific test project
+dotnet test tests/JoystickGremlin.Core.Tests
 
-# Run a specific test
-poetry run pytest test/unit/test_profile.py::test_simple_action
+# Run the application
+dotnet run --project src/JoystickGremlin.App
 
-# Run tests with verbose output
-poetry run pytest -v
-
-# Run tests matching a pattern
-poetry run pytest -k "test_simple"
-
-# Run e2e tests only
-poetry run pytest test/integration/
-
-# Run action interaction tests only
-poetry run pytest test/action_interaction/
-
-# Run unit tests only
-poetry run pytest test/unit/
-```
-
-### Linting
-
-```powershell
-# Run ruff linter (ANN = annotations required)
-poetry run ruff check .
-```
-
-### Type Checking
-
-```powershell
-# Run pyright type checker
-poetry run pyright
-```
-
-### Running the Application
-
-```powershell
-# Run in dev mode
-poetry run python joystick_gremlin.py
+# Restore packages
+dotnet restore
 ```
 
 
-## Architecture
+## Solution Structure
 
-### Code Structure
+```
+JoystickGremlinSharp.sln
+src/
+  JoystickGremlin.Interop/          net10.0-windows   P/Invoke wrappers for vJoy and DILL native DLLs
+  JoystickGremlin.Core/             net10.0           Domain logic — devices, events, profile, modes, actions
+  JoystickGremlin.App/              net10.0-windows   Avalonia MVVM app entry point + all UI
+tests/
+  JoystickGremlin.Core.Tests/       net10.0           xUnit tests for Core domain logic
 
-- Keep related functionality together
-- Follow the existing module organization:
-  - `gremlin/` - Core application logic
-  - `gremlin/ui/` - UI-related code (PySide6/QML integration)
-  - `action_plugins/` - Action plugins, one directory per action
-  - `test/` - Test suites
-  - `qml/` - QML UI files
-  - `vjoy/` — vJoy virtual joystick ctypes wrapper
-  - `dill/` — native device input library (DILL.dll) with Python wrapper
-- `joystick_gremlin.py` — entry point; initializes devices, Qt engine, plugins
+# Python reference (do not modify):
+gremlin/          Original Python core logic
+action_plugins/   Original Python action plugins
+vjoy/             Original vJoy ctypes wrapper (porting reference)
+dill/             Original DILL ctypes wrapper (porting reference)
+```
 
-### Key Singletons
+### Project Responsibilities
 
-| Class | Module | Purpose |
-|---|---|---|
-| `Configuration` | `gremlin.config` | Persistent app config |
-| `EventListener` | `gremlin.event_handler` | Raw input capture & routing |
-| `ModeManager` | `gremlin.mode_manager` | Mode stack & switching when Gremlin is active |
-| `Backend` | `gremlin.ui.backend` | Main QML↔Python bridge |
+| Project | Purpose |
+|---|---|
+| `JoystickGremlin.Interop` | P/Invoke declarations for `vJoyInterface.dll` and `dill.dll`. Implements interfaces defined in Core. No business logic. |
+| `JoystickGremlin.Core` | All domain logic. Defines interfaces (`IPhysicalDevice`, `IVirtualDevice`, `IEventPipeline`, etc.) consumed by both Interop and App. No Avalonia/UI references. |
+| `JoystickGremlin.App` | Avalonia `Application`, `MainWindow`, all ViewModels and Views. Wires up DI. References Core and Interop. |
+| `JoystickGremlin.Core.Tests` | xUnit tests for Core. Uses Moq to mock `IPhysicalDevice`, `IVirtualDevice`, etc. |
 
-Use `metaclass=common.SingletonMetaclass` (not the legacy `@common.SingletonDecorator`).
+### Core Folder Structure
 
-### Profile Storage
+```
+src/JoystickGremlin.Core/
+  Actions/          IAction, IFunctor, ActionRegistry, built-in action implementations
+  Configuration/    AppSettings, ISettingsRepository, JSON-backed settings store
+  Devices/          IPhysicalDevice, IVirtualDevice, DeviceManager, device-info types
+  Events/           InputEvent, EventPipeline, IEventProcessor, mode-aware routing
+  Exceptions/       GremlinException and domain-specific exception types
+  Modes/            ModeManager, Mode, mode-stack logic
+  Profile/          Profile, InputBinding, ProfileRepository (JSON serialization)
+  Common/           Extensions, utilities
+```
 
-Profiles are XML files. `gremlin.profile.Profile` owns load/save and dispatches this via various `to_xml` and `from_xml` call chains.
+### App Folder Structure
 
-### Python/QML Bridge
+```
+src/JoystickGremlin.App/
+  Assets/           Icons, fonts, static resources
+  Controls/         Custom Avalonia controls (reusable across views)
+  ViewModels/       ReactiveObject-based ViewModels, one per View
+  Views/            *.axaml Views, code-behind minimal
+  App.axaml         Application definition
+  App.axaml.cs      DI bootstrap, service registration
+  Program.cs        Entry point
+```
 
-- `Backend` (registered as `backend` context property) exposes signals and slots to QML
-- QML-accessible classes use `@QtQml.QmlElement` or `engine.rootContext().setContextProperty()`
-- Qt signals/slots use `@QtCore.Signal` / `@QtCore.Slot` decorators
-- Never call Qt GUI APIs from non-main threads
 
-
-## Code Style Guidelines
+## Coding Conventions
 
 ### File Headers
 
-Every Python file must include:
-```python
-# -*- coding: utf-8; -*-
-
-# SPDX-License-Identifier: GPL-3.0-only
+Every C# source file must include:
+```csharp
+// SPDX-License-Identifier: GPL-3.0-only
 ```
 
-### Imports
+### Naming
 
-- Use `from __future__ import annotations` for forward references
-- Sort imports: stdlib, third-party, local (alphabetically within groups)
-- Use absolute imports within the package (e.g., `from gremlin.types import InputType`)
-- Use `TYPE_CHECKING` guard for imports only needed for type hints to avoid circular imports
+| Element | Convention | Example |
+|---|---|---|
+| Classes, interfaces, enums | `PascalCase` | `DeviceManager`, `IPhysicalDevice` |
+| Methods, properties | `PascalCase` | `GetDevices()`, `DeviceName` |
+| Private fields | `_camelCase` | `_deviceManager`, `_logger` |
+| Local variables, parameters | `camelCase` | `deviceGuid`, `inputEvent` |
+| Constants | `PascalCase` | `MaxAxisValue` |
+| Interfaces | `I` prefix | `IAction`, `IFunctor` |
+| Async methods | `Async` suffix | `LoadProfileAsync`, `GetDevicesAsync` |
 
-Example:
-```python
-from __future__ import annotations
+### XML Documentation
 
-import logging
-from typing import (
-    cast,
-    Any,
-    TYPE_CHECKING
-)
-
-from PySide6 import (
-    QtCore,
-    QtQml
-)
-
-import gremlin.profile
-from gremlin.types import InputType
-from gremlin.error import GremlinError
-
-if TYPE_CHECKING:
-    from gremlin.base_classes import AbstractActionData
+Add XML doc comments to all public classes and members:
+```csharp
+/// <summary>
+/// Manages the collection of physical joystick devices detected by DILL.
+/// </summary>
+public sealed class DeviceManager : IDeviceManager
+{
+    /// <summary>
+    /// Gets all currently connected physical devices.
+    /// </summary>
+    public IReadOnlyList<IPhysicalDevice> Devices => _devices;
+}
 ```
 
-### Type Annotations
+### Nullable Reference Types
 
-- **Required**: All function signatures must have type annotations (enforced by ruff ANN rule)
-- Use Python 3.13+ syntax: `list[str]`, `dict[str, int]` (no need for `List`, `Dict` from typing)
-- Acceptable exceptions:
-  - `PySide6` import errors (project-wide Pylance issue)
-  - `AbstractActionData` attribute unknowns (project-wide)
-- Use `X | None` over `Optional[X]`
+- Nullable reference types are **enabled** project-wide (`<Nullable>enable</Nullable>`)
+- Use `?` for intentionally nullable references; never suppress warnings with `!` unless unavoidable
+- Initialize fields in constructors; use `required` init properties where appropriate
 
-### Naming Conventions
+### Properties
 
-- **Classes**: `PascalCase` (e.g., `JoystickGremlinApp`, `Profile`)
-- **Functions/methods**: `snake_case` (e.g., `get_vjoy_device`, `from_xml`)
-- **Constants**: `SCREAMING_SNAKE_CASE` (e.g., `MAX_CACHE_SIZE`)
-- **Private members**: `_leading_underscore` (e.g., `_cache`)
-- **Qt properties/slots**: Follow Qt conventions (e.g., `imageReady`, `requestImage`)
-- **QML variables**: Follow Qt convention (e.g. `someVariable`)
-- **QML element identifiers**: Always start with `_` (e.g. `_label`, `_actionModel`)
-
-### Qt Patterns
-
-- Use `@QtCore.Signal` and `@QtCore.Slot` decorators for Qt signals/slots
-- Signals are defined as class attributes: `imageReady = QtCore.Signal(str, str)`
-- Subclass `QtCore.QObject` for QML-accessible classes if no more specialized class is applicable
-- Use `@QtQml.QmlElement` decorator for classes to register with QML
-- Register QML context properties with `engine.rootContext().setContextProperty()` to be used in exceptional circumstances only
-
-```python
-from PySide6 import QtCore
-
-if TYPE_CHECKING:
-    import gremlin.ui.type_aliases as ta
-
-class DataProvider(QtCore.QObject):
-    dataReady = QtCore.Signal(str)
-
-    def __init__(self, parent: ta.OQO=None):
-        self._value = ""
-
-    def _get_value(self) -> str:
-        return self._value
-
-    def _set_value(self, val: str) -> None:
-        self._value = val
-        self.dataReady.emit(val)
-
-    value = QtCore.Property(
-        str,
-        fget=_get_value,
-        fset=_set_value,
-        notify=dataReady
-    )
+- Use `{ get; private set; }` or `{ get; init; }` for immutable data:
+```csharp
+public Guid Id { get; init; }
+public string Name { get; private set; }
 ```
 
 ### Error Handling
 
-- Custom exceptions are defined in `gremlin.error` and inherit from `GremlinError`
-- Use specific exception types (e.g., `ProfileError`, `VJoyError`, `MissingImplementationError`)
-- Provide meaningful error messages
-- Exceptions are caught on the highest level and logged there
-
-Example:
-```python
-from gremlin.error import GremlinError
-
-try:
-    value = int(text)
-except ValueError:
-    raise GremlinError(f"Invalid device index: {index}")
+- Define exceptions in `Core/Exceptions/` inheriting from `GremlinException`
+- Use specific types: `ProfileException`, `VJoyException`, `DeviceException`
+- Catch exceptions at the highest relevant boundary and log before re-throwing or handling
+```csharp
+public sealed class ProfileException : GremlinException
+{
+    public ProfileException(string message) : base(message) { }
+    public ProfileException(string message, Exception inner) : base(message, inner) { }
+}
 ```
 
 ### Logging
 
-- Use `logging.getLogger("system")` for logging
+- Inject `ILogger<T>` via constructor
+- Use `LogTrace` for start/finish of operations; `LogWarning`/`LogError` for issues
+- Use compile-time log source generators (`LoggerMessage.Define`) for hot paths
+```csharp
+private readonly ILogger<DeviceManager> _logger;
 
-### Qt Threading Rules
-
-- **Never use Qt GUI classes from non-main threads** (Qt is not thread-safe)
-- Background threads (e.g., `threading.Thread`) are acceptable for non-GUI work (device polling, file monitoring)
-
-### Singleton Pattern
-
-The project uses two singleton patterns:
-- Only the newer `metaclass=common.SingletonMetaclass` should be used
-- `@common.SingletonDecorator` is legacy and is not to be used anymore
-
-### QML Integration
-
-- Use `Connections` for QML-to-Python signal connections when data binding cannot be used
-- Use `onSignalName` for Python-to-QML property changes
-- QML model classes often inherit from `QtCore.QAbstractListModel` and implement `rowCount()`, `data()`, `roleNames()`
-
-### Action Plugins
-
-Each plugin under `action_plugins/<name>/` defines:
-- `AbstractActionData` subclass — XML serialization, validity, metadata (`tag`, `name`, `icon`, `version`, `input_types`, `functor`)
-- `AbstractFunctor` subclass — actual runtime behavior
-- `ActionModel` — QML UI model, enabling modifying the data via the UI
-
-Required overrides on `AbstractActionData`: `_from_xml()`, `_to_xml()`, `is_valid()`, `_valid_selectors()`, `_get_container()`, `_handle_behavior_change()`.
-
-
-Example:
-```python
-from gremlin.base_classes import AbstractActionData, AbstractFunctor
-from typing import override
-
-class SpecialActionData(AbstractActionData):
-
-    tag = "special-action"
-    name = "Special Action"
-    icon = "f123"
-    version = 1
-    functor = SpecialActionFunctor
-
-    # Implement functions mandated by the base class.
+_logger.LogInformation("Initializing device {DeviceGuid}", device.Guid);
 ```
 
-### Testing Conventions
+### Async/Await
 
-- Tests go in `test/unit/`, `test/integration`, or `test/action_interaction/` depending on use  case
-  - Self-contained unit tests are placed in `test/unit`
-  - Simulated action interaction tests are placed in `test/action_interaction`
-  - Full end to end system tests are placed in `test/integration`
-- Function tests for action plugins are placed in `test/action_interaction`
-- Tests in `test/action_interaction` have access to a `jgbot` fixture (`test/action_interaction/conftest.py:JoystickGremlinBot) which is similar to the Qt pytest fixture
-- Use pytest fixtures from `test/conftest.py` and `test/unit/conftest.py`
-- Use `pytest.raises()` for exception testing
+- All I/O operations must be `async`/`await`
+- Pass `CancellationToken cancellationToken` to all async calls where supported
+- Never use `async void` except for event handlers
 
-Example:
-```python
-from test.unit.conftest import get_fake_device_guid
+### Dependency Injection
 
-def test_something(xml_dir: pathlib.Path):
-    p = Profile()
-    p.from_xml(str(xml_dir / "profile_simple.xml"))
-    assert len(p.inputs) == 1
+- Register all services in `App.axaml.cs` via `IServiceCollection`
+- Prefer constructor injection; never use `ServiceLocator` pattern
+- Lifetimes: `Singleton` for managers/pipelines, `Transient` for actions/functors
+
+
+## ReactiveUI & MVVM Patterns
+
+### ViewModel Base
+
+All ViewModels extend `ReactiveObject`:
+```csharp
+using ReactiveUI;
+
+public sealed class MainWindowViewModel : ReactiveObject
+{
+    private string _title = "Joystick Gremlin";
+    public string Title
+    {
+        get => _title;
+        set => this.RaiseAndSetIfChanged(ref _title, value);
+    }
+}
 ```
 
-### Type Aliases
+### Commands
 
-Use type aliases from `gremlin.ui.type_aliases` for Qt-specific types:
-```python
-import gremlin.ui.type_aliases as ta
+Use `ReactiveCommand` for all UI commands:
+```csharp
+public ReactiveCommand<Unit, Unit> LoadProfileCommand { get; }
+
+LoadProfileCommand = ReactiveCommand.CreateFromTask(LoadProfileAsync);
 ```
 
-### Documentation
+### Routing & Navigation
 
-- Use docstrings for classes and complex functions
-- Keep docstrings concise; describe purpose and parameters
-- Do not add unnecessary inline comments
+Use Avalonia's built-in `ContentControl` with ViewModel binding for view switching; prefer
+`IScreen` + `RoutingState` from ReactiveUI for complex navigation trees.
 
-### Common Patterns
+### View Binding
 
-- Use `dataclasses` for simple data containers
-- Use `ElementTree` for XML parsing/creation
-- Use `pathlib.Path` for file paths
+Views bind to ViewModels via `DataContext`; use `{Binding}` in AXAML:
+```xml
+<TextBlock Text="{Binding Title}" />
+<Button Command="{Binding LoadProfileCommand}" Content="Load" />
+```
 
-### Known Issues (Ignore)
 
-- Pylance may show `Import "PySide6" could not be resolved` - this is a project-wide issue, not caused by your changes
-- Some `AbstractActionData` attribute unknowns may appear - also project-wide
+## P/Invoke Interop Patterns
 
-### Pre-commit Checks
+### Structure
+
+All P/Invoke declarations live in `JoystickGremlin.Interop`:
+```
+src/JoystickGremlin.Interop/
+  VJoy/             VJoyNative.cs (DllImport), VJoyDevice.cs (IVirtualDevice impl)
+  Dill/             DillNative.cs (DllImport), DillDevice.cs (IPhysicalDevice impl)
+```
+
+### DllImport Pattern
+
+```csharp
+internal static partial class VJoyNative
+{
+    private const string DllName = "vJoyInterface.dll";
+
+    [LibraryImport(DllName)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool vJoyEnabled();
+
+    [LibraryImport(DllName)]
+    internal static partial VjdStat GetVJDStatus(uint rID);
+}
+```
+
+- Use `[LibraryImport]` (source-generated, .NET 7+) over legacy `[DllImport]`
+- Mark P/Invoke classes `internal static partial`
+- Wrap in a `sealed` implementation class that implements the Core interface
+
+### Native DLL Deployment
+
+The native DLLs (`vJoyInterface.dll`, `dill.dll`) from the Python source are copied to the
+output directory via `<Content CopyToOutputDirectory="PreserveNewest">` in the `.csproj`.
+
+
+## Action System
+
+Actions are **statically registered** (no runtime plugin discovery):
+
+### Interfaces
+
+```csharp
+// Core/Actions/IAction.cs
+public interface IAction
+{
+    string Tag { get; }
+    string Name { get; }
+    InputType[] SupportedInputTypes { get; }
+    IFunctor CreateFunctor();
+}
+
+// Core/Actions/IFunctor.cs
+public interface IFunctor
+{
+    Task ProcessAsync(InputEvent inputEvent, CancellationToken cancellationToken);
+}
+```
+
+### Registration
+
+Register all built-in actions in `ActionRegistry` during DI setup:
+```csharp
+services.AddSingleton<IActionRegistry, ActionRegistry>();
+services.AddTransient<IAction, MapToVJoyAction>();
+services.AddTransient<IAction, MacroAction>();
+services.AddTransient<IAction, ChangeModeAction>();
+```
+
+
+## Profile System
+
+Profiles are stored as **JSON** via `System.Text.Json`:
+
+```csharp
+// Core/Profile/Profile.cs
+public sealed class Profile
+{
+    public Guid Id { get; init; } = Guid.NewGuid();
+    public string Name { get; set; } = string.Empty;
+    public List<Mode> Modes { get; init; } = [];
+}
+
+// Core/Profile/IProfileRepository.cs
+public interface IProfileRepository
+{
+    Task<Profile> LoadAsync(string path, CancellationToken cancellationToken = default);
+    Task SaveAsync(Profile profile, string path, CancellationToken cancellationToken = default);
+}
+```
+
+Use `JsonSerializerOptions` with `WriteIndented = true` for human-readable profile files.
+
+
+## Testing Conventions
+
+- Tests go in `tests/JoystickGremlin.Core.Tests/`
+- One test class per domain service/class, named `<Subject>Tests`
+- Use `[Fact]` for single-case tests; `[Theory]` + `[MemberData]` for parameterized tests
+- Use `Mock<T>` from Moq for dependencies; `Should()` assertions from FluentAssertions
+- Arrange/Act/Assert structure with blank lines separating sections (no region comments)
+
+```csharp
+public sealed class ProfileRepositoryTests
+{
+    private readonly Mock<IFileSystem> _fileSystemMock = new();
+    private readonly ProfileRepository _sut;
+
+    public ProfileRepositoryTests()
+    {
+        _sut = new ProfileRepository(_fileSystemMock.Object);
+    }
+
+    [Fact]
+    public async Task LoadAsync_ValidJson_ReturnsProfile()
+    {
+        _fileSystemMock.Setup(fs => fs.ReadAllTextAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(/* json */);
+
+        var profile = await _sut.LoadAsync("test.json");
+
+        profile.Should().NotBeNull();
+        profile.Name.Should().Be("Test Profile");
+    }
+}
+```
+
+
+## Pre-commit Checks
 
 Before considering a task complete, run:
 
 ```powershell
-poetry run ruff check .
-poetry run pyright
-poetry run pytest
+dotnet build
+dotnet test
 ```

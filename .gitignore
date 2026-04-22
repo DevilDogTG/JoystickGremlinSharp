@@ -4,12 +4,10 @@
 *.wxs
 poetry.lock
 
-# IDE & Python generated folders
+# Python generated folders
 __pycache__
-.idea
 .pytest_cache
 .qt_for_python
-.vscode
 .jekyll_cache
 
 # Logfiles
@@ -24,3 +22,89 @@ dill_debug.log
 /venv
 /.venv
 /gh_page/_site
+
+# ============================================================
+# Windows
+# ============================================================
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ============================================================
+# Visual Studio
+# ============================================================
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Build outputs
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+*.user.lock
+
+# NuGet
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+packages/
+!**/[Pp]ackages/build/
+
+# Publish & deployment
+**/publish/
+**/PublishProfiles/
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+TestResult.xml
+nunit-*.xml
+.ncrunchproject
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# Rider (also covers .idea below)
+.idea/
+*.sln.iml
+
+# NCrunch
+*.ncrunchproject
+*.ncrunchsolution
+.ncrunch*/
+
+# ============================================================
+# Visual Studio Code
+# ============================================================
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+*.code-workspace
+.history/
+.ionide/
+
+# ============================================================
+# JetBrains Rider / IntelliJ
+# ============================================================
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+cmake-build-*/
