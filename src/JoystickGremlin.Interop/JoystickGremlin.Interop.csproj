@@ -9,6 +9,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>JoystickGremlin.Core.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\JoystickGremlin.Core\JoystickGremlin.Core.csproj" />
   </ItemGroup>
 
