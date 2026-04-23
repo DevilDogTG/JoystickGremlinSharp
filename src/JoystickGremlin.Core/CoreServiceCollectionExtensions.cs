@@ -2,6 +2,7 @@
 
 using JoystickGremlin.Core.Actions;
 using JoystickGremlin.Core.Configuration;
+using JoystickGremlin.Core.Modes;
 using JoystickGremlin.Core.Profile;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -22,6 +23,7 @@ public static class CoreServiceCollectionExtensions
         services.AddTransient<IProfileRepository, ProfileRepository>();
         services.AddSingleton<IActionRegistry, ActionRegistry>();
         services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<IModeManager, ModeManager>();
 
         return services;
     }

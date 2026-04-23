@@ -49,3 +49,15 @@ public sealed class DeviceException : GremlinException
     /// <inheritdoc />
     public DeviceException(string message, Exception innerException) : base(message, innerException) { }
 }
+
+/// <summary>
+/// Raised when an operation references an unknown or invalid mode name.
+/// </summary>
+public sealed class ModeException : GremlinException
+{
+    /// <inheritdoc />
+    public ModeException(string message) : base(message) { }
+
+    /// <inheritdoc />
+    public ModeException(string message, Exception innerException) : base(message, innerException) { }
+}
