@@ -1,0 +1,216 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
+using System.Text.Json.Nodes;
+using JoystickGremlin.Core.Actions;
+using JoystickGremlin.Core.Devices;
+using JoystickGremlin.Core.Events;
+using JoystickGremlin.Core.Modes;
+using JoystickGremlin.Core.Pipeline;
+using JoystickGremlin.Core.Profile;
+using Microsoft.Extensions.Logging.Abstractions;
+using ProfileModel = JoystickGremlin.Core.Profile.Profile;
+
+namespace JoystickGremlin.Core.Tests.Pipeline;
+
+public sealed class EventPipelineTests
+{
+    // ── Helpers ────────────────────────────────────────────────────────────
+
+    private static ProfileModel MakeProfile(Guid deviceGuid, string modeName, string actionTag)
+    {
+        var profile = new ProfileModel { Name = "Test" };
+        profile.Modes.Add(new Mode
+        {
+            Name = modeName,
+            Bindings =
+            [
+                new InputBinding
+                {
+                    DeviceGuid = deviceGuid,
+                    InputType = InputType.JoystickButton,
+                    Identifier = 1,
+                    Actions = [new BoundAction { ActionTag = actionTag }],
+                },
+            ],
+        });
+        return profile;
+    }
+
+    private static (EventPipeline pipeline, FakeDeviceManager deviceMgr, Mock<IModeManager> modeMgr, Mock<IActionRegistry> registry)
+        CreateSut(string activeMode = "Default")
+    {
+        var deviceMgr = new FakeDeviceManager();
+
+        var modeMgr = new Mock<IModeManager>();
+        modeMgr.SetupGet(m => m.ActiveModeName).Returns(activeMode);
+        modeMgr.Setup(m => m.GetInheritanceChain(activeMode, It.IsAny<ProfileModel>()))
+               .Returns([activeMode]);
+
+        var registry = new Mock<IActionRegistry>();
+
+        var pipeline = new EventPipeline(
+            deviceMgr,
+            modeMgr.Object,
+            registry.Object,
+            NullLogger<EventPipeline>.Instance);
+
+        return (pipeline, deviceMgr, modeMgr, registry);
+    }
+
+    // ── IsRunning ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public void IsRunning_BeforeStart_IsFalse()
+    {
+        var (pipeline, _, _, _) = CreateSut();
+        pipeline.IsRunning.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsRunning_AfterStart_IsTrue()
+    {
+        var (pipeline, _, modeMgr, _) = CreateSut();
+        pipeline.Start(new ProfileModel());
+        pipeline.IsRunning.Should().BeTrue();
+        pipeline.Stop();
+    }
+
+    [Fact]
+    public void IsRunning_AfterStop_IsFalse()
+    {
+        var (pipeline, _, _, _) = CreateSut();
+        pipeline.Start(new ProfileModel());
+        pipeline.Stop();
+        pipeline.IsRunning.Should().BeFalse();
+    }
+
+    // ── Dispatch ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task InputReceived_MatchingBinding_DispatchesFunctor()
+    {
+        var deviceGuid = Guid.NewGuid();
+        var (pipeline, deviceMgr, _, registry) = CreateSut("Default");
+
+        var executed = new TaskCompletionSource<InputEvent>();
+        var fakeFunctor = new FakeFunctor(ev => executed.SetResult(ev));
+        var descriptor = new FakeDescriptor("my-action", fakeFunctor);
+        registry.Setup(r => r.Resolve("my-action")).Returns(descriptor);
+
+        var profile = MakeProfile(deviceGuid, "Default", "my-action");
+        pipeline.Start(profile);
+
+        deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 1, 1.0, string.Empty));
+
+        var received = await executed.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        received.Mode.Should().Be("Default");
+        received.Identifier.Should().Be(1);
+        pipeline.Stop();
+    }
+
+    [Fact]
+    public async Task InputReceived_NoMatchingBinding_DoesNotDispatch()
+    {
+        var deviceGuid = Guid.NewGuid();
+        var (pipeline, deviceMgr, _, registry) = CreateSut("Default");
+
+        var dispatched = false;
+        registry.Setup(r => r.Resolve(It.IsAny<string>()))
+                .Callback(() => dispatched = true)
+                .Returns((IActionDescriptor?)null);
+
+        var profile = MakeProfile(deviceGuid, "Default", "my-action");
+        pipeline.Start(profile);
+
+        // Wrong button index (2, not 1)
+        deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 2, 1.0, string.Empty));
+
+        await Task.Delay(50);
+        dispatched.Should().BeFalse();
+        pipeline.Stop();
+    }
+
+    [Fact]
+    public async Task InputReceived_InheritedBinding_FallsBackToParentMode()
+    {
+        var deviceGuid = Guid.NewGuid();
+
+        // Profile: "Root" has binding; "Child" inherits from Root
+        var profile = new ProfileModel { Name = "Inherit" };
+        profile.Modes.Add(new Mode { Name = "Root" });
+        profile.Modes.Add(new Mode { Name = "Child", ParentModeName = "Root" });
+        profile.Modes[0].Bindings.Add(new InputBinding
+        {
+            DeviceGuid = deviceGuid,
+            InputType = InputType.JoystickButton,
+            Identifier = 1,
+            Actions = [new BoundAction { ActionTag = "inherited-action" }],
+        });
+
+        var deviceMgr = new FakeDeviceManager();
+        var modeMgr = new Mock<IModeManager>();
+        modeMgr.SetupGet(m => m.ActiveModeName).Returns("Child");
+        // Returns inheritance chain: child → root
+        modeMgr.Setup(m => m.GetInheritanceChain("Child", It.IsAny<ProfileModel>()))
+               .Returns(["Child", "Root"]);
+
+        var executed = new TaskCompletionSource<bool>();
+        var functor = new FakeFunctor(_ => executed.SetResult(true));
+        var descriptor = new FakeDescriptor("inherited-action", functor);
+        var registry = new Mock<IActionRegistry>();
+        registry.Setup(r => r.Resolve("inherited-action")).Returns(descriptor);
+
+        var pipeline = new EventPipeline(deviceMgr, modeMgr.Object, registry.Object, NullLogger<EventPipeline>.Instance);
+        pipeline.Start(profile);
+
+        deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 1, 1.0, string.Empty));
+
+        (await executed.Task.WaitAsync(TimeSpan.FromSeconds(2))).Should().BeTrue();
+        pipeline.Stop();
+    }
+
+    // ── Dispose ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Dispose_WhenRunning_StopsAndUnsibscribes()
+    {
+        var (pipeline, _, _, _) = CreateSut();
+        pipeline.Start(new ProfileModel());
+        pipeline.Dispose();
+        pipeline.IsRunning.Should().BeFalse();
+    }
+
+    // ── Test doubles ───────────────────────────────────────────────────────
+
+    private sealed class FakeDeviceManager : IDeviceManager
+    {
+#pragma warning disable CS0067
+        public event EventHandler<IPhysicalDevice>? DeviceConnected;
+        public event EventHandler<IPhysicalDevice>? DeviceDisconnected;
+#pragma warning restore CS0067
+        public event EventHandler<InputEvent>? InputReceived;
+
+        public IReadOnlyList<IPhysicalDevice> Devices => [];
+
+        public void Initialize() { }
+        public void Dispose() { }
+
+        public void RaiseInput(InputEvent ev) => InputReceived?.Invoke(this, ev);
+    }
+
+    private sealed class FakeDescriptor(string tag, IActionFunctor functor) : IActionDescriptor
+    {
+        public string Tag { get; } = tag;
+        public string Name => Tag;
+        public IActionFunctor CreateFunctor(JsonObject? configuration) => functor;
+    }
+
+    private sealed class FakeFunctor(Action<InputEvent> callback) : IActionFunctor
+    {
+        public Task ExecuteAsync(InputEvent inputEvent, CancellationToken cancellationToken = default)
+        {
+            callback(inputEvent);
+            return Task.CompletedTask;
+        }
+    }
+}
