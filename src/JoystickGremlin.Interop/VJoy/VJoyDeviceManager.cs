@@ -97,6 +97,17 @@ public sealed class VJoyDeviceManager : IVirtualDeviceManager
     }
 
     /// <inheritdoc/>
+    public IVirtualDevice GetDevice(uint vjoyId)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (_acquiredDevices.TryGetValue(vjoyId, out var device))
+            return device;
+
+        throw new VJoyException($"vJoy device {vjoyId} has not been acquired. Call AcquireDevice first.");
+    }
+
+    /// <inheritdoc/>
     public void Dispose()
     {
         if (_disposed)

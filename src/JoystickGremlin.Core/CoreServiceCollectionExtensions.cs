@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using JoystickGremlin.Core.Actions;
+using JoystickGremlin.Core.Actions.VJoy;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Modes;
 using JoystickGremlin.Core.Pipeline;
@@ -26,6 +27,11 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IModeManager, ModeManager>();
         services.AddSingleton<IEventPipeline, EventPipeline>();
+
+        // Built-in vJoy action descriptors — auto-registered into IActionRegistry at startup
+        services.AddSingleton<IActionDescriptor, VJoyAxisDescriptor>();
+        services.AddSingleton<IActionDescriptor, VJoyButtonDescriptor>();
+        services.AddSingleton<IActionDescriptor, VJoyHatDescriptor>();
 
         return services;
     }

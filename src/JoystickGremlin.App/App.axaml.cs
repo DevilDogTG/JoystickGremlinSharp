@@ -6,6 +6,7 @@ using Avalonia.Markup.Xaml;
 using JoystickGremlin.App.ViewModels;
 using JoystickGremlin.App.Views;
 using JoystickGremlin.Core;
+using JoystickGremlin.Core.Actions;
 using JoystickGremlin.Interop;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,6 +24,11 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         _services = ConfigureServices().BuildServiceProvider();
+
+        // Register all IActionDescriptor implementations into the registry.
+        var registry = _services.GetRequiredService<IActionRegistry>();
+        foreach (var descriptor in _services.GetServices<IActionDescriptor>())
+            registry.Register(descriptor);
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

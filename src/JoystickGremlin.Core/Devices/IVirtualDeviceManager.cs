@@ -30,4 +30,12 @@ public interface IVirtualDeviceManager : IDisposable
 
     /// <summary>Releases all currently acquired vJoy devices.</summary>
     void ReleaseAll();
+
+    /// <summary>
+    /// Returns a previously acquired device by ID.
+    /// </summary>
+    /// <param name="vjoyId">1-based vJoy device identifier.</param>
+    /// <returns>The acquired <see cref="IVirtualDevice"/>.</returns>
+    /// <exception cref="Core.Exceptions.VJoyException">Thrown if the device has not been acquired.</exception>
+    IVirtualDevice GetDevice(uint vjoyId);
 }
