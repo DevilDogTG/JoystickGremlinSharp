@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:JoystickGremlin.App.ViewModels"
+             x:Class="JoystickGremlin.App.Views.SettingsPageView"
+             x:DataType="vm:SettingsPageViewModel">
+
+    <Design.DataContext>
+        <vm:SettingsPageViewModel/>
+    </Design.DataContext>
+
+    <Grid>
+        <TextBlock Text="Application settings will appear here."
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Opacity="0.5"
+                   FontSize="14"/>
+    </Grid>
+
+</UserControl>

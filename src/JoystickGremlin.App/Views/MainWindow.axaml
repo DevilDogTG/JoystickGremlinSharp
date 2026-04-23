@@ -3,18 +3,95 @@
         xmlns:vm="using:JoystickGremlin.App.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1024" d:DesignHeight="680"
         x:Class="JoystickGremlin.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Icon="/Assets/avalonia-logo.ico"
-        Title="JoystickGremlin.App">
+        Icon="/Assets/icon.ico"
+        Title="Joystick Gremlin"
+        Width="1024" Height="680"
+        MinWidth="800" MinHeight="500">
 
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainWindowViewModel/>
-    </Design.DataContext>
+    <DockPanel>
 
-    <TextBlock Text="{Binding Title}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <!-- ─── Top Toolbar ─── -->
+        <Border DockPanel.Dock="Top"
+                Padding="8,6"
+                BorderThickness="0,0,0,1"
+                BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto"
+                  ColumnSpacing="8">
+
+                <!-- Profile controls -->
+                <Button Grid.Column="0"
+                        Content="📂  Open"
+                        Command="{Binding OpenProfileCommand}"
+                        ToolTip.Tip="Open a profile file"/>
+                <Button Grid.Column="1"
+                        Content="New"
+                        Command="{Binding NewProfileCommand}"
+                        ToolTip.Tip="Create a new empty profile"/>
+
+                <!-- Profile path display -->
+                <TextBlock Grid.Column="2"
+                           Text="{Binding ProfilePath}"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Opacity="0.6"
+                           FontSize="12"/>
+
+                <!-- Active mode -->
+                <StackPanel Grid.Column="3"
+                            Orientation="Horizontal"
+                            Spacing="4"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="Mode:"
+                               VerticalAlignment="Center"
+                               Opacity="0.6"
+                               FontSize="12"/>
+                    <TextBlock Text="{Binding ActiveModeName}"
+                               VerticalAlignment="Center"
+                               FontWeight="SemiBold"
+                               FontSize="12"/>
+                </StackPanel>
+
+                <!-- Start / Stop toggle -->
+                <Button Grid.Column="4"
+                        Content="{Binding ToggleButtonLabel}"
+                        Command="{Binding ToggleActiveCommand}"
+                        MinWidth="90"
+                        ToolTip.Tip="Start or stop the Gremlin event pipeline"/>
+
+            </Grid>
+        </Border>
+
+        <!-- ─── Left Navigation Sidebar ─── -->
+        <ListBox DockPanel.Dock="Left"
+                 Width="120"
+                 ItemsSource="{Binding NavItems}"
+                 SelectedItem="{Binding SelectedNavItem}"
+                 BorderThickness="0,0,1,0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 ScrollViewer.VerticalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:NavItemViewModel">
+                    <StackPanel Spacing="4" Margin="4,10" HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding Icon}"
+                                   FontSize="22"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding Title}"
+                                   HorizontalAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   FontSize="11"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- ─── Page Content Area ─── -->
+        <ContentControl Content="{Binding CurrentPage}"/>
+
+    </DockPanel>
 
 </Window>
+

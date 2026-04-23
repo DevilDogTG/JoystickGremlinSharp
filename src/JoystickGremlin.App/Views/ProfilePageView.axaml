@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:JoystickGremlin.App.ViewModels"
+             x:Class="JoystickGremlin.App.Views.ProfilePageView"
+             x:DataType="vm:ProfilePageViewModel">
+
+    <Design.DataContext>
+        <vm:ProfilePageViewModel/>
+    </Design.DataContext>
+
+    <Grid>
+        <TextBlock Text="Profile modes and input bindings will appear here."
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Opacity="0.5"
+                   FontSize="14"/>
+    </Grid>
+
+</UserControl>

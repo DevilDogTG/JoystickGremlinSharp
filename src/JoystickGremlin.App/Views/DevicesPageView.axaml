@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:JoystickGremlin.App.ViewModels"
+             x:Class="JoystickGremlin.App.Views.DevicesPageView"
+             x:DataType="vm:DevicesPageViewModel">
+
+    <Design.DataContext>
+        <vm:DevicesPageViewModel/>
+    </Design.DataContext>
+
+    <Grid>
+        <TextBlock Text="Connected devices will appear here."
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Opacity="0.5"
+                   FontSize="14"/>
+    </Grid>
+
+</UserControl>

@@ -46,7 +46,12 @@ public partial class App : Application
     {
         var services = new ServiceCollection();
 
-        // ViewModels
+        // Page ViewModels — singletons so state persists when navigating between pages.
+        services.AddSingleton<DevicesPageViewModel>();
+        services.AddSingleton<ProfilePageViewModel>();
+        services.AddSingleton<SettingsPageViewModel>();
+
+        // Main window ViewModel — transient; created once per window lifetime.
         services.AddTransient<MainWindowViewModel>();
 
         // Interop layer: DILL physical device input + vJoy virtual device output
