@@ -5,6 +5,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using JoystickGremlin.App.ViewModels;
 using JoystickGremlin.App.Views;
+using JoystickGremlin.Core;
 using JoystickGremlin.Interop;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -45,7 +46,8 @@ public partial class App : Application
         // Interop layer: DILL physical device input + vJoy virtual device output
         services.AddInteropServices();
 
-        // TODO: Register Core services (EventPipeline, ProfileRepository, etc.)
+        // Core domain services: profile repository, action registry, settings
+        services.AddCoreServices();
 
         return services;
     }

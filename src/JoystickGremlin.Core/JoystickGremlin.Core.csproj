@@ -13,4 +13,10 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0-preview.4.25258.110" />
   </ItemGroup>
 
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>JoystickGremlin.Core.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
 </Project>
