@@ -336,7 +336,9 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     {
         if (SelectedNewActionType is null || SelectedInput is null) return;
 
-        var binding = FindOrCreateBinding(create: true)!;
+        var binding = FindOrCreateBinding(create: true);
+        if (binding is null) return;
+
         var newAction = new BoundAction { ActionTag = SelectedNewActionType.Tag };
         binding.Actions.Add(newAction);
         var vm = new BoundActionViewModel(newAction, _actionRegistry);
