@@ -4,7 +4,9 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using JoystickGremlin.App.Services;
 using JoystickGremlin.App.ViewModels;
+using JoystickGremlin.App.ViewModels.InputViewer;
 using JoystickGremlin.App.Views;
 using JoystickGremlin.Core;
 using JoystickGremlin.Core.Actions;
@@ -32,6 +34,9 @@ public partial class App : Application
         var registry = _services.GetRequiredService<IActionRegistry>();
         foreach (var descriptor in _services.GetServices<IActionDescriptor>())
             registry.Register(descriptor);
+
+        // Start the process monitor service so it begins watching for game processes.
+        _services.GetRequiredService<ProcessMonitorService>().Start();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -63,6 +68,7 @@ public partial class App : Application
         services.AddSingleton<ProfilePageViewModel>();
         services.AddSingleton<SettingsPageViewModel>();
         services.AddSingleton<BindingsPageViewModel>();
+        services.AddSingleton<InputViewerPageViewModel>();
 
         // Main window ViewModel — transient; resolved once in OnFrameworkInitializationCompleted.
         services.AddTransient<MainWindowViewModel>();
@@ -70,6 +76,9 @@ public partial class App : Application
         // File picker service — concrete type also registered so SetTopLevel can be called.
         services.AddSingleton<FilePickerService>();
         services.AddSingleton<IFilePickerService>(sp => sp.GetRequiredService<FilePickerService>());
+
+        // Process monitor orchestration service.
+        services.AddSingleton<ProcessMonitorService>();
 
         // Interop layer: DILL physical device input + vJoy virtual device output
         services.AddInteropServices();

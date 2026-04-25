@@ -4,6 +4,7 @@ using JoystickGremlin.Core.Actions;
 using JoystickGremlin.Core.Actions.ChangeMode;
 using JoystickGremlin.Core.Actions.Keyboard;
 using JoystickGremlin.Core.Actions.Macro;
+using JoystickGremlin.Core.ProcessMonitor;
 using JoystickGremlin.Core.Actions.VJoy;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Modes;
@@ -38,12 +39,16 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<IActionDescriptor, VJoyButtonDescriptor>();
         services.AddSingleton<IActionDescriptor, VJoyHatDescriptor>();
 
-        // Built-in macro and mode-change descriptors
+        // Built-in macro, mode-change, and keyboard-mapping descriptors
         services.AddSingleton<IActionDescriptor, MacroActionDescriptor>();
         services.AddSingleton<IActionDescriptor, ChangeModeActionDescriptor>();
+        services.AddSingleton<IActionDescriptor, MapToKeyboardActionDescriptor>();
 
         // Keyboard simulator — NullKeyboardSimulator by default; override in App or Interop for real input.
         services.TryAddSingleton<IKeyboardSimulator, NullKeyboardSimulator>();
+
+        // Process monitor — NullProcessMonitor by default; override in Interop for real window tracking.
+        services.TryAddSingleton<IProcessMonitor, NullProcessMonitor>();
 
         return services;
     }

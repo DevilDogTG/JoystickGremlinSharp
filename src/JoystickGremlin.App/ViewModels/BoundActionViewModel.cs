@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+using System.Text.Json.Nodes;
 using JoystickGremlin.Core.Actions;
 using JoystickGremlin.Core.Actions.ChangeMode;
+using JoystickGremlin.Core.Actions.Keyboard;
 using JoystickGremlin.Core.Actions.Macro;
 using JoystickGremlin.Core.Actions.VJoy;
 using JoystickGremlin.Core.Profile;
@@ -40,6 +42,9 @@ public sealed class BoundActionViewModel : ViewModelBase
     /// <summary>Gets whether this action is a macro action.</summary>
     public bool IsMacro => ActionTag == MacroActionDescriptor.ActionTag;
 
+    /// <summary>Gets whether this action is a map-to-keyboard action.</summary>
+    public bool IsMapToKeyboard => ActionTag == MapToKeyboardActionDescriptor.ActionTag;
+
     /// <summary>
     /// Initializes a new instance of <see cref="BoundActionViewModel"/>.
     /// </summary>
@@ -70,7 +75,18 @@ public sealed class BoundActionViewModel : ViewModelBase
                 $"→ {cfg["targetMode"]?.GetValue<string>() ?? "(unset)"}",
             MacroActionDescriptor.ActionTag =>
                 cfg["keys"]?.GetValue<string>() is { Length: > 0 } k ? k : "(no keys)",
+            MapToKeyboardActionDescriptor.ActionTag =>
+                BuildMapToKeyboardSummary(cfg),
             _ => "(default config)",
         };
+    }
+
+    private static string BuildMapToKeyboardSummary(JsonObject? cfg)
+    {
+        if (cfg is null) return "(no keys)";
+        var keys     = cfg["keys"]?.GetValue<string>() ?? string.Empty;
+        var behavior = cfg["behavior"]?.GetValue<string>() ?? "Hold";
+        var keysPart = keys.Length > 0 ? keys : "(no keys)";
+        return behavior == "Hold" ? keysPart : $"{keysPart} [{behavior}]";
     }
 }

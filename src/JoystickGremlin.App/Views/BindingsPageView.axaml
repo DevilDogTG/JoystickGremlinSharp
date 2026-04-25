@@ -190,6 +190,20 @@
                                      HorizontalAlignment="Left"/>
                         </StackPanel>
 
+                        <!-- Map to Keyboard config -->
+                        <StackPanel Spacing="6" IsVisible="{Binding ShowMapToKeyboardConfig}">
+                            <TextBlock Text="Keys (comma-separated, modifiers first)"/>
+                            <TextBox Text="{Binding EditMapToKeyboardKeys}"
+                                     Watermark="e.g. LShift,A"
+                                     Width="220"
+                                     HorizontalAlignment="Left"/>
+                            <TextBlock Text="Behavior"/>
+                            <ComboBox ItemsSource="{Binding MapToKeyboardBehaviors}"
+                                      SelectedItem="{Binding EditMapToKeyboardBehavior}"
+                                      MinWidth="140"
+                                      HorizontalAlignment="Left"/>
+                        </StackPanel>
+
                         <Button Content="Apply"
                                 Command="{Binding ApplyActionConfigCommand}"
                                 HorizontalAlignment="Left"/>

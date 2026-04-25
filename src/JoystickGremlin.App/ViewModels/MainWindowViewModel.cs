@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
 using Avalonia.Threading;
+using JoystickGremlin.App.ViewModels.InputViewer;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.Modes;
@@ -31,6 +32,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     private readonly DevicesPageViewModel _devicesPage;
     private readonly BindingsPageViewModel _bindingsPage;
     private readonly SettingsPageViewModel _settingsPage;
+    private readonly InputViewerPageViewModel _inputViewerPage;
     private readonly ILogger<MainWindowViewModel> _logger;
 
     private readonly ObservableAsPropertyHelper<string> _toggleButtonLabel;
@@ -50,6 +52,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         ProfilePageViewModel profilePage,
         BindingsPageViewModel bindingsPage,
         SettingsPageViewModel settingsPage,
+        InputViewerPageViewModel inputViewerPage,
         IEventPipeline eventPipeline,
         IModeManager modeManager,
         IProfileRepository profileRepository,
@@ -69,14 +72,16 @@ public sealed class MainWindowViewModel : ViewModelBase
         _devicesPage = devicesPage;
         _bindingsPage = bindingsPage;
         _settingsPage = settingsPage;
+        _inputViewerPage = inputViewerPage;
         _logger = logger;
 
         var navItems = new[]
         {
-            new NavItemViewModel { Title = "Devices",  Icon = "🎮", Page = devicesPage   },
-            new NavItemViewModel { Title = "Bindings", Icon = "🔗", Page = bindingsPage  },
-            new NavItemViewModel { Title = "Profile",  Icon = "📋", Page = profilePage   },
-            new NavItemViewModel { Title = "Settings", Icon = "⚙️", Page = settingsPage  },
+            new NavItemViewModel { Title = "Devices",      Icon = "🎮", Page = devicesPage      },
+            new NavItemViewModel { Title = "Input Viewer", Icon = "👁", Page = inputViewerPage  },
+            new NavItemViewModel { Title = "Bindings",     Icon = "🔗", Page = bindingsPage     },
+            new NavItemViewModel { Title = "Profile",      Icon = "📋", Page = profilePage      },
+            new NavItemViewModel { Title = "Settings",     Icon = "⚙️", Page = settingsPage     },
         };
 
         NavItems = new ObservableCollection<NavItemViewModel>(navItems);
@@ -184,6 +189,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         _deviceManager.Initialize();
         _devicesPage.RefreshDevices();
         _bindingsPage.RefreshDevices();
+        _inputViewerPage.RefreshDevices();
 
         var lastPath = _settingsService.Settings.LastProfilePath;
         if (!string.IsNullOrEmpty(lastPath) && File.Exists(lastPath))

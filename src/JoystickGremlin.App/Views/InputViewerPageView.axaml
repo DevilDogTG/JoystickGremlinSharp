@@ -1,0 +1,194 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:JoystickGremlin.App.ViewModels.InputViewer"
+             x:Class="JoystickGremlin.App.Views.InputViewerPageView"
+             x:DataType="vm:InputViewerPageViewModel">
+
+    <UserControl.Styles>
+        <!-- Button tile pressed state -->
+        <Style Selector="Border.btn-pressed">
+            <Setter Property="Background" Value="#22C55E"/>
+        </Style>
+        <Style Selector="Border.btn-released">
+            <Setter Property="Background" Value="#6B7280"/>
+        </Style>
+        <!-- Hat direction tile active state -->
+        <Style Selector="Border.hat-active">
+            <Setter Property="Background" Value="#3B82F6"/>
+        </Style>
+        <Style Selector="Border.hat-center-active">
+            <Setter Property="Background" Value="#64748B"/>
+        </Style>
+        <Style Selector="Border.hat-inactive">
+            <Setter Property="Background" Value="#374151"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="200,*">
+
+        <!-- ─── Device List ─── -->
+        <DockPanel Grid.Column="0">
+            <Border DockPanel.Dock="Top"
+                    Padding="8,6"
+                    BorderThickness="0,0,0,1"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <TextBlock Text="Devices" FontWeight="SemiBold" FontSize="13"/>
+            </Border>
+
+            <ListBox ItemsSource="{Binding Devices}"
+                     SelectedItem="{Binding SelectedDevice}"
+                     BorderThickness="0,0,1,0">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DeviceLiveInputViewModel">
+                        <TextBlock Text="{Binding Name}"
+                                   TextWrapping="Wrap"
+                                   Margin="4,4"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
+        <!-- ─── Live Input Display ─── -->
+        <ScrollViewer Grid.Column="1">
+            <StackPanel Margin="12" Spacing="20">
+
+                <!-- Empty state -->
+                <TextBlock Text="Select a device on the left to view live input."
+                           Opacity="0.5"
+                           IsVisible="{Binding SelectedDevice,
+                               Converter={x:Static ObjectConverters.IsNull}}"/>
+
+                <!-- ─── Axes ─── -->
+                <StackPanel Spacing="6"
+                            IsVisible="{Binding SelectedDevice.HasAxes, FallbackValue=False}">
+                    <TextBlock Text="Axes" FontWeight="SemiBold" FontSize="14"/>
+
+                    <ItemsControl ItemsSource="{Binding SelectedDevice.Axes}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:AxisLiveViewModel">
+                                <Grid ColumnDefinitions="60,*,55" Margin="0,3">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding Label}"
+                                               VerticalAlignment="Center"
+                                               FontSize="12"/>
+                                    <ProgressBar Grid.Column="1"
+                                                 Minimum="0" Maximum="100"
+                                                 Value="{Binding DisplayPercent}"
+                                                 Height="16"
+                                                 VerticalAlignment="Center"
+                                                 Margin="4,0"/>
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding ValueLabel}"
+                                               VerticalAlignment="Center"
+                                               FontSize="11"
+                                               HorizontalAlignment="Right"
+                                               FontFamily="Consolas,Monospace"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- ─── Buttons ─── -->
+                <StackPanel Spacing="6"
+                            IsVisible="{Binding SelectedDevice.HasButtons, FallbackValue=False}">
+                    <TextBlock Text="Buttons" FontWeight="SemiBold" FontSize="14"/>
+
+                    <ItemsControl ItemsSource="{Binding SelectedDevice.Buttons}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ButtonLiveViewModel">
+                                <Border Width="38" Height="38"
+                                        Margin="3"
+                                        CornerRadius="19"
+                                        Classes.btn-pressed="{Binding IsPressed}"
+                                        Classes.btn-released="{Binding !IsPressed}"
+                                        ToolTip.Tip="{Binding Label}">
+                                    <TextBlock Text="{Binding Label}"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Foreground="White"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- ─── Hats ─── -->
+                <StackPanel Spacing="6"
+                            IsVisible="{Binding SelectedDevice.HasHats, FallbackValue=False}">
+                    <TextBlock Text="Hats" FontWeight="SemiBold" FontSize="14"/>
+
+                    <ItemsControl ItemsSource="{Binding SelectedDevice.Hats}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:HatLiveViewModel">
+                                <StackPanel Margin="8,0" Spacing="4">
+                                    <TextBlock Text="{Binding Label}"
+                                               FontSize="11"
+                                               HorizontalAlignment="Center"/>
+                                    <!-- 3×3 D-pad grid -->
+                                    <Grid RowDefinitions="28,28,28" ColumnDefinitions="28,28,28">
+                                        <Border Grid.Row="0" Grid.Column="0" CornerRadius="4" Margin="1"
+                                                Classes.hat-active="{Binding IsNorthWest}"
+                                                Classes.hat-inactive="{Binding !IsNorthWest}"/>
+                                        <Border Grid.Row="0" Grid.Column="1" CornerRadius="4" Margin="1"
+                                                Classes.hat-active="{Binding IsNorth}"
+                                                Classes.hat-inactive="{Binding !IsNorth}"/>
+                                        <Border Grid.Row="0" Grid.Column="2" CornerRadius="4" Margin="1"
+                                                Classes.hat-active="{Binding IsNorthEast}"
+                                                Classes.hat-inactive="{Binding !IsNorthEast}"/>
+                                        <Border Grid.Row="1" Grid.Column="0" CornerRadius="4" Margin="1"
+                                                Classes.hat-active="{Binding IsWest}"
+                                                Classes.hat-inactive="{Binding !IsWest}"/>
+                                        <!-- Center -->
+                                        <Border Grid.Row="1" Grid.Column="1" CornerRadius="4" Margin="1"
+                                                Classes.hat-center-active="{Binding IsCenter}"
+                                                Classes.hat-inactive="{Binding !IsCenter}">
+                                            <TextBlock Text="●"
+                                                       FontSize="10"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="White"/>
+                                        </Border>
+                                        <Border Grid.Row="1" Grid.Column="2" CornerRadius="4" Margin="1"
+                                                Classes.hat-active="{Binding IsEast}"
+                                                Classes.hat-inactive="{Binding !IsEast}"/>
+                                        <Border Grid.Row="2" Grid.Column="0" CornerRadius="4" Margin="1"
+                                                Classes.hat-active="{Binding IsSouthWest}"
+                                                Classes.hat-inactive="{Binding !IsSouthWest}"/>
+                                        <Border Grid.Row="2" Grid.Column="1" CornerRadius="4" Margin="1"
+                                                Classes.hat-active="{Binding IsSouth}"
+                                                Classes.hat-inactive="{Binding !IsSouth}"/>
+                                        <Border Grid.Row="2" Grid.Column="2" CornerRadius="4" Margin="1"
+                                                Classes.hat-active="{Binding IsSouthEast}"
+                                                Classes.hat-inactive="{Binding !IsSouthEast}"/>
+                                    </Grid>
+
+                                    <TextBlock Text="{Binding DirectionLabel}"
+                                               FontSize="10"
+                                               HorizontalAlignment="Center"
+                                               Opacity="0.7"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+
+    </Grid>
+
+</UserControl>
+

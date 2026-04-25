@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: GPL-3.0-only
+
+using ReactiveUI;
+
+namespace JoystickGremlin.App.ViewModels.InputViewer;
+
+/// <summary>
+/// Represents the live state of a single joystick axis.
+/// </summary>
+public sealed class AxisLiveViewModel : ReactiveObject
+{
+    private double _value;
+
+    /// <summary>Gets the 1-based axis index.</summary>
+    public int AxisIndex { get; }
+
+    /// <summary>Gets the display label (e.g. "Axis 1").</summary>
+    public string Label { get; }
+
+    /// <summary>
+    /// Gets or sets the current normalized axis value in the range [-1.0, 1.0].
+    /// </summary>
+    public double Value
+    {
+        get => _value;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _value, value);
+            this.RaisePropertyChanged(nameof(DisplayPercent));
+            this.RaisePropertyChanged(nameof(ValueLabel));
+        }
+    }
+
+    /// <summary>
+    /// Gets the axis value mapped to [0, 100] where 50 = center.
+    /// Used by a bidirectional ProgressBar to fill left or right from center.
+    /// </summary>
+    public double DisplayPercent => (Value + 1.0) * 50.0;
+
+    /// <summary>Gets a formatted string representation of the current value (e.g. "-0.42").</summary>
+    public string ValueLabel => Value.ToString("F2");
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="AxisLiveViewModel"/>.
+    /// </summary>
+    public AxisLiveViewModel(int axisIndex)
+    {
+        AxisIndex = axisIndex;
+        Label     = $"Axis {axisIndex}";
+    }
+}

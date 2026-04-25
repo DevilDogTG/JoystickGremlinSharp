@@ -7,6 +7,7 @@ using System.Text.Json.Nodes;
 using Avalonia.Threading;
 using JoystickGremlin.Core.Actions;
 using JoystickGremlin.Core.Actions.ChangeMode;
+using JoystickGremlin.Core.Actions.Keyboard;
 using JoystickGremlin.Core.Actions.Macro;
 using JoystickGremlin.Core.Actions.VJoy;
 using JoystickGremlin.Core.Devices;
@@ -43,6 +44,8 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     private int _editVJoyHatIndex = 1;
     private string _editTargetModeName = string.Empty;
     private string _editMacroKeys = string.Empty;
+    private string _editMapToKeyboardKeys = string.Empty;
+    private string _editMapToKeyboardBehavior = "Hold";
 
     /// <summary>
     /// Initializes a new instance of <see cref="BindingsPageViewModel"/>.
@@ -190,6 +193,24 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _editMacroKeys, value);
     }
 
+    /// <summary>Gets or sets the comma-separated key names for the map-to-keyboard action config form.</summary>
+    public string EditMapToKeyboardKeys
+    {
+        get => _editMapToKeyboardKeys;
+        set => this.RaiseAndSetIfChanged(ref _editMapToKeyboardKeys, value);
+    }
+
+    /// <summary>Gets or sets the behavior string for the map-to-keyboard action (Hold/Toggle/PressOnly/ReleaseOnly).</summary>
+    public string EditMapToKeyboardBehavior
+    {
+        get => _editMapToKeyboardBehavior;
+        set => this.RaiseAndSetIfChanged(ref _editMapToKeyboardBehavior, value);
+    }
+
+    /// <summary>Gets the available behavior options for the map-to-keyboard action.</summary>
+    public static IReadOnlyList<string> MapToKeyboardBehaviors { get; } =
+        ["Hold", "Toggle", "PressOnly", "ReleaseOnly"];
+
     // ─── Visibility Helpers ─────────────────────────────────────────────────────
 
     /// <summary>Gets whether the vJoy axis config section should be shown.</summary>
@@ -206,6 +227,9 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets whether the macro config section should be shown.</summary>
     public bool ShowMacroConfig => SelectedBoundAction?.IsMacro ?? false;
+
+    /// <summary>Gets whether the map-to-keyboard config section should be shown.</summary>
+    public bool ShowMapToKeyboardConfig => SelectedBoundAction?.IsMapToKeyboard ?? false;
 
     /// <summary>Gets whether any config section is visible (i.e. an action is selected).</summary>
     public bool ShowConfigPanel => SelectedBoundAction is not null;
@@ -304,6 +328,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         this.RaisePropertyChanged(nameof(ShowVJoyHatConfig));
         this.RaisePropertyChanged(nameof(ShowChangeModeConfig));
         this.RaisePropertyChanged(nameof(ShowMacroConfig));
+        this.RaisePropertyChanged(nameof(ShowMapToKeyboardConfig));
         this.RaisePropertyChanged(nameof(ShowConfigPanel));
 
         if (vm is null) return;
@@ -328,6 +353,10 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
                 break;
             case MacroActionDescriptor.ActionTag:
                 EditMacroKeys = cfg?["keys"]?.GetValue<string>() ?? string.Empty;
+                break;
+            case MapToKeyboardActionDescriptor.ActionTag:
+                EditMapToKeyboardKeys     = cfg?["keys"]?.GetValue<string>() ?? string.Empty;
+                EditMapToKeyboardBehavior = cfg?["behavior"]?.GetValue<string>() ?? "Hold";
                 break;
         }
     }
@@ -422,6 +451,11 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
             {
                 ["keys"]    = EditMacroKeys,
                 ["onPress"] = true,
+            },
+            MapToKeyboardActionDescriptor.ActionTag => new JsonObject
+            {
+                ["keys"]     = EditMapToKeyboardKeys,
+                ["behavior"] = EditMapToKeyboardBehavior,
             },
             _ => model.Configuration,
         };

@@ -5,7 +5,7 @@
              x:DataType="vm:SettingsPageViewModel">
 
     <ScrollViewer>
-        <StackPanel Margin="16" MaxWidth="420" Spacing="16">
+        <StackPanel Margin="16" MaxWidth="520" Spacing="16">
 
             <TextBlock Text="Settings" FontWeight="SemiBold" FontSize="18"/>
 
@@ -28,8 +28,116 @@
 
             <CheckBox Content="Start minimized" IsChecked="{Binding StartMinimized}"/>
 
+            <!-- ─── Auto-load Profiles ─── -->
+            <Border Padding="0,8,0,0"
+                    BorderThickness="0,1,0,0"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <StackPanel Spacing="10">
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="Auto-load Profiles"
+                                   FontWeight="SemiBold"
+                                   FontSize="15"
+                                   VerticalAlignment="Center"/>
+                        <CheckBox Content="Enabled"
+                                  IsChecked="{Binding EnableAutoLoading}"
+                                  VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <TextBlock TextWrapping="Wrap" Opacity="0.6" FontSize="11">
+                        When the mapped game becomes the active window, its profile is loaded automatically.
+                        Use exact paths (C:/Games/game.exe) or regex patterns (.*MyGame.*). First match wins.
+                    </TextBlock>
+
+                    <!-- Mapping list header -->
+                    <Grid ColumnDefinitions="*,*,60,65,70,80"
+                          IsVisible="{Binding ProcessMappings.Count}">
+                        <TextBlock Grid.Column="0" Text="Executable / Pattern" FontSize="11" FontWeight="SemiBold" Margin="2,0"/>
+                        <TextBlock Grid.Column="1" Text="Profile"              FontSize="11" FontWeight="SemiBold" Margin="2,0"/>
+                        <TextBlock Grid.Column="2" Text="On"                   FontSize="11" FontWeight="SemiBold" Margin="2,0" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="3" Text="AutoStart"            FontSize="11" FontWeight="SemiBold" Margin="2,0" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="4" Text="Stay Active"          FontSize="11" FontWeight="SemiBold" Margin="2,0" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="5" Text="Actions"              FontSize="11" FontWeight="SemiBold" Margin="2,0" HorizontalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Mapping rows -->
+                    <ItemsControl ItemsSource="{Binding ProcessMappings}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ProcessMappingViewModel">
+                                <Grid ColumnDefinitions="*,*,60,65,70,80"
+                                      Margin="0,2">
+                                    <!-- Executable / pattern -->
+                                    <TextBox Grid.Column="0"
+                                             Text="{Binding ExecutablePath}"
+                                             Watermark="C:/Games/game.exe"
+                                             FontSize="11"
+                                             Margin="2,0"/>
+                                    <!-- Profile path + browse -->
+                                    <Grid Grid.Column="1" ColumnDefinitions="*,26" Margin="2,0">
+                                        <TextBox Grid.Column="0"
+                                                 Text="{Binding ProfilePath}"
+                                                 Watermark="profile.json"
+                                                 FontSize="11"/>
+                                        <Button Grid.Column="1"
+                                                Content="…"
+                                                Command="{Binding BrowseProfileCommand}"
+                                                FontSize="11"
+                                                Padding="2,0"
+                                                ToolTip.Tip="Browse for profile file"/>
+                                    </Grid>
+                                    <!-- IsEnabled -->
+                                    <CheckBox Grid.Column="2"
+                                              IsChecked="{Binding IsEnabled}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                    <!-- AutoStart -->
+                                    <CheckBox Grid.Column="3"
+                                              IsChecked="{Binding AutoStart}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                    <!-- RemainActiveOnFocusLoss -->
+                                    <CheckBox Grid.Column="4"
+                                              IsChecked="{Binding RemainActiveOnFocusLoss}"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              ToolTip.Tip="Keep pipeline running when this game loses focus"/>
+                                    <!-- Actions: ↑ ↓ 🗑 -->
+                                    <StackPanel Grid.Column="5"
+                                                Orientation="Horizontal"
+                                                Spacing="2"
+                                                HorizontalAlignment="Center">
+                                        <Button Content="↑"
+                                                Command="{Binding $parent[ItemsControl].((vm:SettingsPageViewModel)DataContext).MoveUpCommand}"
+                                                CommandParameter="{Binding}"
+                                                FontSize="11" Padding="4,2"
+                                                ToolTip.Tip="Move up (higher priority)"/>
+                                        <Button Content="↓"
+                                                Command="{Binding $parent[ItemsControl].((vm:SettingsPageViewModel)DataContext).MoveDownCommand}"
+                                                CommandParameter="{Binding}"
+                                                FontSize="11" Padding="4,2"
+                                                ToolTip.Tip="Move down (lower priority)"/>
+                                        <Button Content="🗑"
+                                                Command="{Binding $parent[ItemsControl].((vm:SettingsPageViewModel)DataContext).RemoveMappingCommand}"
+                                                CommandParameter="{Binding}"
+                                                FontSize="11" Padding="4,2"
+                                                ToolTip.Tip="Remove this mapping"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Button Content="+ Add Mapping"
+                            Command="{Binding AddMappingCommand}"
+                            FontSize="12"
+                            HorizontalAlignment="Left"/>
+
+                </StackPanel>
+            </Border>
+
         </StackPanel>
     </ScrollViewer>
 
 </UserControl>
+
 

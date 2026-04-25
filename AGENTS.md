@@ -6,7 +6,7 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > `vjoy/`, `dill/`) is retained as a **reference implementation** only. All new development
 > targets the C# solution described in this file.
 
-> **Phase status**: Phase 4–6 complete and merged to `develop`. 101 tests passing.
+> **Phase status**: Phases 4–9 complete and merged to `develop`. 129 tests passing.
 > Remaining: response curve editor (axes), condition-based action pipeline.
 
 
@@ -306,6 +306,7 @@ Actions are **statically registered** (no runtime plugin discovery).
 | `"vjoy-hat"` | `VJoyHatActionDescriptor` | `deviceId`, `hatId` |
 | `"macro"` | `MacroActionDescriptor` | `keys` (comma-separated), `onPress` (bool) |
 | `"change-mode"` | `ChangeModeActionDescriptor` | `targetMode` (string) |
+| `"map-to-keyboard"` | `MapToKeyboardActionDescriptor` | `keys` (comma-separated key names), `behavior` ("Hold"/"Toggle"/"PressOnly"/"ReleaseOnly") |
 
 ### IKeyboardSimulator
 
@@ -408,7 +409,7 @@ dotnet build
 dotnet test
 ```
 
-> Current baseline: **101 tests, 0 failures** (as of Phase 6 merge to `develop`).
+> Current baseline: **129 tests, 0 failures** (as of Phase 9 merge to `develop`).
 
 
 ## GitHub Workflow
