@@ -1,0 +1,205 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:JoystickGremlin.App.ViewModels"
+             xmlns:actions="using:JoystickGremlin.Core.Actions"
+             x:Class="JoystickGremlin.App.Views.BindingsPageView"
+             x:DataType="vm:BindingsPageViewModel">
+
+    <Grid ColumnDefinitions="200,180,*">
+
+        <!-- ─── Device List ─── -->
+        <DockPanel Grid.Column="0">
+            <Border DockPanel.Dock="Top"
+                    Padding="8,6"
+                    BorderThickness="0,0,0,1"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <TextBlock Text="Devices" FontWeight="SemiBold" FontSize="13"/>
+            </Border>
+
+            <ListBox ItemsSource="{Binding Devices}"
+                     SelectedItem="{Binding SelectedDevice}"
+                     BorderThickness="0,0,1,0">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DeviceViewModel">
+                        <TextBlock Text="{Binding Name}"
+                                   TextWrapping="Wrap"
+                                   Margin="4,4"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
+        <!-- ─── Input List ─── -->
+        <DockPanel Grid.Column="1">
+            <Border DockPanel.Dock="Top"
+                    Padding="8,6"
+                    BorderThickness="0,0,0,1"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <TextBlock Text="Inputs" FontWeight="SemiBold" FontSize="13"/>
+            </Border>
+
+            <ListBox ItemsSource="{Binding AvailableInputs}"
+                     SelectedItem="{Binding SelectedInput}"
+                     BorderThickness="0,0,1,0">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:InputDescriptorViewModel">
+                        <TextBlock Text="{Binding DisplayName}" Margin="4,4"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
+        <!-- ─── Bindings Editor ─── -->
+        <DockPanel Grid.Column="2">
+
+            <!-- Header: current mode label -->
+            <Border DockPanel.Dock="Top"
+                    Padding="8,6"
+                    BorderThickness="0,0,0,1"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="Actions in mode:" FontWeight="SemiBold" FontSize="13"/>
+                    <TextBlock Text="{Binding CurrentModeName}"
+                               FontSize="13"
+                               Opacity="0.7"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Add-action toolbar -->
+            <Border DockPanel.Dock="Top"
+                    Padding="8,4"
+                    BorderThickness="0,0,0,1"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <ComboBox ItemsSource="{Binding AvailableActionTypes}"
+                              SelectedItem="{Binding SelectedNewActionType}"
+                              MinWidth="140"
+                              IsEnabled="{Binding HasProfile}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="actions:IActionDescriptor">
+                                <TextBlock Text="{Binding Name}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Content="+ Add"
+                            Command="{Binding AddActionCommand}"
+                            FontSize="12"/>
+                    <Button Content="− Remove"
+                            Command="{Binding RemoveActionCommand}"
+                            FontSize="12"/>
+                    <Button Content="▲"
+                            Command="{Binding MoveUpCommand}"
+                            FontSize="12"
+                            ToolTip.Tip="Move action up"/>
+                    <Button Content="▼"
+                            Command="{Binding MoveDownCommand}"
+                            FontSize="12"
+                            ToolTip.Tip="Move action down"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Bound action list + config form -->
+            <Grid RowDefinitions="180,*">
+
+                <!-- Action list -->
+                <ListBox Grid.Row="0"
+                         ItemsSource="{Binding BoundActions}"
+                         SelectedItem="{Binding SelectedBoundAction}"
+                         BorderThickness="0,0,0,1">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:BoundActionViewModel">
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="4,3">
+                                <TextBlock Text="{Binding ActionName}"
+                                           FontWeight="SemiBold"
+                                           MinWidth="120"/>
+                                <TextBlock Text="{Binding ConfigSummary}"
+                                           Opacity="0.6"
+                                           FontSize="11"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Config form -->
+                <ScrollViewer Grid.Row="1">
+                    <StackPanel Margin="12"
+                                Spacing="10"
+                                IsVisible="{Binding ShowConfigPanel}">
+
+                        <TextBlock Text="Configure Action"
+                                   FontWeight="SemiBold"
+                                   FontSize="14"/>
+
+                        <!-- vJoy Axis config -->
+                        <StackPanel Spacing="6" IsVisible="{Binding ShowVJoyAxisConfig}">
+                            <TextBlock Text="vJoy Device ID"/>
+                            <NumericUpDown Value="{Binding EditVJoyDeviceId}"
+                                          Minimum="1" Maximum="16"
+                                          FormatString="0"
+                                          Width="100" HorizontalAlignment="Left"/>
+                            <TextBlock Text="Axis Index"/>
+                            <NumericUpDown Value="{Binding EditVJoyAxisIndex}"
+                                          Minimum="1" Maximum="8"
+                                          FormatString="0"
+                                          Width="100" HorizontalAlignment="Left"/>
+                        </StackPanel>
+
+                        <!-- vJoy Button config -->
+                        <StackPanel Spacing="6" IsVisible="{Binding ShowVJoyButtonConfig}">
+                            <TextBlock Text="vJoy Device ID"/>
+                            <NumericUpDown Value="{Binding EditVJoyDeviceId}"
+                                          Minimum="1" Maximum="16"
+                                          FormatString="0"
+                                          Width="100" HorizontalAlignment="Left"/>
+                            <TextBlock Text="Button Index"/>
+                            <NumericUpDown Value="{Binding EditVJoyButtonIndex}"
+                                          Minimum="1" Maximum="128"
+                                          FormatString="0"
+                                          Width="100" HorizontalAlignment="Left"/>
+                        </StackPanel>
+
+                        <!-- vJoy Hat config -->
+                        <StackPanel Spacing="6" IsVisible="{Binding ShowVJoyHatConfig}">
+                            <TextBlock Text="vJoy Device ID"/>
+                            <NumericUpDown Value="{Binding EditVJoyDeviceId}"
+                                          Minimum="1" Maximum="16"
+                                          FormatString="0"
+                                          Width="100" HorizontalAlignment="Left"/>
+                            <TextBlock Text="Hat Index"/>
+                            <NumericUpDown Value="{Binding EditVJoyHatIndex}"
+                                          Minimum="1" Maximum="4"
+                                          FormatString="0"
+                                          Width="100" HorizontalAlignment="Left"/>
+                        </StackPanel>
+
+                        <!-- Change Mode config -->
+                        <StackPanel Spacing="6" IsVisible="{Binding ShowChangeModeConfig}">
+                            <TextBlock Text="Target Mode"/>
+                            <ComboBox ItemsSource="{Binding AvailableModeNames}"
+                                      SelectedItem="{Binding EditTargetModeName}"
+                                      MinWidth="160"
+                                      HorizontalAlignment="Left"/>
+                        </StackPanel>
+
+                        <!-- Macro config -->
+                        <StackPanel Spacing="6" IsVisible="{Binding ShowMacroConfig}">
+                            <TextBlock Text="Keys (comma-separated)"/>
+                            <TextBox Text="{Binding EditMacroKeys}"
+                                     Watermark="e.g. LControl,C"
+                                     Width="220"
+                                     HorizontalAlignment="Left"/>
+                        </StackPanel>
+
+                        <Button Content="Apply"
+                                Command="{Binding ApplyActionConfigCommand}"
+                                HorizontalAlignment="Left"/>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+            </Grid>
+        </DockPanel>
+
+    </Grid>
+
+</UserControl>

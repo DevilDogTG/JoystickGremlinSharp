@@ -29,6 +29,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     private readonly IFilePickerService _filePicker;
     private readonly IDeviceManager _deviceManager;
     private readonly DevicesPageViewModel _devicesPage;
+    private readonly BindingsPageViewModel _bindingsPage;
     private readonly SettingsPageViewModel _settingsPage;
     private readonly ILogger<MainWindowViewModel> _logger;
 
@@ -47,6 +48,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel(
         DevicesPageViewModel devicesPage,
         ProfilePageViewModel profilePage,
+        BindingsPageViewModel bindingsPage,
         SettingsPageViewModel settingsPage,
         IEventPipeline eventPipeline,
         IModeManager modeManager,
@@ -65,14 +67,16 @@ public sealed class MainWindowViewModel : ViewModelBase
         _filePicker = filePicker;
         _deviceManager = deviceManager;
         _devicesPage = devicesPage;
+        _bindingsPage = bindingsPage;
         _settingsPage = settingsPage;
         _logger = logger;
 
         var navItems = new[]
         {
-            new NavItemViewModel { Title = "Devices",  Icon = "🎮", Page = devicesPage  },
-            new NavItemViewModel { Title = "Profile",  Icon = "📋", Page = profilePage  },
-            new NavItemViewModel { Title = "Settings", Icon = "⚙️", Page = settingsPage },
+            new NavItemViewModel { Title = "Devices",  Icon = "🎮", Page = devicesPage   },
+            new NavItemViewModel { Title = "Bindings", Icon = "🔗", Page = bindingsPage  },
+            new NavItemViewModel { Title = "Profile",  Icon = "📋", Page = profilePage   },
+            new NavItemViewModel { Title = "Settings", Icon = "⚙️", Page = settingsPage  },
         };
 
         NavItems = new ObservableCollection<NavItemViewModel>(navItems);
@@ -179,6 +183,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         _deviceManager.Initialize();
         _devicesPage.RefreshDevices();
+        _bindingsPage.RefreshDevices();
 
         var lastPath = _settingsService.Settings.LastProfilePath;
         if (!string.IsNullOrEmpty(lastPath) && File.Exists(lastPath))

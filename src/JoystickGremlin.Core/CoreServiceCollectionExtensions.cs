@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using JoystickGremlin.Core.Actions;
+using JoystickGremlin.Core.Actions.ChangeMode;
+using JoystickGremlin.Core.Actions.Keyboard;
+using JoystickGremlin.Core.Actions.Macro;
 using JoystickGremlin.Core.Actions.VJoy;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Modes;
 using JoystickGremlin.Core.Pipeline;
 using JoystickGremlin.Core.Profile;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace JoystickGremlin.Core;
 
@@ -33,6 +37,13 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<IActionDescriptor, VJoyAxisDescriptor>();
         services.AddSingleton<IActionDescriptor, VJoyButtonDescriptor>();
         services.AddSingleton<IActionDescriptor, VJoyHatDescriptor>();
+
+        // Built-in macro and mode-change descriptors
+        services.AddSingleton<IActionDescriptor, MacroActionDescriptor>();
+        services.AddSingleton<IActionDescriptor, ChangeModeActionDescriptor>();
+
+        // Keyboard simulator — NullKeyboardSimulator by default; override in App or Interop for real input.
+        services.TryAddSingleton<IKeyboardSimulator, NullKeyboardSimulator>();
 
         return services;
     }
