@@ -131,9 +131,9 @@ public sealed class DillDeviceManager : IDeviceManager
         if (inputType is null)
             return;
 
-        // DILL reports InputIndex as a zero-based linear index for all input types.
-        // The rest of the system uses 1-based identifiers, so normalise here at the boundary.
-        int identifier = data.InputIndex + 1;
+        // DILL reports InputIndex as a 1-based index for all input types (buttons, axes, hats),
+        // matching the 1-based identifiers used throughout the rest of the system.
+        int identifier = data.InputIndex;
 
         // Axis values arrive as raw DirectInput signed-short integers (range −32768 to 32767).
         // Normalise to [−1.0, 1.0] so that the pipeline and vJoy output receive consistent values.

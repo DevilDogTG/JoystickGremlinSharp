@@ -3,7 +3,7 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
-namespace JoystickGremlin.App.Views;
+namespace JoystickGremlin.App.Views.InputViewer;
 
 public partial class InputViewerPageView : UserControl
 {
