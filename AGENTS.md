@@ -7,6 +7,7 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > targets the C# solution described in this file.
 
 > **Phase status**: Phases 4–9 complete and merged to `develop`. 129 tests passing.
+> Bug fixes for Input Viewer, button index mismatch, and keyboard simulation in PR #2 (`features/fix-input-viewer-keyboard`).
 > Remaining: response curve editor (axes), condition-based action pipeline.
 
 
@@ -289,6 +290,16 @@ internal static partial class VJoyNative
 
 The native DLLs (`vJoyInterface.dll`, `dill.dll`) from the Python source are copied to the
 output directory via `<Content CopyToOutputDirectory="PreserveNewest">` in the `.csproj`.
+
+### DILL Index and Value Conventions
+
+- **InputIndex is zero-based** for all input types (buttons, axes, hats). `DillDeviceManager` adds `+1` at the boundary so the rest of the system always works with 1-based identifiers.
+- **Axis values** arrive as raw DirectInput signed-short integers (range −32768 to 32767). `DillDeviceManager` normalises to `[−1.0, 1.0]` via `Math.Clamp(data.Value / 32767.0, -1.0, 1.0)` before creating `InputEvent`.
+- **AxisCount may be 0** from DILL even when axes exist (confirmed on MOZA R9 Base). `DillDevice` falls back to counting non-zero `AxisIndex` entries from `AxisMap`; DirectInput axis codes start at `0x30`, so `AxisIndex == 0` is the unused-slot sentinel.
+
+### SendInput Struct Size (x64)
+
+Windows `INPUT` struct on x64 is **40 bytes**: `DWORD type`(4) + padding(4) + union(32). The union must be forced to 32 bytes via `[StructLayout(LayoutKind.Explicit, Size=32)]`. Without this, `SendInput` silently returns 0 (`ERROR_INVALID_PARAMETER`). See `SendInputKeyboardSimulator.InputUnion`.
 
 
 ## Action System
