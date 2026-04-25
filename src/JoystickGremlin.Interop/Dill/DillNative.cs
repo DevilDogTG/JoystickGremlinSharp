@@ -32,7 +32,7 @@ internal struct NativeJoystickInputData
     public NativeGuid DeviceGuid;
     /// <summary>Input type: 1=Axis, 2=Button, 3=Hat.</summary>
     public byte InputType;
-    /// <summary>Zero-based index of the input.</summary>
+    /// <summary>One-based index of the input (physical button 1 = InputIndex 1).</summary>
     public byte InputIndex;
     // 2 bytes of implicit padding to 4-byte align Value.
     private readonly ushort _pad;
