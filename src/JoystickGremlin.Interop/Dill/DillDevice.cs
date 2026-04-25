@@ -42,23 +42,36 @@ public sealed class DillDevice : IPhysicalDevice
     /// </summary>
     internal IReadOnlyList<AxisMapping> AxisMappings { get; }
 
+    // Valid HID Generic Desktop axis usage IDs: X(0x30) through Slider1(0x37).
+    // DirectInput can report axes with AxisIndex = 0 (no valid HID usage) for button-only
+    // devices whose HID descriptors contain a residual axis entry. Those phantom axes are
+    // filtered here so AxisCount matches what Windows Game Controllers shows.
+    private const uint MinValidAxisUsage = 0x30;
+    private const uint MaxValidAxisUsage = 0x37;
+
     internal DillDevice(NativeDeviceSummary native)
     {
         Guid = DillGuidConverter.ToGuid(native.DeviceGuid);
         Name = native.Name ?? string.Empty;
-        AxisCount = (int)native.AxisCount;
         ButtonCount = (int)native.ButtonCount;
         HatCount = (int)native.HatCount;
         VendorId = native.VendorId;
         ProductId = native.ProductId;
 
+        // Build axis mappings, skipping entries with an invalid DirectInput axis identifier.
         var mappings = new List<AxisMapping>((int)native.AxisCount);
         var axisMap = native.AxisMap ?? [];
         for (int i = 0; i < Math.Min(axisMap.Length, (int)native.AxisCount); i++)
         {
-            mappings.Add(new AxisMapping(axisMap[i].LinearIndex, axisMap[i].AxisIndex));
+            var axisUsage = axisMap[i].AxisIndex;
+            if (axisUsage >= MinValidAxisUsage && axisUsage <= MaxValidAxisUsage)
+                mappings.Add(new AxisMapping(axisMap[i].LinearIndex, axisUsage));
         }
         AxisMappings = mappings;
+
+        // Derive AxisCount from validated mappings, not from the raw DILL value, so that
+        // phantom axes reported by DirectInput for button-only devices are not counted.
+        AxisCount = AxisMappings.Count;
     }
 }
 
