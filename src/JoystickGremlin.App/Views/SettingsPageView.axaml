@@ -4,16 +4,32 @@
              x:Class="JoystickGremlin.App.Views.SettingsPageView"
              x:DataType="vm:SettingsPageViewModel">
 
-    <Design.DataContext>
-        <vm:SettingsPageViewModel/>
-    </Design.DataContext>
+    <ScrollViewer>
+        <StackPanel Margin="16" MaxWidth="420" Spacing="16">
 
-    <Grid>
-        <TextBlock Text="Application settings will appear here."
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"
-                   Opacity="0.5"
-                   FontSize="14"/>
-    </Grid>
+            <TextBlock Text="Settings" FontWeight="SemiBold" FontSize="18"/>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Last Profile Path"/>
+                <TextBox Text="{Binding LastProfilePath}" Watermark="(none)"/>
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="vJoy Device ID (1–16)"/>
+                <NumericUpDown Value="{Binding VJoyDeviceId}"
+                               Minimum="1" Maximum="16" Increment="1"
+                               FormatString="0"/>
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Default Mode Name"/>
+                <TextBox Text="{Binding DefaultModeName}" Watermark="(none)"/>
+            </StackPanel>
+
+            <CheckBox Content="Start minimized" IsChecked="{Binding StartMinimized}"/>
+
+        </StackPanel>
+    </ScrollViewer>
 
 </UserControl>
+

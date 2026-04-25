@@ -4,16 +4,72 @@
              x:Class="JoystickGremlin.App.Views.DevicesPageView"
              x:DataType="vm:DevicesPageViewModel">
 
-    <Design.DataContext>
-        <vm:DevicesPageViewModel/>
-    </Design.DataContext>
+    <Grid ColumnDefinitions="250,*">
 
-    <Grid>
-        <TextBlock Text="Connected devices will appear here."
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"
-                   Opacity="0.5"
-                   FontSize="14"/>
+        <!-- ─── Device List ─── -->
+        <ListBox Grid.Column="0"
+                 ItemsSource="{Binding Devices}"
+                 SelectedItem="{Binding SelectedDevice}"
+                 BorderThickness="0,0,1,0">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:DeviceViewModel">
+                    <StackPanel Margin="4,4" Spacing="2">
+                        <TextBlock Text="{Binding Name}"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding InputSummary}"
+                                   FontSize="11"
+                                   Opacity="0.6"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- ─── Input Entry Table ─── -->
+        <Grid Grid.Column="1" RowDefinitions="Auto,*">
+
+            <!-- Device info header -->
+            <Border Grid.Row="0"
+                    Padding="12,8"
+                    BorderThickness="0,0,0,1"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <StackPanel Spacing="2">
+                    <TextBlock Text="{Binding SelectedDevice.Name, FallbackValue=''}"
+                               FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding SelectedDevice.InputSummary, FallbackValue=''}"
+                               FontSize="11"
+                               Opacity="0.6"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Input rows -->
+            <ListBox Grid.Row="1"
+                     ItemsSource="{Binding InputEntries}"
+                     BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:InputEntryViewModel">
+                        <Grid ColumnDefinitions="20,140,*" Margin="4,2">
+                            <TextBlock Grid.Column="0"
+                                       Text="●"
+                                       Foreground="LimeGreen"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding IsActive}"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding Label}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding BoundActions}"
+                                       Opacity="0.6"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+        </Grid>
     </Grid>
 
 </UserControl>
+

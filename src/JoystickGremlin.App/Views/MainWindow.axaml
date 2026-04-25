@@ -48,10 +48,11 @@
                                VerticalAlignment="Center"
                                Opacity="0.6"
                                FontSize="12"/>
-                    <TextBlock Text="{Binding ActiveModeName}"
-                               VerticalAlignment="Center"
-                               FontWeight="SemiBold"
-                               FontSize="12"/>
+                    <ComboBox ItemsSource="{Binding AvailableModes}"
+                              SelectedItem="{Binding SelectedModeName}"
+                              IsEnabled="{Binding HasProfile}"
+                              MinWidth="120"
+                              FontSize="12"/>
                 </StackPanel>
 
                 <!-- Start / Stop toggle -->

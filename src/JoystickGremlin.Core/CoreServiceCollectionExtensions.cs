@@ -27,6 +27,7 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IModeManager, ModeManager>();
         services.AddSingleton<IEventPipeline, EventPipeline>();
+        services.AddSingleton<IProfileState, ProfileState>();
 
         // Built-in vJoy action descriptors — auto-registered into IActionRegistry at startup
         services.AddSingleton<IActionDescriptor, VJoyAxisDescriptor>();
