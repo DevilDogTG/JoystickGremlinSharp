@@ -46,19 +46,28 @@ public sealed class DillDevice : IPhysicalDevice
     {
         Guid = DillGuidConverter.ToGuid(native.DeviceGuid);
         Name = native.Name ?? string.Empty;
-        AxisCount = (int)native.AxisCount;
         ButtonCount = (int)native.ButtonCount;
         HatCount = (int)native.HatCount;
         VendorId = native.VendorId;
         ProductId = native.ProductId;
 
-        var mappings = new List<AxisMapping>((int)native.AxisCount);
+        var mappings = new List<AxisMapping>();
         var axisMap = native.AxisMap ?? [];
-        for (int i = 0; i < Math.Min(axisMap.Length, (int)native.AxisCount); i++)
+
+        // DILL sometimes reports AxisCount = 0 even when axes exist. Walk the AxisMap
+        // directly and stop at the first entry where AxisIndex = 0 (DirectInput axis codes
+        // start at 0x30, so 0 is the sentinel for an unused slot).
+        var maxEntries = native.AxisCount > 0 ? (int)native.AxisCount : axisMap.Length;
+        for (int i = 0; i < maxEntries && i < axisMap.Length; i++)
         {
+            if (axisMap[i].AxisIndex == 0) break;
             mappings.Add(new AxisMapping(axisMap[i].LinearIndex, axisMap[i].AxisIndex));
         }
         AxisMappings = mappings;
+
+        // Prefer the DILL-reported count but fall back to AxisMap-derived count when DILL
+        // reports 0 (observed on some devices, e.g. MOZA R9 Base).
+        AxisCount = native.AxisCount > 0 ? (int)native.AxisCount : mappings.Count;
     }
 }
 

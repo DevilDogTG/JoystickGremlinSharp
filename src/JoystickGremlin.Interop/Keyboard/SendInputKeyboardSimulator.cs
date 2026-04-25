@@ -195,7 +195,9 @@ public sealed class SendInputKeyboardSimulator : IKeyboardSimulator
         public InputUnion U;
     }
 
-    [StructLayout(LayoutKind.Explicit)]
+    // Force union to 32 bytes to match the native Windows MOUSEINPUT size on x64,
+    // making total Input = uint(4) + padding(4) + union(32) = 40 bytes = sizeof(INPUT).
+    [StructLayout(LayoutKind.Explicit, Size = 32)]
     private struct InputUnion
     {
         [FieldOffset(0)] public KeybdInput Ki;

@@ -131,11 +131,21 @@ public sealed class DillDeviceManager : IDeviceManager
         if (inputType is null)
             return;
 
+        // DILL reports InputIndex as a zero-based linear index for all input types.
+        // The rest of the system uses 1-based identifiers, so normalise here at the boundary.
+        int identifier = data.InputIndex + 1;
+
+        // Axis values arrive as raw DirectInput signed-short integers (range −32768 to 32767).
+        // Normalise to [−1.0, 1.0] so that the pipeline and vJoy output receive consistent values.
+        double value = inputType == InputType.JoystickAxis
+            ? Math.Clamp(data.Value / 32767.0, -1.0, 1.0)
+            : data.Value;
+
         var evt = new InputEvent(
             inputType.Value,
             DillGuidConverter.ToGuid(data.DeviceGuid),
-            data.InputIndex,
-            data.Value,
+            identifier,
+            value,
             string.Empty);
 
         InputReceived.Invoke(this, evt);
