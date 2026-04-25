@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:JoystickGremlin.App.ViewModels"
+             x:Class="JoystickGremlin.App.Views.SettingsPageView"
+             x:DataType="vm:SettingsPageViewModel">
+
+    <ScrollViewer>
+        <StackPanel Margin="16" MaxWidth="420" Spacing="16">
+
+            <TextBlock Text="Settings" FontWeight="SemiBold" FontSize="18"/>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Last Profile Path"/>
+                <TextBox Text="{Binding LastProfilePath}" Watermark="(none)"/>
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="vJoy Device ID (1–16)"/>
+                <NumericUpDown Value="{Binding VJoyDeviceId}"
+                               Minimum="1" Maximum="16" Increment="1"
+                               FormatString="0"/>
+            </StackPanel>
+
+            <StackPanel Spacing="4">
+                <TextBlock Text="Default Mode Name"/>
+                <TextBox Text="{Binding DefaultModeName}" Watermark="(none)"/>
+            </StackPanel>
+
+            <CheckBox Content="Start minimized" IsChecked="{Binding StartMinimized}"/>
+
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>
+
