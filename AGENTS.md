@@ -6,6 +6,9 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > `vjoy/`, `dill/`) is retained as a **reference implementation** only. All new development
 > targets the C# solution described in this file.
 
+> **Phase status**: Phase 4–6 complete and merged to `develop`. 101 tests passing.
+> Remaining: response curve editor (axes), condition-based action pipeline.
+
 
 ## Project Overview
 
@@ -83,13 +86,18 @@ dill/             Original DILL ctypes wrapper (porting reference)
 
 ```
 src/JoystickGremlin.Core/
-  Actions/          IAction, IFunctor, ActionRegistry, built-in action implementations
+  Actions/          IActionDescriptor, IActionFunctor, ActionRegistry, built-in descriptors:
+                      VJoy/   VJoyAxisActionDescriptor, VJoyButtonActionDescriptor, VJoyHatActionDescriptor
+                      Macro/  MacroActionDescriptor (tag: "macro"; fires key sequence on press/release)
+                      ChangeMode/ ChangeModeActionDescriptor (tag: "change-mode"; switches active mode)
+                      Keyboard/   IKeyboardSimulator, NullKeyboardSimulator (overridable by Interop)
   Configuration/    AppSettings, ISettingsRepository, JSON-backed settings store
   Devices/          IPhysicalDevice, IVirtualDevice, DeviceManager, device-info types
   Events/           InputEvent, EventPipeline, IEventProcessor, mode-aware routing
   Exceptions/       GremlinException and domain-specific exception types
   Modes/            ModeManager, Mode, mode-stack logic
   Profile/          Profile, InputBinding, ProfileRepository (JSON serialization)
+                      IProfileState — singleton holding current Profile + FilePath, raises events
   Common/           Extensions, utilities
 ```
 
@@ -99,8 +107,16 @@ src/JoystickGremlin.Core/
 src/JoystickGremlin.App/
   Assets/           Icons, fonts, static resources
   Controls/         Custom Avalonia controls (reusable across views)
-  ViewModels/       ReactiveObject-based ViewModels, one per View
+  ViewModels/       ReactiveObject-based ViewModels, one per View:
+                      MainWindowViewModel  — nav bar, profile load/save, pipeline start/stop
+                      DevicesPageViewModel — lists physical devices from IDeviceManager
+                      ProfilePageViewModel — current mode, mode switcher, profile metadata
+                      SettingsPageViewModel — app settings via ISettingsRepository
+                      BindingsPageViewModel — three-panel editor: device→input→bound actions
+                      BoundActionViewModel  — wraps BoundAction; computes ConfigSummary
+                      InputDescriptorViewModel — represents single axis/button/hat slot
   Views/            *.axaml Views, code-behind minimal
+  FilePickerService.cs  — wraps Avalonia IStorageProvider; call SetTopLevel(mainWindow) before use
   App.axaml         Application definition
   App.axaml.cs      DI bootstrap, service registration
   Program.cs        Entry point
@@ -147,8 +163,9 @@ public sealed class DeviceManager : IDeviceManager
 ### Nullable Reference Types
 
 - Nullable reference types are **enabled** project-wide (`<Nullable>enable</Nullable>`)
-- Use `?` for intentionally nullable references; never suppress warnings with `!` unless unavoidable
+- Use `?` for intentionally nullable references; **never suppress warnings with `!`** — always add an explicit null guard instead
 - Initialize fields in constructors; use `required` init properties where appropriate
+- In ViewModels, use `if (x is null) return;` pattern (not `x!`) before dereferencing potentially-null results (see `BindingsPageViewModel.AddAction` for the established pattern)
 
 ### Properties
 
@@ -276,7 +293,23 @@ output directory via `<Content CopyToOutputDirectory="PreserveNewest">` in the `
 
 ## Action System
 
-Actions are **statically registered** (no runtime plugin discovery):
+Actions are **statically registered** (no runtime plugin discovery).
+
+> **Note**: The codebase uses `IActionDescriptor` + `IActionFunctor` (not `IAction`/`IFunctor` as shown in the example below). The interfaces below are illustrative; see `Core/Actions/` for actual signatures.
+
+### Built-in Action Descriptors
+
+| Tag | Class | Config keys |
+|---|---|---|
+| `"vjoy-axis"` | `VJoyAxisActionDescriptor` | `deviceId`, `axisId` |
+| `"vjoy-button"` | `VJoyButtonActionDescriptor` | `deviceId`, `buttonId` |
+| `"vjoy-hat"` | `VJoyHatActionDescriptor` | `deviceId`, `hatId` |
+| `"macro"` | `MacroActionDescriptor` | `keys` (comma-separated), `onPress` (bool) |
+| `"change-mode"` | `ChangeModeActionDescriptor` | `targetMode` (string) |
+
+### IKeyboardSimulator
+
+`MacroActionDescriptor` depends on `IKeyboardSimulator` (Core abstraction). `NullKeyboardSimulator` is registered by default (no-op). The Interop layer can override with a real `SendInput` implementation by registering its own singleton **before** `AddCoreServices()` is called (uses `TryAddSingleton`).
 
 ### Interfaces
 
@@ -374,3 +407,25 @@ Before considering a task complete, run:
 dotnet build
 dotnet test
 ```
+
+> Current baseline: **101 tests, 0 failures** (as of Phase 6 merge to `develop`).
+
+
+## GitHub Workflow
+
+The project uses SSH for git push (`git@github.com:DevilDogTG/JoystickGremlinSharp.git`).
+
+For PR creation and GitHub API operations, authenticate `gh` CLI:
+```bash
+# One-time setup per session
+gh auth login --with-token   # paste a fine-grained PAT when prompted
+gh repo set-default DevilDogTG/JoystickGremlinSharp
+
+# Create PR
+gh pr create --base develop --head <branch> --title "..." --body "..."
+```
+
+**Fine-grained PAT minimum permissions** (repository: `JoystickGremlinSharp` only):
+- Metadata: Read-only
+- Contents: Read-only
+- Pull requests: Read and write
