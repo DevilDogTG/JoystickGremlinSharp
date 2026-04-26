@@ -59,6 +59,7 @@ jobs:
             --packVersion "${{ steps.version.outputs.version }}" `
             --packDir  publish/ `
             --mainExe  JoystickGremlin.App.exe `
+            --icon     src/JoystickGremlin.App/Assets/icon.ico `
             --outputDir installer/out/
 
       - name: Rename installer to include version

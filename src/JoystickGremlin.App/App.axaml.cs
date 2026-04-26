@@ -25,6 +25,7 @@ public partial class App : Application
 {
     private ServiceProvider? _services;
     private MainWindow? _mainWindow;
+    private bool _isInitialized;
 
     public override void Initialize()
     {
@@ -54,6 +55,13 @@ public partial class App : Application
 
             _mainWindow.Opened += async (_, _) =>
             {
+                // Guard: only run initialization once. In Avalonia on Windows, Opened fires
+                // again each time Show() is called on a hidden window, so without this guard
+                // a tray-restore Show() would re-trigger the StartMinimized hide and the
+                // window would immediately hide again.
+                if (_isInitialized) return;
+                _isInitialized = true;
+
                 filePickerService.SetTopLevel(_mainWindow);
 
                 // Check vJoy prerequisite before initialising — show a warning dialog if not met.

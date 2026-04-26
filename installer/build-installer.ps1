@@ -55,6 +55,7 @@ vpk pack `
     --packVersion $version `
     --packDir  $publishDir `
     --mainExe  JoystickGremlin.App.exe `
+    --icon     (Join-Path $repoRoot 'src\JoystickGremlin.App\Assets\icon.ico') `
     --outputDir $outputDir
 
 if ($LASTEXITCODE -ne 0) { throw "vpk pack failed" }

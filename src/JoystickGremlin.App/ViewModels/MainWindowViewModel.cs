@@ -104,6 +104,10 @@ public sealed class MainWindowViewModel : ViewModelBase
         NewProfileCommand        = ReactiveCommand.Create(NewProfile);
         CheckForUpdatesCommand   = ReactiveCommand.CreateFromTask(CheckForUpdatesAsync);
 
+        var hasProfileObs = this.WhenAnyValue(x => x.HasProfile);
+        SaveProfileCommand   = ReactiveCommand.CreateFromTask(SaveProfileAsync,   hasProfileObs);
+        SaveAsProfileCommand = ReactiveCommand.CreateFromTask(SaveAsProfileAsync, hasProfileObs);
+
         _profileState.ProfileChanged += OnProfileChanged;
         _modeManager.ModeChanged += OnModeChanged;
     }
@@ -180,6 +184,12 @@ public sealed class MainWindowViewModel : ViewModelBase
     /// <summary>Gets the command that creates a new empty profile.</summary>
     public ReactiveCommand<Unit, Unit> NewProfileCommand { get; }
 
+    /// <summary>Gets the command that saves the current profile to its existing file path, or prompts for one.</summary>
+    public ReactiveCommand<Unit, Unit> SaveProfileCommand { get; }
+
+    /// <summary>Gets the command that always prompts for a file path and saves the current profile there.</summary>
+    public ReactiveCommand<Unit, Unit> SaveAsProfileCommand { get; }
+
     /// <summary>Gets the command that checks for application updates via Velopack.</summary>
     public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
 
@@ -246,6 +256,53 @@ public sealed class MainWindowViewModel : ViewModelBase
         profile.Modes.Add(new Mode { Name = "Default" });
         _modeManager.Reset(profile);
         _profileState.SetProfile(profile, null);
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        var profile = _profileState.CurrentProfile;
+        if (profile is null) return;
+
+        var path = _profileState.FilePath;
+        if (string.IsNullOrEmpty(path))
+        {
+            await SaveAsProfileAsync();
+            return;
+        }
+
+        try
+        {
+            await _profileRepository.SaveAsync(profile, path);
+            _logger.LogInformation("Profile saved to {Path}", path);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save profile to {Path}", path);
+        }
+    }
+
+    private async Task SaveAsProfileAsync()
+    {
+        var profile = _profileState.CurrentProfile;
+        if (profile is null) return;
+
+        var path = await _filePicker.PickSaveFileAsync(
+            "Save Profile", "Joystick Gremlin Profile", "*.json", "json");
+        if (path is null) return;
+
+        try
+        {
+            await _profileRepository.SaveAsync(profile, path);
+            _profileState.SetProfile(profile, path);
+
+            _settingsService.Settings.LastProfilePath = path;
+            await _settingsService.SaveAsync();
+            _logger.LogInformation("Profile saved as {Path}", path);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save profile as {Path}", path);
+        }
     }
 
     private Task ToggleActiveAsync()
