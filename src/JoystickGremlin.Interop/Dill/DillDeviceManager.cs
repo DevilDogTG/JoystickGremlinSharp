@@ -117,6 +117,9 @@ public sealed class DillDeviceManager : IDeviceManager
 
     private void OnNativeInputEvent(NativeJoystickInputData data)
     {
+        if (_disposed)
+            return;
+
         if (InputReceived is null)
             return;
 
@@ -153,6 +156,9 @@ public sealed class DillDeviceManager : IDeviceManager
 
     private void OnNativeDeviceChange(NativeDeviceSummary data, byte actionType)
     {
+        if (_disposed)
+            return;
+
         var device = new DillDevice(data);
 
         if (actionType == 1)

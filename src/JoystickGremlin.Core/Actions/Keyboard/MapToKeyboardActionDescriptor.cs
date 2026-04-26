@@ -80,6 +80,7 @@ public sealed class MapToKeyboardActionDescriptor : IActionDescriptor
         private readonly string[] _keys;
         private readonly KeyBehavior _behavior;
         private readonly ILogger _logger;
+        private readonly object _toggleLock = new();
         private bool _toggleState;
 
         internal MapToKeyboardFunctor(
@@ -116,13 +117,18 @@ public sealed class MapToKeyboardActionDescriptor : IActionDescriptor
 
                 case KeyBehavior.Toggle:
                     // On press edge only: alternate between press-all and release-all.
+                    // Lock guards the read-modify-write so concurrent dispatches cannot
+                    // corrupt _toggleState (e.g. two rapid press events via Task.Run).
                     if (isPress)
                     {
-                        if (_toggleState)
-                            ReleaseAll();
-                        else
-                            PressAll();
-                        _toggleState = !_toggleState;
+                        lock (_toggleLock)
+                        {
+                            if (_toggleState)
+                                ReleaseAll();
+                            else
+                                PressAll();
+                            _toggleState = !_toggleState;
+                        }
                     }
                     break;
 

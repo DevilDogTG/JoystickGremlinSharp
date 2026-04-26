@@ -9,7 +9,9 @@ namespace JoystickGremlin.Core.ProcessMonitor;
 public sealed class NullProcessMonitor : IProcessMonitor
 {
     /// <inheritdoc/>
+#pragma warning disable CS0067 // Event never used — intentional no-op implementation
     public event EventHandler<string>? ForegroundProcessChanged;
+#pragma warning restore CS0067
 
     /// <inheritdoc/>
     public void Start() { }
