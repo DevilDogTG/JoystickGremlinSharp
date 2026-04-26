@@ -6,7 +6,10 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > `vjoy/`, `dill/`) is retained as a **reference implementation** only. All new development
 > targets the C# solution described in this file.
 
-> **Phase status**: Phases 4–9 complete and merged to `develop`. 129 tests passing.
+> **Phase status**: Phases 4–9 complete and merged to `develop`. 131 tests passing, 0 build warnings.
+> PR #2 (`features/fix-input-viewer-keyboard`) reviewed, all issues fixed, awaiting manual merge.
+> Fixes: Input Viewer namespace, DILL button index, keyboard SendInput struct, MapToKeyboard Toggle
+> functor caching + thread safety, DillDeviceManager post-dispose callback guard.
 > Remaining: response curve editor (axes), condition-based action pipeline.
 
 
@@ -289,6 +292,16 @@ internal static partial class VJoyNative
 
 The native DLLs (`vJoyInterface.dll`, `dill.dll`) from the Python source are copied to the
 output directory via `<Content CopyToOutputDirectory="PreserveNewest">` in the `.csproj`.
+
+### DILL Index and Value Conventions
+
+- **InputIndex is 1-based** for all input types (buttons, axes, hats). Physical button 1 = `InputIndex=1`. Pass `data.InputIndex` directly as the event identifier — no offset adjustment needed. (The `NativeJoystickInputData` comment saying "Zero-based" is incorrect.)
+- **Axis values** arrive as raw DirectInput signed-short integers (range −32768 to 32767). `DillDeviceManager` normalises to `[−1.0, 1.0]` via `Math.Clamp(data.Value / 32767.0, -1.0, 1.0)` before creating `InputEvent`.
+- **AxisCount may be 0** from DILL even when axes exist (confirmed on MOZA R9 Base). `DillDevice` falls back to counting non-zero `AxisIndex` entries from `AxisMap`; DirectInput axis codes start at `0x30`, so `AxisIndex == 0` is the unused-slot sentinel.
+
+### SendInput Struct Size (x64)
+
+Windows `INPUT` struct on x64 is **40 bytes**: `DWORD type`(4) + padding(4) + union(32). The union must be forced to 32 bytes via `[StructLayout(LayoutKind.Explicit, Size=32)]`. Without this, `SendInput` silently returns 0 (`ERROR_INVALID_PARAMETER`). See `SendInputKeyboardSimulator.InputUnion`.
 
 
 ## Action System

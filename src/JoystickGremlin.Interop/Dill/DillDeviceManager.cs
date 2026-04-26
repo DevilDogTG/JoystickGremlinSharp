@@ -117,6 +117,9 @@ public sealed class DillDeviceManager : IDeviceManager
 
     private void OnNativeInputEvent(NativeJoystickInputData data)
     {
+        if (_disposed)
+            return;
+
         if (InputReceived is null)
             return;
 
@@ -131,11 +134,21 @@ public sealed class DillDeviceManager : IDeviceManager
         if (inputType is null)
             return;
 
+        // DILL reports InputIndex as a 1-based index for all input types (buttons, axes, hats),
+        // matching the 1-based identifiers used throughout the rest of the system.
+        int identifier = data.InputIndex;
+
+        // Axis values arrive as raw DirectInput signed-short integers (range −32768 to 32767).
+        // Normalise to [−1.0, 1.0] so that the pipeline and vJoy output receive consistent values.
+        double value = inputType == InputType.JoystickAxis
+            ? Math.Clamp(data.Value / 32767.0, -1.0, 1.0)
+            : data.Value;
+
         var evt = new InputEvent(
             inputType.Value,
             DillGuidConverter.ToGuid(data.DeviceGuid),
-            data.InputIndex,
-            data.Value,
+            identifier,
+            value,
             string.Empty);
 
         InputReceived.Invoke(this, evt);
@@ -143,6 +156,9 @@ public sealed class DillDeviceManager : IDeviceManager
 
     private void OnNativeDeviceChange(NativeDeviceSummary data, byte actionType)
     {
+        if (_disposed)
+            return;
+
         var device = new DillDevice(data);
 
         if (actionType == 1)

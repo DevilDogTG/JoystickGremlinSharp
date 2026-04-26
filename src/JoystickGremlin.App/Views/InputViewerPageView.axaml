@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:JoystickGremlin.App.ViewModels.InputViewer"
-             x:Class="JoystickGremlin.App.Views.InputViewerPageView"
+             x:Class="JoystickGremlin.App.Views.InputViewer.InputViewerPageView"
              x:DataType="vm:InputViewerPageViewModel">
 
     <UserControl.Styles>
