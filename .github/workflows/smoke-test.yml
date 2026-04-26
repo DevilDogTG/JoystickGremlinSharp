@@ -3,7 +3,11 @@ on:
   push:
     branches: [main]
 jobs:
-  smoke:
+  smoke-ubuntu:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "hello world"
+      - run: echo "ubuntu ok"
+  smoke-windows:
+    runs-on: windows-2022
+    steps:
+      - run: echo "windows ok"
