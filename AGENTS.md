@@ -8,10 +8,9 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > Legacy folders `doc/`, `gfx/`, and `gh_page/` have been removed (Python Sphinx docs and
 > GitHub Pages from the original project — not applicable to the C# rewrite).
 
-> **Phase status**: Phases 4–9 complete and merged to `develop`. 131 tests passing, 0 build warnings.
-> PRs #2–#5, #8 merged. Release pipeline **fully verified**: v10.0.3 published with versioned
-> installer asset `JoystickGremlinSharp-10.0.3-Setup.exe` and auto-generated release notes. ✅
-> PR #10 (merge-back `main → develop`) created automatically by publish.yml.
+> **Phase status**: Phases 4–9 complete. Release pipeline complete and verified. 131 tests passing, 0 build warnings.
+> All PRs merged (#2–#10). Release v10.0.3 published: `JoystickGremlinSharp-10.0.3-Setup.exe` with
+> auto-generated release notes. Merge-back (`main → develop`) automated via publish.yml. ✅
 > GitHub Actions permissions must be set to "Allow all actions and reusable workflows"
 > (Settings → Actions → General) for workflows to run on `main`.
 > Release pipeline requires either `RELEASE_TOKEN` secret (fine-grained PAT: Contents+PRs write)
