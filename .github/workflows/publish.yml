@@ -9,7 +9,7 @@ on:
 jobs:
   publish:
     name: Build & Publish Installer
-    runs-on: windows-latest
+    runs-on: windows-2022
     permissions:
       contents: write
 
