@@ -243,7 +243,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         _profileState.SetProfile(profile, null);
     }
 
-    private async Task ToggleActiveAsync()
+    private Task ToggleActiveAsync()
     {
         if (_isGremlinActive)
         {
@@ -253,10 +253,11 @@ public sealed class MainWindowViewModel : ViewModelBase
         else
         {
             var profile = _profileState.CurrentProfile;
-            if (profile is null) return;
+            if (profile is null) return Task.CompletedTask;
             _eventPipeline.Start(profile);
             IsGremlinActive = true;
         }
+        return Task.CompletedTask;
     }
 
     private async Task CheckForUpdatesAsync()
