@@ -100,12 +100,6 @@ License texts for all third-party dependencies are in the [`licenses/`](licenses
 
 ---
 
-## Contributing
-
-See [AGENTS.md](AGENTS.md) for development conventions, build commands, and architecture guidance.
-
----
-
 ## Credits
 
 JoystickGremlinSharp is a C# rewrite derived from **JoystickGremlin** by
