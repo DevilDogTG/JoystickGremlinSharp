@@ -3,11 +3,23 @@ on:
   push:
     branches: [main]
 jobs:
-  smoke-ubuntu:
+  with-actions:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "ubuntu ok"
-  smoke-windows:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet --version
+  windows-bare:
     runs-on: windows-2022
     steps:
       - run: echo "windows ok"
+  windows-with-actions:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet --version
