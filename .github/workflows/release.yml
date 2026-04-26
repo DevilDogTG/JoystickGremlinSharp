@@ -18,6 +18,16 @@
 # AFTER THE WORKFLOW:
 #   - Review and merge the PR into main  (triggers publish.yml → installer + GitHub Release)
 #   - Review and merge the merge-back PR into develop
+#
+# REQUIRED SECRET (for PR creation):
+#   RELEASE_TOKEN — a fine-grained PAT with:
+#     - Contents: Read and write
+#     - Pull requests: Read and write
+#   Create at: Settings → Secrets and variables → Actions → New repository secret
+#
+#   Alternative (without a PAT):
+#     Enable "Allow GitHub Actions to create and approve pull requests" at:
+#     Settings → Actions → General → Workflow permissions
 name: Release
 
 on:
@@ -47,7 +57,7 @@ jobs:
         with:
           ref: develop
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Compute new version
         id: version
@@ -92,7 +102,7 @@ jobs:
 
       - name: Open PR → main
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           NOTES="${{ inputs.release_notes }}"
           BODY="## Release ${{ steps.version.outputs.tag }}
@@ -114,7 +124,7 @@ jobs:
 
       - name: Open merge-back PR → develop
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           gh pr create \
             --base develop \

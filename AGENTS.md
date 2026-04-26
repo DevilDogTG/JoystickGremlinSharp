@@ -9,12 +9,13 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > GitHub Pages from the original project — not applicable to the C# rewrite).
 
 > **Phase status**: Phases 4–9 complete and merged to `develop`. 131 tests passing, 0 build warnings.
-> PR #2 (`features/fix-input-viewer-keyboard`) merged.
-> PR #3 (`features/installer-systemtray`) open and ready to merge — version wiring, Velopack
-> installer, system tray, startup-with-Windows, GitFlow release CI, Avalonia 12 + ReactiveUI 23
-> upgrade, all packages at latest stable. Legacy Python workflows removed. 131/131 tests, 0 warnings.
-> **Avalonia 12.0.1 + ReactiveUI.Avalonia 12.0.1 + ReactiveUI 23.2.1** (user upgraded in last commit).
-> **FluentAssertions 8.9.0** — user accepted Xceed license for this project.
+> PR #2 (`features/fix-input-viewer-keyboard`) merged. PR #3 (`features/installer-systemtray`) merged.
+> **main branch created**. PR #4 (`release/v10.0.1` → `main`) and PR #5 (merge-back → `develop`)
+> are open and ready to merge to complete the v10.0.1 release.
+> Release pipeline requires either `RELEASE_TOKEN` secret (fine-grained PAT: Contents+PRs write)
+> OR repo setting: Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests".
+> **Avalonia 12.0.1 + ReactiveUI.Avalonia 12.0.1 + ReactiveUI 23.2.1**.
+> **FluentAssertions 8.9.0** — Xceed license accepted for this project.
 > Remaining: response curve editor (axes), condition-based action pipeline.
 
 
@@ -436,6 +437,12 @@ When ready to ship, trigger a manual release workflow to bump the version and cr
 `<FileVersion>` into all projects automatically — no per-project version tags needed.
 
 ### Triggering a Release
+
+**Prerequisite**: The release workflow needs permission to create PRs. Configure ONE of:
+- **`RELEASE_TOKEN` secret** (recommended): fine-grained PAT with **Contents: Read/write** +
+  **Pull requests: Read/write** → Repo Settings → Secrets and variables → Actions → New secret
+- **Repo setting** (alternative): Settings → Actions → General → Workflow permissions →
+  enable **"Allow GitHub Actions to create and approve pull requests"**
 
 1. Go to **GitHub → Actions → Release → Run workflow**
 2. Select branch: **`develop`**
