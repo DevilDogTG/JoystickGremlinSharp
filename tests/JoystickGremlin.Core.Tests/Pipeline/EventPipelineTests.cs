@@ -169,6 +169,71 @@ public sealed class EventPipelineTests
         pipeline.Stop();
     }
 
+    // ── Functor caching ────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task InputReceived_SameBinding_ReusesFunctorAcrossEvents()
+    {
+        // Verifies that the same functor instance is reused so stateful functors
+        // (e.g. Toggle) retain state between events.
+        var deviceGuid = Guid.NewGuid();
+        var (pipeline, deviceMgr, _, registry) = CreateSut("Default");
+
+        int createCount = 0;
+        var executedEvents = new List<InputEvent>();
+
+        // Descriptor creates a new stateful functor each time CreateFunctor is called.
+        // With caching the pipeline must call it only once for a given BoundAction.
+        var descriptorMock = new Mock<IActionDescriptor>();
+        descriptorMock.SetupGet(d => d.Tag).Returns("counted-action");
+        descriptorMock.Setup(d => d.CreateFunctor(It.IsAny<JsonObject?>()))
+            .Returns(() =>
+            {
+                createCount++;
+                return new FakeFunctor(ev => { lock (executedEvents) { executedEvents.Add(ev); } });
+            });
+        registry.Setup(r => r.Resolve("counted-action")).Returns(descriptorMock.Object);
+
+        var profile = MakeProfile(deviceGuid, "Default", "counted-action");
+        pipeline.Start(profile);
+
+        // Fire the same binding three times.
+        for (var i = 0; i < 3; i++)
+            deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 1, 1.0, string.Empty));
+
+        await Task.Delay(150);
+
+        createCount.Should().Be(1, "functor should be created once and cached");
+        executedEvents.Should().HaveCount(3, "functor should be executed for every event");
+        pipeline.Stop();
+    }
+
+    [Fact]
+    public void Stop_ClearsFunctorCache_SoRestartCreatesNewFunctors()
+    {
+        var deviceGuid = Guid.NewGuid();
+        var (pipeline, _, _, registry) = CreateSut("Default");
+
+        int createCount = 0;
+        var descriptorMock = new Mock<IActionDescriptor>();
+        descriptorMock.SetupGet(d => d.Tag).Returns("cached-action");
+        descriptorMock.Setup(d => d.CreateFunctor(It.IsAny<JsonObject?>()))
+            .Returns(() => { createCount++; return new FakeFunctor(_ => { }); });
+        registry.Setup(r => r.Resolve("cached-action")).Returns(descriptorMock.Object);
+
+        var profile = MakeProfile(deviceGuid, "Default", "cached-action");
+
+        // First run
+        pipeline.Start(profile);
+        pipeline.Stop();
+
+        // Second run with same profile — cache was cleared, so functor is created fresh.
+        pipeline.Start(profile);
+        pipeline.Stop();
+
+        createCount.Should().Be(0, "functor is created lazily on first event, not on start");
+    }
+
     // ── Dispose ────────────────────────────────────────────────────────────
 
     [Fact]

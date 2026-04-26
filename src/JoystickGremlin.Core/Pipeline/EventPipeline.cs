@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+using System.Collections.Concurrent;
 using JoystickGremlin.Core.Actions;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.Events;
@@ -20,6 +21,10 @@ public sealed class EventPipeline : IEventPipeline
     private readonly IModeManager _modeManager;
     private readonly IActionRegistry _actionRegistry;
     private readonly ILogger<EventPipeline> _logger;
+
+    // Functor cache keyed by BoundAction reference. Ensures stateful functors (e.g. Toggle)
+    // retain their state across events for the same binding.
+    private readonly ConcurrentDictionary<BoundAction, IActionFunctor> _functorCache = new();
 
     private ProfileModel? _profile;
     private bool _disposed;
@@ -66,6 +71,7 @@ public sealed class EventPipeline : IEventPipeline
         _deviceManager.InputReceived -= OnInputReceived;
         IsRunning = false;
         _profile = null;
+        _functorCache.Clear();
 
         _logger.LogTrace("Event pipeline stopped");
     }
@@ -126,7 +132,9 @@ public sealed class EventPipeline : IEventPipeline
                 continue;
             }
 
-            var functor = descriptor.CreateFunctor(boundAction.Configuration);
+            var functor = _functorCache.GetOrAdd(
+                boundAction,
+                ba => descriptor.CreateFunctor(ba.Configuration));
             _ = Task.Run(async () =>
             {
                 try
