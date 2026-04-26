@@ -5,6 +5,8 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > **Migration note**: The original Python/PySide6/QML source (under `gremlin/`, `action_plugins/`,
 > `vjoy/`, `dill/`) is retained as a **reference implementation** only. All new development
 > targets the C# solution described in this file.
+> Legacy folders `doc/`, `gfx/`, and `gh_page/` have been removed (Python Sphinx docs and
+> GitHub Pages from the original project — not applicable to the C# rewrite).
 
 > **Phase status**: Phases 4–9 complete and merged to `develop`. 131 tests passing, 0 build warnings.
 > PR #2 (`features/fix-input-viewer-keyboard`) reviewed, all issues fixed, awaiting manual merge.
