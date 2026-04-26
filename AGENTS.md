@@ -12,7 +12,11 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > PR #2 (`features/fix-input-viewer-keyboard`) merged. Fixes: Input Viewer namespace, DILL button
 > index, keyboard SendInput struct, MapToKeyboard Toggle functor caching + thread safety,
 > DillDeviceManager post-dispose callback guard.
-> Active branch: `features/installer-systemtray` — in progress (version wiring, Velopack, tray, release CI).
+> Active branch: `features/installer-systemtray` — version wiring, Velopack, tray, release CI committed.
+> All packages audited and upgraded to latest stable. **Avalonia + ReactiveUI pinned at 11.3.9 / 20.1.1**
+> (Avalonia.ReactiveUI companion package not yet published for v12 — upgrade when 12.x releases).
+> **FluentAssertions pinned at 7.2.2** (last Apache 2.0 version; 8.x uses Xceed commercial license,
+> incompatible with GPL-3.0).
 > Remaining: response curve editor (axes), condition-based action pipeline.
 
 
