@@ -9,8 +9,9 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > GitHub Pages from the original project — not applicable to the C# rewrite).
 
 > **Phase status**: Phases 4–9 complete and merged to `develop`. 131 tests passing, 0 build warnings.
-> PRs #2–#5 merged. PR #8 (`features/release-workflow-improvements` → `develop`) open and reviewed.
-> **main branch** has release workflow improvements applied directly (commit `1934087e`).
+> PRs #2–#5, #8 merged. Release pipeline **fully verified**: v10.0.3 published with versioned
+> installer asset `JoystickGremlinSharp-10.0.3-Setup.exe` and auto-generated release notes. ✅
+> PR #10 (merge-back `main → develop`) created automatically by publish.yml.
 > GitHub Actions permissions must be set to "Allow all actions and reusable workflows"
 > (Settings → Actions → General) for workflows to run on `main`.
 > Release pipeline requires either `RELEASE_TOKEN` secret (fine-grained PAT: Contents+PRs write)
