@@ -6,8 +6,9 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > `vjoy/`, `dill/`) is retained as a **reference implementation** only. All new development
 > targets the C# solution described in this file.
 
-> **Phase status**: Phases 4–9 complete and merged to `develop`. 129 tests passing.
-> Bug fixes for Input Viewer, button index mismatch, and keyboard simulation in PR #2 (`features/fix-input-viewer-keyboard`).
+> **Phase status**: Phases 4–9 complete and merged to `develop`. 131 tests passing.
+> Bug fixes for Input Viewer, button index mismatch, keyboard simulation, and MapToKeyboard Toggle functor
+> caching in PR #2 (`features/fix-input-viewer-keyboard`). Ready to merge.
 > Remaining: response curve editor (axes), condition-based action pipeline.
 
 
