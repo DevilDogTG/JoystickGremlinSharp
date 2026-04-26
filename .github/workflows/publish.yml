@@ -1,5 +1,6 @@
 # Triggered when a release branch is merged into main.
 # Builds a self-contained Windows installer with Velopack and creates a GitHub Release.
+# After publishing, automatically opens a merge-back PR: main → develop.
 name: Publish
 
 on:
@@ -9,9 +10,10 @@ on:
 jobs:
   publish:
     name: Build & Publish Installer
-    runs-on: windows-latest
+    runs-on: windows-2022
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout
@@ -59,6 +61,14 @@ jobs:
             --mainExe  JoystickGremlin.App.exe `
             --outputDir installer/out/
 
+      - name: Rename installer to include version
+        shell: pwsh
+        run: |
+          $setup = Get-Item "installer/out/JoystickGremlinSharp-Setup.exe"
+          $target = "installer/out/JoystickGremlinSharp-${{ steps.version.outputs.version }}-Setup.exe"
+          Move-Item $setup.FullName $target
+          Write-Host "Renamed installer: $($setup.Name) → $(Split-Path $target -Leaf)"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -66,6 +76,18 @@ jobs:
           name: Joystick Gremlin ${{ steps.version.outputs.tag }}
           draft: false
           prerelease: false
-          files: installer/out/**
+          generate_release_notes: true
+          files: installer/out/*-Setup.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Open merge-back PR main → develop
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh pr create \
+            --base develop \
+            --head main \
+            --title "chore: merge-back ${{ steps.version.outputs.tag }} to develop" \
+            --body "Automated merge-back from \`main\` to \`develop\` after publishing release ${{ steps.version.outputs.tag }}."

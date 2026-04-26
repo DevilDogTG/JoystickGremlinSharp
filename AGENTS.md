@@ -9,9 +9,10 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > GitHub Pages from the original project — not applicable to the C# rewrite).
 
 > **Phase status**: Phases 4–9 complete and merged to `develop`. 131 tests passing, 0 build warnings.
-> PR #2 (`features/fix-input-viewer-keyboard`) merged. PR #3 (`features/installer-systemtray`) merged.
-> **main branch created**. PR #4 (`release/v10.0.1` → `main`) and PR #5 (merge-back → `develop`)
-> are open and ready to merge to complete the v10.0.1 release.
+> PRs #2–#5 merged. PR #8 (`features/release-workflow-improvements` → `develop`) open and reviewed.
+> **main branch** has release workflow improvements applied directly (commit `1934087e`).
+> GitHub Actions permissions must be set to "Allow all actions and reusable workflows"
+> (Settings → Actions → General) for workflows to run on `main`.
 > Release pipeline requires either `RELEASE_TOKEN` secret (fine-grained PAT: Contents+PRs write)
 > OR repo setting: Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests".
 > **Avalonia 12.0.1 + ReactiveUI.Avalonia 12.0.1 + ReactiveUI 23.2.1**.
@@ -455,14 +456,15 @@ The workflow:
 - Creates `release/vX.Y.Z` branch from `develop`
 - Bumps `version.json` and commits it
 - Opens **PR → `main`** (title: *"Release vX.Y.Z"*)
-- Opens **merge-back PR → `develop`** (title: *"chore: merge-back release vX.Y.Z"*)
 
 ### Completing the Release
 
 1. **Review + merge the PR into `main`** — this triggers `publish.yml` automatically
-2. `publish.yml` builds a self-contained `win-x64` binary, runs `vpk pack`, and creates a
-   GitHub Release `vX.Y.Z` with the installer artifact
-3. **Review + merge the merge-back PR into `develop`** to keep `version.json` in sync
+2. `publish.yml` builds a self-contained `win-x64` binary, runs `vpk pack`, renames the
+   installer to `JoystickGremlinSharp-{version}-Setup.exe`, and creates a GitHub Release
+   with auto-generated release notes and the versioned installer as the only asset
+3. After publishing, `publish.yml` automatically opens a **merge-back PR `main → develop`**
+   to keep `version.json` in sync — review and merge it
 
 ### Building Locally
 

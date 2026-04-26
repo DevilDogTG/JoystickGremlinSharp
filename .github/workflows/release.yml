@@ -13,11 +13,10 @@
 #   3. Creates a release/vX.Y.Z branch from develop
 #   4. Bumps version.json on that branch and commits
 #   5. Opens a PR:  release/vX.Y.Z  →  main         (title: "Release vX.Y.Z")
-#   6. Opens a PR:  release/vX.Y.Z  →  develop       (title: "chore: merge-back release vX.Y.Z")
 #
 # AFTER THE WORKFLOW:
-#   - Review and merge the PR into main  (triggers publish.yml → installer + GitHub Release)
-#   - Review and merge the merge-back PR into develop
+#   - Review and merge the PR into main
+#     (triggers publish.yml → installer build + GitHub Release + merge-back PR main → develop)
 #
 # REQUIRED SECRET (for PR creation):
 #   RELEASE_TOKEN — a fine-grained PAT with:
@@ -122,16 +121,6 @@ jobs:
             --title "Release ${{ steps.version.outputs.tag }}" \
             --body "$BODY"
 
-      - name: Open merge-back PR → develop
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-        run: |
-          gh pr create \
-            --base develop \
-            --head "${{ steps.version.outputs.branch }}" \
-            --title "chore: merge-back release ${{ steps.version.outputs.tag }}" \
-            --body "Merge-back of release ${{ steps.version.outputs.tag }} into \`develop\` to keep version.json in sync."
-
       - name: Summary
         run: |
           echo "## Release ${{ steps.version.outputs.tag }} prepared" >> $GITHUB_STEP_SUMMARY
@@ -142,6 +131,5 @@ jobs:
           echo "| New version | \`${{ steps.version.outputs.new }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Release branch | \`${{ steps.version.outputs.branch }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Next steps:**" >> $GITHUB_STEP_SUMMARY
-          echo "1. Review and merge the PR into \`main\` (triggers installer build + GitHub Release)" >> $GITHUB_STEP_SUMMARY
-          echo "2. Review and merge the merge-back PR into \`develop\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Next step:**" >> $GITHUB_STEP_SUMMARY
+          echo "Merge the PR into \`main\` to trigger installer build, GitHub Release, and merge-back to \`develop\`." >> $GITHUB_STEP_SUMMARY
