@@ -14,6 +14,8 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout
@@ -64,10 +66,17 @@ jobs:
       - name: Rename installer to include version
         shell: pwsh
         run: |
-          $setup = Get-Item "installer/out/JoystickGremlinSharp-Setup.exe"
-          $target = "installer/out/JoystickGremlinSharp-${{ steps.version.outputs.version }}-Setup.exe"
-          Move-Item $setup.FullName $target
-          Write-Host "Renamed installer: $($setup.Name) → $(Split-Path $target -Leaf)"
+          Write-Host "installer/out/ contents:"
+          Get-ChildItem "installer/out/" | ForEach-Object { Write-Host "  $($_.Name)" }
+          $setup = Get-ChildItem "installer/out/" -Filter "*Setup.exe" | Select-Object -First 1
+          if ($null -eq $setup) { throw "No *Setup.exe found in installer/out/" }
+          $newName = "JoystickGremlinSharp-${{ steps.version.outputs.version }}-Setup.exe"
+          if ($setup.Name -ne $newName) {
+            Rename-Item -Path $setup.FullName -NewName $newName
+            Write-Host "Renamed: $($setup.Name) → $newName"
+          } else {
+            Write-Host "Already named correctly: $newName"
+          }
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
