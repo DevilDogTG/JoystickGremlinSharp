@@ -1,0 +1,39 @@
+# Validates every push and pull request targeting develop or main.
+# Runs: dotnet build (0 warnings) + dotnet test (all must pass).
+name: .NET CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (0 warnings enforced)
+        run: dotnet build --no-restore --configuration Release -warnaserror
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/*.trx"
