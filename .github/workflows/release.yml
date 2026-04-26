@@ -1,0 +1,137 @@
+# Manual release workflow (GitFlow model).
+#
+# HOW TO TRIGGER A RELEASE:
+#   1. Go to Actions → "Release" → "Run workflow"
+#   2. Select the branch: develop
+#   3. Choose version_type: major | minor | patch
+#   4. Optionally provide release_notes
+#   5. Click "Run workflow"
+#
+# WHAT IT DOES:
+#   1. Reads the current version from version.json on develop
+#   2. Computes the new version based on version_type
+#   3. Creates a release/vX.Y.Z branch from develop
+#   4. Bumps version.json on that branch and commits
+#   5. Opens a PR:  release/vX.Y.Z  →  main         (title: "Release vX.Y.Z")
+#   6. Opens a PR:  release/vX.Y.Z  →  develop       (title: "chore: merge-back release vX.Y.Z")
+#
+# AFTER THE WORKFLOW:
+#   - Review and merge the PR into main  (triggers publish.yml → installer + GitHub Release)
+#   - Review and merge the merge-back PR into develop
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options: [patch, minor, major]
+      release_notes:
+        description: 'Optional release notes (supports markdown)'
+        required: false
+        type: string
+
+jobs:
+  create-release-branch:
+    name: Bump version & create release branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute new version
+        id: version
+        run: |
+          CURRENT=$(python3 -c "import json,sys; d=json.load(open('version.json')); print(d['version'])")
+          MAJOR=$(echo $CURRENT | cut -d. -f1)
+          MINOR=$(echo $CURRENT | cut -d. -f2)
+          PATCH=$(echo $CURRENT | cut -d. -f3)
+
+          case "${{ inputs.version_type }}" in
+            major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR+1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH+1)) ;;
+          esac
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "current=${CURRENT}" >> $GITHUB_OUTPUT
+          echo "new=${NEW_VERSION}"  >> $GITHUB_OUTPUT
+          echo "branch=release/v${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Create release branch
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b ${{ steps.version.outputs.branch }}
+
+      - name: Bump version.json
+        run: |
+          python3 -c "
+          import json
+          with open('version.json', 'r') as f:
+              data = json.load(f)
+          data['version'] = '${{ steps.version.outputs.new }}'
+          with open('version.json', 'w') as f:
+              json.dump(data, f, indent=2)
+              f.write('\n')
+          "
+          git add version.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.new }}"
+          git push origin ${{ steps.version.outputs.branch }}
+
+      - name: Open PR → main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NOTES="${{ inputs.release_notes }}"
+          BODY="## Release ${{ steps.version.outputs.tag }}
+
+          **Version bump**: \`${{ steps.version.outputs.current }}\` → \`${{ steps.version.outputs.new }}\`
+          **Type**: ${{ inputs.version_type }}
+
+          ${NOTES:+### Release Notes
+          ${NOTES}}
+
+          ---
+          Merge this PR into \`main\` to trigger the publish workflow (installer + GitHub Release)."
+
+          gh pr create \
+            --base main \
+            --head "${{ steps.version.outputs.branch }}" \
+            --title "Release ${{ steps.version.outputs.tag }}" \
+            --body "$BODY"
+
+      - name: Open merge-back PR → develop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --base develop \
+            --head "${{ steps.version.outputs.branch }}" \
+            --title "chore: merge-back release ${{ steps.version.outputs.tag }}" \
+            --body "Merge-back of release ${{ steps.version.outputs.tag }} into \`develop\` to keep version.json in sync."
+
+      - name: Summary
+        run: |
+          echo "## Release ${{ steps.version.outputs.tag }} prepared" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Previous version | \`${{ steps.version.outputs.current }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| New version | \`${{ steps.version.outputs.new }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release branch | \`${{ steps.version.outputs.branch }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review and merge the PR into \`main\` (triggers installer build + GitHub Release)" >> $GITHUB_STEP_SUMMARY
+          echo "2. Review and merge the merge-back PR into \`develop\`" >> $GITHUB_STEP_SUMMARY

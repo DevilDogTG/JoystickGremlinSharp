@@ -10,6 +10,7 @@ using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Modes;
 using JoystickGremlin.Core.Pipeline;
 using JoystickGremlin.Core.Profile;
+using JoystickGremlin.Core.Startup;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -49,6 +50,9 @@ public static class CoreServiceCollectionExtensions
 
         // Process monitor — NullProcessMonitor by default; override in Interop for real window tracking.
         services.TryAddSingleton<IProcessMonitor, NullProcessMonitor>();
+
+        // Startup service — NullStartupService by default; override in Interop for real registry integration.
+        services.TryAddSingleton<IStartupService, NullStartupService>();
 
         return services;
     }

@@ -10,7 +10,9 @@ using JoystickGremlin.App.ViewModels.InputViewer;
 using JoystickGremlin.App.Views;
 using JoystickGremlin.Core;
 using JoystickGremlin.Core.Actions;
+using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Profile;
+using JoystickGremlin.Core.Startup;
 using JoystickGremlin.Interop;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -20,6 +22,7 @@ namespace JoystickGremlin.App;
 public partial class App : Application
 {
     private ServiceProvider? _services;
+    private MainWindow? _mainWindow;
 
     public override void Initialize()
     {
@@ -41,14 +44,30 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var mainWindowVm = _services.GetRequiredService<MainWindowViewModel>();
-            var mainWindow = new MainWindow { DataContext = mainWindowVm };
-            desktop.MainWindow = mainWindow;
+            _mainWindow = new MainWindow { DataContext = mainWindowVm };
+            desktop.MainWindow = _mainWindow;
 
+            var settingsService = _services.GetRequiredService<ISettingsService>();
             var filePickerService = _services.GetRequiredService<FilePickerService>();
-            mainWindow.Opened += async (_, _) =>
+
+            _mainWindow.Opened += async (_, _) =>
             {
-                filePickerService.SetTopLevel(mainWindow);
+                filePickerService.SetTopLevel(_mainWindow);
                 await mainWindowVm.InitializeAsync();
+
+                // After settings are loaded, hide window if start-minimized is set.
+                if (settingsService.Settings.StartMinimized)
+                    _mainWindow.Hide();
+            };
+
+            // Intercept window close: minimize to tray when CloseToTray is enabled.
+            _mainWindow.Closing += (_, e) =>
+            {
+                if (settingsService.Settings.CloseToTray)
+                {
+                    e.Cancel = true;
+                    _mainWindow.Hide();
+                }
             };
 
             desktop.Exit += (_, _) => _services.Dispose();
@@ -56,6 +75,37 @@ public partial class App : Application
 
         base.OnFrameworkInitializationCompleted();
     }
+
+    // ── Tray icon event handlers ─────────────────────────────────────────────
+
+    /// <summary>Restores the main window when the tray icon is double-clicked.</summary>
+    private void TrayIcon_Clicked(object? sender, EventArgs e) => ShowMainWindow();
+
+    /// <summary>Restores the main window from the tray context menu.</summary>
+    private void ShowWindow_Click(object? sender, EventArgs e) => ShowMainWindow();
+
+    /// <summary>Exits the application from the tray context menu.</summary>
+    private void Exit_Click(object? sender, EventArgs e)
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            // Disable close-to-tray so the Closing handler lets the window close for real.
+            if (_services is not null)
+                _services.GetRequiredService<ISettingsService>().Settings.CloseToTray = false;
+
+            desktop.Shutdown();
+        }
+    }
+
+    private void ShowMainWindow()
+    {
+        if (_mainWindow is null) return;
+        _mainWindow.Show();
+        _mainWindow.WindowState = WindowState.Normal;
+        _mainWindow.Activate();
+    }
+
+    // ── DI configuration ────────────────────────────────────────────────────
 
     private static IServiceCollection ConfigureServices()
     {

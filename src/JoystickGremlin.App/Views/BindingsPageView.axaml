@@ -185,7 +185,7 @@
                         <StackPanel Spacing="6" IsVisible="{Binding ShowMacroConfig}">
                             <TextBlock Text="Keys (comma-separated)"/>
                             <TextBox Text="{Binding EditMacroKeys}"
-                                     Watermark="e.g. LControl,C"
+                                     PlaceholderText="e.g. LControl,C"
                                      Width="220"
                                      HorizontalAlignment="Left"/>
                         </StackPanel>
@@ -194,7 +194,7 @@
                         <StackPanel Spacing="6" IsVisible="{Binding ShowMapToKeyboardConfig}">
                             <TextBlock Text="Keys (comma-separated, modifiers first)"/>
                             <TextBox Text="{Binding EditMapToKeyboardKeys}"
-                                     Watermark="e.g. LShift,A"
+                                     PlaceholderText="e.g. LShift,A"
                                      Width="220"
                                      HorizontalAlignment="Left"/>
                             <TextBlock Text="Behavior"/>

@@ -3,9 +3,11 @@
 using JoystickGremlin.Core.Actions.Keyboard;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.ProcessMonitor;
+using JoystickGremlin.Core.Startup;
 using JoystickGremlin.Interop.Dill;
 using JoystickGremlin.Interop.Keyboard;
 using JoystickGremlin.Interop.ProcessMonitor;
+using JoystickGremlin.Interop.Startup;
 using JoystickGremlin.Interop.VJoy;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -33,6 +35,7 @@ public static class InteropServiceCollectionExtensions
         services.AddSingleton<SendInputKeyboardSimulator>();
         services.TryAddSingleton<IKeyboardSimulator>(sp => sp.GetRequiredService<SendInputKeyboardSimulator>());
         services.TryAddSingleton<IProcessMonitor, WindowsProcessMonitor>();
+        services.TryAddSingleton<IStartupService, WindowsStartupService>();
 
         return services;
     }

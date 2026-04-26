@@ -1,0 +1,14 @@
+<Project>
+  <!--
+    Single source of truth for the application version.
+    Reads version.json at the repository root and injects it into every project
+    automatically — no per-project <Version> tags required.
+  -->
+  <PropertyGroup>
+    <_VersionJson>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)version.json'))</_VersionJson>
+    <Version>$([System.Text.RegularExpressions.Regex]::Match($(_VersionJson), '"version"\s*:\s*"([^"]+)"').Groups[1].Value)</Version>
+    <AssemblyVersion>$(Version)</AssemblyVersion>
+    <FileVersion>$(Version)</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
+  </PropertyGroup>
+</Project>
