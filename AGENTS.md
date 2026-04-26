@@ -9,14 +9,12 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > GitHub Pages from the original project — not applicable to the C# rewrite).
 
 > **Phase status**: Phases 4–9 complete and merged to `develop`. 131 tests passing, 0 build warnings.
-> PR #2 (`features/fix-input-viewer-keyboard`) merged. Fixes: Input Viewer namespace, DILL button
-> index, keyboard SendInput struct, MapToKeyboard Toggle functor caching + thread safety,
-> DillDeviceManager post-dispose callback guard.
-> Active branch: `features/installer-systemtray` — version wiring, Velopack, tray, release CI committed.
-> All packages audited and upgraded to latest stable. **Avalonia + ReactiveUI pinned at 11.3.9 / 20.1.1**
-> (Avalonia.ReactiveUI companion package not yet published for v12 — upgrade when 12.x releases).
-> **FluentAssertions pinned at 7.2.2** (last Apache 2.0 version; 8.x uses Xceed commercial license,
-> incompatible with GPL-3.0).
+> PR #2 (`features/fix-input-viewer-keyboard`) merged.
+> PR #3 (`features/installer-systemtray`) open and ready to merge — version wiring, Velopack
+> installer, system tray, startup-with-Windows, GitFlow release CI, Avalonia 12 + ReactiveUI 23
+> upgrade, all packages at latest stable. Legacy Python workflows removed. 131/131 tests, 0 warnings.
+> **Avalonia 12.0.1 + ReactiveUI.Avalonia 12.0.1 + ReactiveUI 23.2.1** (user upgraded in last commit).
+> **FluentAssertions 8.9.0** — user accepted Xceed license for this project.
 > Remaining: response curve editor (axes), condition-based action pipeline.
 
 
