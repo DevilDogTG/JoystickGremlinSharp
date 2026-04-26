@@ -9,9 +9,10 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > GitHub Pages from the original project — not applicable to the C# rewrite).
 
 > **Phase status**: Phases 4–9 complete and merged to `develop`. 131 tests passing, 0 build warnings.
-> PR #2 (`features/fix-input-viewer-keyboard`) reviewed, all issues fixed, awaiting manual merge.
-> Fixes: Input Viewer namespace, DILL button index, keyboard SendInput struct, MapToKeyboard Toggle
-> functor caching + thread safety, DillDeviceManager post-dispose callback guard.
+> PR #2 (`features/fix-input-viewer-keyboard`) merged. Fixes: Input Viewer namespace, DILL button
+> index, keyboard SendInput struct, MapToKeyboard Toggle functor caching + thread safety,
+> DillDeviceManager post-dispose callback guard.
+> Active branch: `features/installer-systemtray` — in progress (version wiring, Velopack, tray, release CI).
 > Remaining: response curve editor (axes), condition-based action pipeline.
 
 
@@ -96,13 +97,14 @@ src/JoystickGremlin.Core/
                       Macro/  MacroActionDescriptor (tag: "macro"; fires key sequence on press/release)
                       ChangeMode/ ChangeModeActionDescriptor (tag: "change-mode"; switches active mode)
                       Keyboard/   IKeyboardSimulator, NullKeyboardSimulator (overridable by Interop)
-  Configuration/    AppSettings, ISettingsRepository, JSON-backed settings store
+  Configuration/    AppSettings, ISettingsService, JSON-backed settings store
   Devices/          IPhysicalDevice, IVirtualDevice, DeviceManager, device-info types
   Events/           InputEvent, EventPipeline, IEventProcessor, mode-aware routing
   Exceptions/       GremlinException and domain-specific exception types
   Modes/            ModeManager, Mode, mode-stack logic
   Profile/          Profile, InputBinding, ProfileRepository (JSON serialization)
                       IProfileState — singleton holding current Profile + FilePath, raises events
+  Startup/          IStartupService, NullStartupService (overridable by Interop for real registry use)
   Common/           Extensions, utilities
 ```
 
@@ -113,18 +115,19 @@ src/JoystickGremlin.App/
   Assets/           Icons, fonts, static resources
   Controls/         Custom Avalonia controls (reusable across views)
   ViewModels/       ReactiveObject-based ViewModels, one per View:
-                      MainWindowViewModel  — nav bar, profile load/save, pipeline start/stop
+                      MainWindowViewModel  — nav bar, profile load/save, pipeline start/stop,
+                                            CheckForUpdatesCommand (Velopack)
                       DevicesPageViewModel — lists physical devices from IDeviceManager
                       ProfilePageViewModel — current mode, mode switcher, profile metadata
-                      SettingsPageViewModel — app settings via ISettingsRepository
+                      SettingsPageViewModel — app settings via ISettingsService + IStartupService
                       BindingsPageViewModel — three-panel editor: device→input→bound actions
                       BoundActionViewModel  — wraps BoundAction; computes ConfigSummary
                       InputDescriptorViewModel — represents single axis/button/hat slot
   Views/            *.axaml Views, code-behind minimal
   FilePickerService.cs  — wraps Avalonia IStorageProvider; call SetTopLevel(mainWindow) before use
-  App.axaml         Application definition
-  App.axaml.cs      DI bootstrap, service registration
-  Program.cs        Entry point
+  App.axaml         Application definition — includes TrayIcon (Show / Exit context menu)
+  App.axaml.cs      DI bootstrap, service registration, close-to-tray and start-minimized logic
+  Program.cs        Entry point — VelopackApp.Build().Run() must be first line of Main()
 ```
 
 
@@ -268,6 +271,7 @@ All P/Invoke declarations live in `JoystickGremlin.Interop`:
 src/JoystickGremlin.Interop/
   VJoy/             VJoyNative.cs (DllImport), VJoyDevice.cs (IVirtualDevice impl)
   Dill/             DillNative.cs (DllImport), DillDevice.cs (IPhysicalDevice impl)
+  Startup/          WindowsStartupService.cs (IStartupService — HKCU Run registry)
 ```
 
 ### DllImport Pattern
@@ -415,6 +419,59 @@ public sealed class ProfileRepositoryTests
 ```
 
 
+## Release Process
+
+This project uses a **GitFlow release model**. Feature branches merge to `develop` freely.
+When ready to ship, trigger a manual release workflow to bump the version and create an installer.
+
+### Version Source
+
+`version.json` (repo root) is the **single source of truth**:
+```json
+{ "version": "14.2.0" }
+```
+`Directory.Build.props` reads it at build time and injects `<Version>`, `<AssemblyVersion>`, and
+`<FileVersion>` into all projects automatically — no per-project version tags needed.
+
+### Triggering a Release
+
+1. Go to **GitHub → Actions → Release → Run workflow**
+2. Select branch: **`develop`**
+3. Choose **version_type**: `major` | `minor` | `patch`
+4. Optionally add **release_notes** (supports markdown)
+5. Click **Run workflow**
+
+The workflow:
+- Computes the new semver from `version.json`
+- Creates `release/vX.Y.Z` branch from `develop`
+- Bumps `version.json` and commits it
+- Opens **PR → `main`** (title: *"Release vX.Y.Z"*)
+- Opens **merge-back PR → `develop`** (title: *"chore: merge-back release vX.Y.Z"*)
+
+### Completing the Release
+
+1. **Review + merge the PR into `main`** — this triggers `publish.yml` automatically
+2. `publish.yml` builds a self-contained `win-x64` binary, runs `vpk pack`, and creates a
+   GitHub Release `vX.Y.Z` with the installer artifact
+3. **Review + merge the merge-back PR into `develop`** to keep `version.json` in sync
+
+### Building Locally
+
+```powershell
+# From repo root (requires vpk CLI and .NET 10 SDK)
+.\installer\build-installer.ps1
+# Output: installer/out/  — setup EXE + delta packages
+```
+
+### CI Workflows Summary
+
+| Workflow | File | Trigger | Purpose |
+|---|---|---|---|
+| .NET CI | `dotnet-ci.yml` | Push/PR → develop, main | Build + test gate |
+| Release | `release.yml` | Manual dispatch on develop | Bump version, open PRs |
+| Publish | `publish.yml` | Push to main | Build installer, create GitHub Release |
+
+
 ## Pre-commit Checks
 
 Before considering a task complete, run:
@@ -424,7 +481,7 @@ dotnet build
 dotnet test
 ```
 
-> Current baseline: **129 tests, 0 failures** (as of Phase 9 merge to `develop`).
+> Current baseline: **131 tests, 0 failures** (as of `features/installer-systemtray`).
 
 
 ## GitHub Workflow

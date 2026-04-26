@@ -19,6 +19,15 @@ public sealed class AppSettings
     /// <summary>Gets or sets whether the application should start minimized to the system tray.</summary>
     public bool StartMinimized { get; set; }
 
+    /// <summary>Gets or sets whether the application should be registered to start with Windows.</summary>
+    public bool StartWithWindows { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether clicking the window close button minimizes to the system tray instead of exiting.
+    /// Defaults to <c>true</c>.
+    /// </summary>
+    public bool CloseToTray { get; set; } = true;
+
     /// <summary>
     /// Gets or sets a value indicating whether the auto-load feature is globally enabled.
     /// When <c>false</c>, <see cref="ProcessMappings"/> entries are ignored.

@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
 using JoystickGremlin.Core.Configuration;
+using JoystickGremlin.Core.Startup;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 
@@ -17,12 +18,15 @@ namespace JoystickGremlin.App.ViewModels;
 public sealed class SettingsPageViewModel : ViewModelBase
 {
     private readonly ISettingsService _settingsService;
+    private readonly IStartupService _startupService;
     private readonly IFilePickerService _filePicker;
     private readonly ILogger<SettingsPageViewModel> _logger;
     private string _lastProfilePath = string.Empty;
     private decimal _vJoyDeviceId = 1;
     private string _defaultModeName = string.Empty;
     private bool _startMinimized;
+    private bool _startWithWindows;
+    private bool _closeToTray = true;
     private bool _enableAutoLoading;
     private bool _loading;
 
@@ -31,10 +35,12 @@ public sealed class SettingsPageViewModel : ViewModelBase
     /// </summary>
     public SettingsPageViewModel(
         ISettingsService settingsService,
+        IStartupService startupService,
         IFilePickerService filePicker,
         ILogger<SettingsPageViewModel> logger)
     {
         _settingsService = settingsService;
+        _startupService  = startupService;
         _filePicker      = filePicker;
         _logger          = logger;
 
@@ -49,8 +55,10 @@ public sealed class SettingsPageViewModel : ViewModelBase
                 x => x.VJoyDeviceId,
                 x => x.DefaultModeName,
                 x => x.StartMinimized,
+                x => x.StartWithWindows,
+                x => x.CloseToTray,
                 x => x.EnableAutoLoading,
-                (_, _, _, _, _) => Unit.Default)
+                (_, _, _, _, _, _, _) => Unit.Default)
             .Skip(1)
             .Throttle(TimeSpan.FromMilliseconds(800), RxApp.MainThreadScheduler)
             .Subscribe(unit => { if (!_loading) _ = SaveAsync(); });
@@ -82,6 +90,20 @@ public sealed class SettingsPageViewModel : ViewModelBase
     {
         get => _startMinimized;
         set => this.RaiseAndSetIfChanged(ref _startMinimized, value);
+    }
+
+    /// <summary>Gets or sets whether the application is registered to start with Windows.</summary>
+    public bool StartWithWindows
+    {
+        get => _startWithWindows;
+        set => this.RaiseAndSetIfChanged(ref _startWithWindows, value);
+    }
+
+    /// <summary>Gets or sets whether closing the window minimizes to tray instead of exiting.</summary>
+    public bool CloseToTray
+    {
+        get => _closeToTray;
+        set => this.RaiseAndSetIfChanged(ref _closeToTray, value);
     }
 
     /// <summary>Gets or sets whether the auto-load feature is globally enabled.</summary>
@@ -116,10 +138,12 @@ public sealed class SettingsPageViewModel : ViewModelBase
         try
         {
             var s = _settingsService.Settings;
-            LastProfilePath  = s.LastProfilePath ?? string.Empty;
-            VJoyDeviceId     = s.VJoyDeviceId;
-            DefaultModeName  = s.DefaultModeName ?? string.Empty;
-            StartMinimized   = s.StartMinimized;
+            LastProfilePath   = s.LastProfilePath ?? string.Empty;
+            VJoyDeviceId      = s.VJoyDeviceId;
+            DefaultModeName   = s.DefaultModeName ?? string.Empty;
+            StartMinimized    = s.StartMinimized;
+            StartWithWindows  = _startupService.IsEnabled;
+            CloseToTray       = s.CloseToTray;
             EnableAutoLoading = s.EnableAutoLoading;
 
             ProcessMappings.Clear();
@@ -178,7 +202,22 @@ public sealed class SettingsPageViewModel : ViewModelBase
         s.VJoyDeviceId       = (uint)VJoyDeviceId;
         s.DefaultModeName    = string.IsNullOrWhiteSpace(DefaultModeName) ? null : DefaultModeName;
         s.StartMinimized     = StartMinimized;
+        s.CloseToTray        = CloseToTray;
         s.EnableAutoLoading  = EnableAutoLoading;
+
+        // Sync the startup registry entry with the toggle value.
+        if (StartWithWindows && !_startupService.IsEnabled)
+        {
+            var exePath = Environment.ProcessPath;
+            if (exePath is not null)
+                _startupService.Enable(exePath);
+        }
+        else if (!StartWithWindows && _startupService.IsEnabled)
+        {
+            _startupService.Disable();
+        }
+
+        s.StartWithWindows = StartWithWindows;
         // ProcessMappings list is already mutated in-place by AddMapping/RemoveMapping/Move*.
         try
         {

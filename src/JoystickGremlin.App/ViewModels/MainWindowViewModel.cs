@@ -12,6 +12,8 @@ using JoystickGremlin.Core.Pipeline;
 using JoystickGremlin.Core.Profile;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
+using Velopack;
+using Velopack.Sources;
 using ProfileModel = JoystickGremlin.Core.Profile.Profile;
 
 namespace JoystickGremlin.App.ViewModels;
@@ -97,9 +99,10 @@ public sealed class MainWindowViewModel : ViewModelBase
             .WhereNotNull()
             .Subscribe(item => CurrentPage = item.Page);
 
-        ToggleActiveCommand = ReactiveCommand.CreateFromTask(ToggleActiveAsync);
-        OpenProfileCommand  = ReactiveCommand.CreateFromTask(OpenProfileAsync);
-        NewProfileCommand   = ReactiveCommand.Create(NewProfile);
+        ToggleActiveCommand      = ReactiveCommand.CreateFromTask(ToggleActiveAsync);
+        OpenProfileCommand       = ReactiveCommand.CreateFromTask(OpenProfileAsync);
+        NewProfileCommand        = ReactiveCommand.Create(NewProfile);
+        CheckForUpdatesCommand   = ReactiveCommand.CreateFromTask(CheckForUpdatesAsync);
 
         _profileState.ProfileChanged += OnProfileChanged;
         _modeManager.ModeChanged += OnModeChanged;
@@ -177,6 +180,9 @@ public sealed class MainWindowViewModel : ViewModelBase
     /// <summary>Gets the command that creates a new empty profile.</summary>
     public ReactiveCommand<Unit, Unit> NewProfileCommand { get; }
 
+    /// <summary>Gets the command that checks for application updates via Velopack.</summary>
+    public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
+
     /// <summary>
     /// Performs async startup: loads settings, initialises device manager, and optionally
     /// auto-loads the last profile. Call from the main window's <c>Opened</c> event handler.
@@ -250,6 +256,28 @@ public sealed class MainWindowViewModel : ViewModelBase
             if (profile is null) return;
             _eventPipeline.Start(profile);
             IsGremlinActive = true;
+        }
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        try
+        {
+            var source = new GithubSource("https://github.com/DevilDogTG/JoystickGremlinSharp", null, false);
+            var mgr = new UpdateManager(source);
+            var newVersion = await mgr.CheckForUpdatesAsync();
+            if (newVersion is null)
+            {
+                _logger.LogInformation("Application is up to date");
+                return;
+            }
+            _logger.LogInformation("Update available: {Version}", newVersion.TargetFullRelease.Version);
+            await mgr.DownloadUpdatesAsync(newVersion);
+            mgr.ApplyUpdatesAndRestart(newVersion);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Update check failed");
         }
     }
 

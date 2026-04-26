@@ -26,7 +26,22 @@
                 <TextBox Text="{Binding DefaultModeName}" Watermark="(none)"/>
             </StackPanel>
 
-            <CheckBox Content="Start minimized" IsChecked="{Binding StartMinimized}"/>
+            <CheckBox Content="Start minimized to tray" IsChecked="{Binding StartMinimized}"/>
+
+            <!-- ─── System Tray ─── -->
+            <Border Padding="0,8,0,0"
+                    BorderThickness="0,1,0,0"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="System Tray" FontWeight="SemiBold" FontSize="15"/>
+                    <CheckBox Content="Start with Windows"
+                              IsChecked="{Binding StartWithWindows}"
+                              ToolTip.Tip="Register the application to launch automatically when you log in to Windows."/>
+                    <CheckBox Content="Minimize to tray on close"
+                              IsChecked="{Binding CloseToTray}"
+                              ToolTip.Tip="Clicking the window close button (✕) hides the window to the system tray instead of exiting. Use the tray icon menu to exit."/>
+                </StackPanel>
+            </Border>
 
             <!-- ─── Auto-load Profiles ─── -->
             <Border Padding="0,8,0,0"
