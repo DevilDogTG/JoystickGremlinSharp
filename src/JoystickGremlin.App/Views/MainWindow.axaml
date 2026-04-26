@@ -18,7 +18,7 @@
                 Padding="8,6"
                 BorderThickness="0,0,0,1"
                 BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-            <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto"
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto"
                   ColumnSpacing="8">
 
                 <!-- Profile controls -->
@@ -30,9 +30,17 @@
                         Content="New"
                         Command="{Binding NewProfileCommand}"
                         ToolTip.Tip="Create a new empty profile"/>
+                <Button Grid.Column="2"
+                        Content="💾  Save"
+                        Command="{Binding SaveProfileCommand}"
+                        ToolTip.Tip="Save profile to current file (or prompt if unsaved)"/>
+                <Button Grid.Column="3"
+                        Content="Save As…"
+                        Command="{Binding SaveAsProfileCommand}"
+                        ToolTip.Tip="Save profile to a new file"/>
 
                 <!-- Profile path display -->
-                <TextBlock Grid.Column="2"
+                <TextBlock Grid.Column="4"
                            Text="{Binding ProfilePath}"
                            VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis"
@@ -40,7 +48,7 @@
                            FontSize="12"/>
 
                 <!-- Active mode -->
-                <StackPanel Grid.Column="3"
+                <StackPanel Grid.Column="5"
                             Orientation="Horizontal"
                             Spacing="4"
                             VerticalAlignment="Center">
@@ -56,7 +64,7 @@
                 </StackPanel>
 
                 <!-- Start / Stop toggle -->
-                <Button Grid.Column="4"
+                <Button Grid.Column="6"
                         Content="{Binding ToggleButtonLabel}"
                         Command="{Binding ToggleActiveCommand}"
                         MinWidth="90"
@@ -67,7 +75,7 @@
 
         <!-- ─── Left Navigation Sidebar ─── -->
         <ListBox DockPanel.Dock="Left"
-                 Width="120"
+                 Width="52"
                  ItemsSource="{Binding NavItems}"
                  SelectedItem="{Binding SelectedNavItem}"
                  BorderThickness="0,0,1,0"
@@ -75,15 +83,11 @@
                  ScrollViewer.VerticalScrollBarVisibility="Disabled">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:NavItemViewModel">
-                    <StackPanel Spacing="4" Margin="4,10" HorizontalAlignment="Center">
+                    <StackPanel Margin="4,8" HorizontalAlignment="Center"
+                                ToolTip.Tip="{Binding Title}">
                         <TextBlock Text="{Binding Icon}"
                                    FontSize="22"
                                    HorizontalAlignment="Center"/>
-                        <TextBlock Text="{Binding Title}"
-                                   HorizontalAlignment="Center"
-                                   TextWrapping="Wrap"
-                                   TextAlignment="Center"
-                                   FontSize="11"/>
                     </StackPanel>
                 </DataTemplate>
             </ListBox.ItemTemplate>
