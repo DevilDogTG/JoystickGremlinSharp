@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+using System.Threading;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -25,7 +26,7 @@ public partial class App : Application
 {
     private ServiceProvider? _services;
     private MainWindow? _mainWindow;
-    private bool _isInitialized;
+    private int _isInitialized;
 
     public override void Initialize()
     {
@@ -58,9 +59,9 @@ public partial class App : Application
                 // Guard: only run initialization once. In Avalonia on Windows, Opened fires
                 // again each time Show() is called on a hidden window, so without this guard
                 // a tray-restore Show() would re-trigger the StartMinimized hide and the
-                // window would immediately hide again.
-                if (_isInitialized) return;
-                _isInitialized = true;
+                // window would immediately hide again. Interlocked ensures the check-and-set
+                // is atomic across any thread that could invoke Show().
+                if (Interlocked.CompareExchange(ref _isInitialized, 1, 0) == 1) return;
 
                 filePickerService.SetTopLevel(_mainWindow);
 
