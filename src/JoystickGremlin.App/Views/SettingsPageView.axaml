@@ -11,7 +11,7 @@
 
             <StackPanel Spacing="4">
                 <TextBlock Text="Last Profile Path"/>
-                <TextBox Text="{Binding LastProfilePath}" Watermark="(none)"/>
+                <TextBox Text="{Binding LastProfilePath}" PlaceholderText="(none)"/>
             </StackPanel>
 
             <StackPanel Spacing="4">
@@ -23,7 +23,7 @@
 
             <StackPanel Spacing="4">
                 <TextBlock Text="Default Mode Name"/>
-                <TextBox Text="{Binding DefaultModeName}" Watermark="(none)"/>
+                <TextBox Text="{Binding DefaultModeName}" PlaceholderText="(none)"/>
             </StackPanel>
 
             <CheckBox Content="Start minimized to tray" IsChecked="{Binding StartMinimized}"/>
@@ -84,14 +84,14 @@
                                     <!-- Executable / pattern -->
                                     <TextBox Grid.Column="0"
                                              Text="{Binding ExecutablePath}"
-                                             Watermark="C:/Games/game.exe"
+                                             PlaceholderText="C:/Games/game.exe"
                                              FontSize="11"
                                              Margin="2,0"/>
                                     <!-- Profile path + browse -->
                                     <Grid Grid.Column="1" ColumnDefinitions="*,26" Margin="2,0">
                                         <TextBox Grid.Column="0"
                                                  Text="{Binding ProfilePath}"
-                                                 Watermark="profile.json"
+                                                 PlaceholderText="profile.json"
                                                  FontSize="11"/>
                                         <Button Grid.Column="1"
                                                 Content="…"

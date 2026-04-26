@@ -8,6 +8,7 @@ using JoystickGremlin.Core.Events;
 using JoystickGremlin.Core.Profile;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
+using ReactiveUI.Avalonia;
 
 namespace JoystickGremlin.App.ViewModels;
 
@@ -131,7 +132,7 @@ public sealed class DevicesPageViewModel : ViewModelBase, IDisposable
 
             entry.IsActive = true;
             Observable.Timer(TimeSpan.FromMilliseconds(600))
-                .ObserveOn(RxApp.MainThreadScheduler)
+                .ObserveOn(AvaloniaScheduler.Instance)
                 .Subscribe(_ => entry.IsActive = false);
         });
     }

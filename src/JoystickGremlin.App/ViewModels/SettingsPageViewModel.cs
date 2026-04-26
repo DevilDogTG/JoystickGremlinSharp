@@ -7,6 +7,7 @@ using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Startup;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
+using ReactiveUI.Avalonia;
 
 namespace JoystickGremlin.App.ViewModels;
 
@@ -60,7 +61,7 @@ public sealed class SettingsPageViewModel : ViewModelBase
                 x => x.EnableAutoLoading,
                 (_, _, _, _, _, _, _) => Unit.Default)
             .Skip(1)
-            .Throttle(TimeSpan.FromMilliseconds(800), RxApp.MainThreadScheduler)
+            .Throttle(TimeSpan.FromMilliseconds(800), AvaloniaScheduler.Instance)
             .Subscribe(unit => { if (!_loading) _ = SaveAsync(); });
     }
 

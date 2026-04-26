@@ -45,6 +45,9 @@ if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {
     if ($LASTEXITCODE -ne 0) { throw "Failed to install vpk" }
 }
 
+# Allow vpk (built against .NET 9) to run on .NET 10 via roll-forward.
+$env:DOTNET_ROLL_FORWARD = 'Major'
+
 # ── Pack installer ─────────────────────────────────────────────────────────────
 Write-Host "`nPacking installer..." -ForegroundColor Cyan
 vpk pack `
@@ -55,5 +58,25 @@ vpk pack `
     --outputDir $outputDir
 
 if ($LASTEXITCODE -ne 0) { throw "vpk pack failed" }
+
+# ── Rename outputs to include version suffix ────────────────────────────────────
+$renameMap = @{
+    'JoystickGremlinSharp-win-Setup.exe'    = "JoystickGremlinSharp-$version-win-Setup.exe"
+    'JoystickGremlinSharp-win-Portable.zip' = "JoystickGremlinSharp-$version-win-Portable.zip"
+}
+foreach ($entry in $renameMap.GetEnumerator()) {
+    $src = Join-Path $outputDir $entry.Key
+    $dst = Join-Path $outputDir $entry.Value
+    if (Test-Path $src) {
+        Move-Item -Path $src -Destination $dst -Force
+        Write-Host "Renamed: $($entry.Key) → $($entry.Value)" -ForegroundColor DarkGray
+    }
+}
+
+# ── Remove nupkg files ─────────────────────────────────────────────────────────
+Get-ChildItem -Path $outputDir -Filter '*.nupkg' | ForEach-Object {
+    Remove-Item $_.FullName -Force
+    Write-Host "Removed: $($_.Name)" -ForegroundColor DarkGray
+}
 
 Write-Host "`nInstaller ready in: $outputDir" -ForegroundColor Green

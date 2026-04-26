@@ -52,7 +52,7 @@
 
                 <StackPanel Spacing="4">
                     <TextBlock Text="Name"/>
-                    <TextBox Text="{Binding EditName}" Watermark="Mode name"/>
+                    <TextBox Text="{Binding EditName}" PlaceholderText="Mode name"/>
                 </StackPanel>
 
                 <StackPanel Spacing="4">
