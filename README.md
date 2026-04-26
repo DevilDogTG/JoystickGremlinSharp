@@ -1,20 +1,27 @@
 # Joystick Gremlin Sharp
 
-A C# / .NET 10 port of [JoystickGremlin](https://github.com/WhiteMagic/JoystickGremlin), a Windows joystick configuration tool that lets you remap physical joystick inputs to virtual vJoy devices, apply response curves, build macros, and use a flexible mode system.
+A C# / .NET 10 rewrite of [JoystickGremlin](https://github.com/WhiteMagic/JoystickGremlin) — a Windows application for configuring joystick and gamepad devices. Map physical inputs to virtual vJoy axes, buttons, and hats; build macros; apply keyboard mappings; and switch between named modes at runtime.
 
-Built with **Avalonia UI** for cross-platform UI portability and **.NET 10** for modern performance.
+Built with **Avalonia UI** and **ReactiveUI** for a modern, maintainable MVVM architecture on .NET 10.
 
-> **Status**: Active development — Phase 4 (UI) in progress.
+> **Status**: Active development — core pipeline, bindings editor, input viewer, and process-monitor auto-load complete. 131 tests passing.
 
 ---
 
 ## Features
 
-- Works with any joystick-like device recognised by Windows (DILL)
-- Maps physical inputs → virtual vJoy axes, buttons, and hats
-- Flexible mode system with inheritance and runtime switching
-- JSON-based profiles (saved to `%APPDATA%\JoystickGremlin\`)
-- Avalonia UI with left-sidebar navigation (Devices, Profile, Settings)
+- **Device detection** — lists all physical joystick/gamepad devices via DILL (DirectInput)
+- **Input viewer** — live axis, button, and hat readout per device
+- **Profile system** — JSON profiles saved to `%APPDATA%\JoystickGremlin\`, with load/save from the UI
+- **Mode system** — named modes with runtime switching (keyboard shortcut or action)
+- **Bindings editor** — three-panel editor: device → input slot → bound actions
+- **Action types**:
+  - Map to vJoy axis / button / hat
+  - Map to keyboard (Hold, Toggle, Press-Only, Release-Only behaviours)
+  - Macro (key sequence on press or release)
+  - Change mode
+- **Process monitor** — automatically loads a profile when a configured executable becomes active
+- **Avalonia UI** — left-sidebar navigation with Devices, Input Viewer, Bindings, Profile, Settings pages
 
 ---
 
@@ -23,8 +30,8 @@ Built with **Avalonia UI** for cross-platform UI portability and **.NET 10** for
 | Dependency | Version | Notes |
 |---|---|---|
 | [.NET SDK](https://dotnet.microsoft.com/download) | 10.0+ | Runtime + build tools |
-| [vJoy](https://sourceforge.net/projects/vjoystick/) | 2.1.9+ | Virtual joystick driver |
-| Windows | 10+ | Device I/O is Windows-only |
+| [vJoy](https://sourceforge.net/projects/vjoystick/) | 2.1.9+ | Virtual joystick driver (Windows) |
+| Windows | 10+ | Device I/O via vJoy and DILL is Windows-only |
 
 ---
 
@@ -51,11 +58,11 @@ dotnet run --project src/JoystickGremlin.App
 
 ```
 src/
-  JoystickGremlin.Core/         # Domain logic — profile, modes, events, actions
+  JoystickGremlin.Core/         # Domain logic — profile, modes, events, actions, process monitor
   JoystickGremlin.Interop/      # P/Invoke wrappers for vJoy + DILL (Windows only)
-  JoystickGremlin.App/          # Avalonia MVVM application
+  JoystickGremlin.App/          # Avalonia MVVM application (views, view-models, DI bootstrap)
 tests/
-  JoystickGremlin.Core.Tests/   # xUnit tests for Core domain
+  JoystickGremlin.Core.Tests/   # xUnit tests for Core domain (131 tests)
 ```
 
 ---
@@ -64,9 +71,9 @@ tests/
 
 | Layer | Project | Key Types |
 |---|---|---|
-| Domain | `Core` | `Profile`, `Mode`, `InputBinding`, `ModeManager`, `EventPipeline` |
-| Interop | `Interop` | `VJoyDeviceManager`, `DillDeviceManager`, P/Invoke wrappers |
-| UI | `App` | `MainWindowViewModel`, `DevicesPageViewModel`, Avalonia AXAML views |
+| Domain | `Core` | `Profile`, `Mode`, `InputBinding`, `ModeManager`, `EventPipeline`, `ActionRegistry` |
+| Interop | `Interop` | `VJoyDeviceManager`, `DillDeviceManager`, `SendInputKeyboardSimulator` |
+| UI | `App` | `MainWindowViewModel`, `BindingsPageViewModel`, `InputViewerPageViewModel` |
 
 **DI container**: `Microsoft.Extensions.DependencyInjection`  
 **Reactive UI**: `ReactiveUI` (`ReactiveObject`, `ReactiveCommand`, `WhenAnyValue`)  
@@ -74,9 +81,39 @@ tests/
 
 ---
 
+## Third-Party Licenses
+
+License texts for all third-party dependencies are in the [`licenses/`](licenses/) directory.
+
+| Dependency | License |
+|---|---|
+| [Avalonia](https://github.com/AvaloniaUI/Avalonia) | MIT |
+| [ReactiveUI](https://github.com/reactiveui/ReactiveUI) | MIT |
+| [Serilog](https://github.com/serilog/serilog) | Apache 2.0 |
+| [Microsoft.Extensions.*](https://github.com/dotnet/runtime) | MIT |
+| [xunit](https://github.com/xunit/xunit) | Apache 2.0 |
+| [FluentAssertions](https://github.com/fluentassertions/fluentassertions) | Xceed Community License |
+| [Moq](https://github.com/devlooped/moq) | BSD-3-Clause |
+| [coverlet](https://github.com/coverlet-coverage/coverlet) | MIT |
+| [Bootstrap Icons](https://github.com/twbs/icons) | MIT |
+| [vJoy](https://sourceforge.net/projects/vjoystick/) | MIT |
+
+---
+
 ## Contributing
 
 See [AGENTS.md](AGENTS.md) for development conventions, build commands, and architecture guidance.
+
+---
+
+## Credits
+
+JoystickGremlinSharp is a C# rewrite derived from **JoystickGremlin** by
+[WhiteMagic](https://github.com/WhiteMagic/JoystickGremlin). The original Python
+implementation and the DILL input library are the work of the original author and
+contributors. This project would not exist without their foundational work.
+
+See [`licenses/joystick-gremlin.txt`](licenses/joystick-gremlin.txt) for full attribution details.
 
 ---
 

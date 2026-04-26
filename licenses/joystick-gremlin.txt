@@ -1,0 +1,20 @@
+JoystickGremlin — Original Project Attribution
+===============================================
+
+JoystickGremlinSharp is a C# / .NET rewrite derived from JoystickGremlin,
+originally created by WhiteMagic.
+
+  Original project:  https://github.com/WhiteMagic/JoystickGremlin
+  Original author:   WhiteMagic
+  Original license:  GNU General Public License v3.0 (GPL-3.0)
+
+The Python reference source retained in this repository (under gremlin/,
+action_plugins/, vjoy/, dill/) is the work of the original author and contributors
+and remains subject to the GPL-3.0 license. This C# rewrite is also distributed
+under GPL-3.0 in accordance with the licence terms of the original work.
+
+DILL (Device Input Listener Library), bundled as dill.dll, was created as part
+of the JoystickGremlin project and is likewise attributed to WhiteMagic.
+
+Full text of the GPL-3.0 license: https://www.gnu.org/licenses/gpl-3.0.txt
+A copy is included in the LICENSE file at the root of this repository.
