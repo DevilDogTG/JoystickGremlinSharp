@@ -11,8 +11,8 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > **Status**: Phase complete. All core features implemented and released.
 > - Release v10.0.3 published with auto-generated release notes
 > - Workflow: main-first + tag-based release (no merge-back)
-> - 173 tests passing, 0 build warnings
-> - Latest: Multi-button to virtual output mapping (buttons-to-hat, buttons-to-axes actions)
+> - 178 tests passing, 0 build warnings
+> - Latest: Configurable threshold for vjoy-button action (PR #27), vJoy virtual device filtering from physical device list (PR #26)
 > - GitHub Actions permissions must be set to "Allow all actions and reusable workflows"
 >   (Settings → Actions → General) for workflows to run on `main`
 > - Release pipeline requires either `RELEASE_TOKEN` secret (fine-grained PAT: Contents+PRs write)
