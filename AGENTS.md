@@ -11,8 +11,8 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > **Status**: Phase complete. All core features implemented and released.
 > - Release v10.0.3 published with auto-generated release notes
 > - Workflow: main-first + tag-based release (no merge-back)
-> - 178 tests passing, 0 build warnings
-> - Latest: Configurable threshold for vjoy-button action (PR #27), vJoy virtual device filtering from physical device list (PR #26)
+> - 226 tests passing, 0 build warnings
+> - Latest: Force Feedback bridge (PR #25), configurable vjoy-button threshold (PR #27), vJoy virtual device filtering (PR #26)
 > - GitHub Actions permissions must be set to "Allow all actions and reusable workflows"
 >   (Settings → Actions → General) for workflows to run on `main`
 > - Release pipeline requires either `RELEASE_TOKEN` secret (fine-grained PAT: Contents+PRs write)
@@ -109,6 +109,15 @@ src/JoystickGremlin.Core/
   Devices/          IPhysicalDevice, IVirtualDevice, DeviceManager, device-info types
   Events/           InputEvent, EventPipeline, IEventProcessor, mode-aware routing
   Exceptions/       GremlinException and domain-specific exception types
+  ForceFeedback/    FFB domain model and bridge:
+                      IForceFeedbackBridge — orchestrator interface (Start/Stop/State/events)
+                      IForceFeedbackSource — vJoy FFB packet producer
+                      IForceFeedbackSink   — DirectInput wheel consumer
+                      ForceFeedbackBridge  — implementation (source→sink forwarding, state machine)
+                      NullForceFeedbackBridge — no-op default registered by Core DI
+                      FfbCommand / FfbEffectType / FfbOperation / FfbDeviceCommand — domain types
+                      FfbWheelInfo — connected wheel metadata
+                      ForceFeedbackBridgeState — enum (Disabled/Starting/Running/NoSink/NoSource/Degraded/Stopped/Error)
   Modes/            ModeManager, Mode, mode-stack logic
   Profile/          Profile, InputBinding, ProfileRepository (JSON serialization)
                       IProfileState — singleton holding current Profile + FilePath, raises events
@@ -705,7 +714,7 @@ dotnet build --configuration Release -warnaserror
 dotnet test
 ```
 
-> Current baseline: **135 tests, 0 failures, 0 build warnings**.
+> Current baseline: **221 tests, 0 failures, 0 build warnings**.
 
 
 
