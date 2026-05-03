@@ -87,7 +87,7 @@ public sealed class BoundActionViewModel : ViewModelBase
             VJoyAxisDescriptor.ActionTag =>
                 $"Device {cfg["vjoyId"]?.GetValue<int>() ?? 1}, Axis {cfg["axisIndex"]?.GetValue<int>() ?? 1}",
             VJoyButtonDescriptor.ActionTag =>
-                $"Device {cfg["vjoyId"]?.GetValue<int>() ?? 1}, Button {cfg["buttonIndex"]?.GetValue<int>() ?? 1}",
+                BuildVJoyButtonSummary(cfg),
             VJoyHatDescriptor.ActionTag =>
                 $"Device {cfg["vjoyId"]?.GetValue<int>() ?? 1}, Hat {cfg["hatIndex"]?.GetValue<int>() ?? 1}",
             ButtonsToHatDescriptor.ActionTag =>
@@ -104,8 +104,19 @@ public sealed class BoundActionViewModel : ViewModelBase
         };
     }
 
-    private static string BuildMapToKeyboardSummary(JsonObject? cfg)
+    private static string BuildVJoyButtonSummary(JsonObject? cfg)
     {
+        if (cfg is null) return "(default config)";
+        var device = cfg["vjoyId"]?.GetValue<int>() ?? 1;
+        var button = cfg["buttonIndex"]?.GetValue<int>() ?? 1;
+        var threshold = cfg["threshold"]?.GetValue<double>() ?? 0.5;
+        var thresholdPart = Math.Abs(threshold - 0.5) > 0.001
+            ? $", Threshold {threshold:P0}"
+            : string.Empty;
+        return $"Device {device}, Button {button}{thresholdPart}";
+    }
+
+    private static string BuildMapToKeyboardSummary(JsonObject? cfg)    {
         if (cfg is null) return "(no keys)";
         var keys     = cfg["keys"]?.GetValue<string>() ?? string.Empty;
         var behavior = cfg["behavior"]?.GetValue<string>() ?? "Hold";

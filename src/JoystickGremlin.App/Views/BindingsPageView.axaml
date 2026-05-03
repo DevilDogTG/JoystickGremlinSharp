@@ -196,6 +196,16 @@
                                           Minimum="1" Maximum="128"
                                           FormatString="0"
                                           Width="100" HorizontalAlignment="Left"/>
+                            <TextBlock Text="Press Threshold (0 – 1)"/>
+                            <NumericUpDown Value="{Binding EditVJoyButtonThreshold}"
+                                          Minimum="0" Maximum="1"
+                                          Increment="0.05"
+                                          FormatString="0.00"
+                                          Width="100" HorizontalAlignment="Left"/>
+                            <TextBlock Text="0.5 = half-travel (default) · 0.05 = hair-trigger · 0.9 = full-press"
+                                       FontSize="10"
+                                       Opacity="0.6"
+                                       TextWrapping="Wrap"/>
                         </StackPanel>
 
                          <!-- vJoy Hat config -->

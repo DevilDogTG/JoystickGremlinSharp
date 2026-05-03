@@ -53,6 +53,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     private string _editMacroKeys = string.Empty;
     private string _editMapToKeyboardKeys = string.Empty;
     private string _editMapToKeyboardBehavior = "Hold";
+    private double _editVJoyButtonThreshold = 0.5;
 
     /// <summary>
     /// Initializes a new instance of <see cref="BindingsPageViewModel"/>.
@@ -120,7 +121,8 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
                 this.WhenAnyValue(x => x.EditTargetModeName).Select(_ => Unit.Default),
                 this.WhenAnyValue(x => x.EditMacroKeys).Select(_ => Unit.Default),
                 this.WhenAnyValue(x => x.EditMapToKeyboardKeys).Select(_ => Unit.Default),
-                this.WhenAnyValue(x => x.EditMapToKeyboardBehavior).Select(_ => Unit.Default))
+                this.WhenAnyValue(x => x.EditMapToKeyboardBehavior).Select(_ => Unit.Default),
+                this.WhenAnyValue(x => x.EditVJoyButtonThreshold).Select(_ => Unit.Default))
             .Throttle(TimeSpan.FromMilliseconds(300))
             .Subscribe(_ => Dispatcher.UIThread.Post(ApplyActionConfig));
 
@@ -294,6 +296,13 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the available behavior options for the map-to-keyboard action.</summary>
     public static IReadOnlyList<string> MapToKeyboardBehaviors { get; } =
         ["Hold", "Toggle", "PressOnly", "ReleaseOnly"];
+
+    /// <summary>Gets or sets the axis-to-button press threshold (0–1) for the vJoy-button action.</summary>
+    public double EditVJoyButtonThreshold
+    {
+        get => _editVJoyButtonThreshold;
+        set => this.RaiseAndSetIfChanged(ref _editVJoyButtonThreshold, value);
+    }
 
     // ─── Visibility Helpers ─────────────────────────────────────────────────────
 
@@ -492,6 +501,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
             case VJoyButtonDescriptor.ActionTag:
                 EditVJoyDeviceId     = cfg?["vjoyId"]?.GetValue<int>() ?? 1;
                 EditVJoyButtonIndex  = cfg?["buttonIndex"]?.GetValue<int>() ?? 1;
+                EditVJoyButtonThreshold = cfg?["threshold"]?.GetValue<double>() ?? 0.5;
                 break;
             case VJoyHatDescriptor.ActionTag:
                 EditVJoyDeviceId = cfg?["vjoyId"]?.GetValue<int>() ?? 1;
@@ -674,6 +684,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
             {
                 ["vjoyId"]      = EditVJoyDeviceId,
                 ["buttonIndex"] = EditVJoyButtonIndex,
+                ["threshold"]   = EditVJoyButtonThreshold,
             },
             VJoyHatDescriptor.ActionTag => new JsonObject
             {
