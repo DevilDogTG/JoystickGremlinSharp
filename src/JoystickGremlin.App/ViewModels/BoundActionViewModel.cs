@@ -45,6 +45,12 @@ public sealed class BoundActionViewModel : ViewModelBase
     /// <summary>Gets whether this action is a map-to-keyboard action.</summary>
     public bool IsMapToKeyboard => ActionTag == MapToKeyboardActionDescriptor.ActionTag;
 
+    /// <summary>Gets whether this action maps multiple buttons to a vJoy hat.</summary>
+    public bool IsButtonsToHat => ActionTag == ButtonsToHatDescriptor.ActionTag;
+
+    /// <summary>Gets whether this action maps multiple buttons to vJoy axes.</summary>
+    public bool IsButtonsToAxes => ActionTag == ButtonsToAxesDescriptor.ActionTag;
+
     /// <summary>
     /// Gets the name of the ancestor mode this action is inherited from,
     /// or <c>null</c> if the action is defined directly in the editing mode.
@@ -84,6 +90,10 @@ public sealed class BoundActionViewModel : ViewModelBase
                 $"Device {cfg["vjoyId"]?.GetValue<int>() ?? 1}, Button {cfg["buttonIndex"]?.GetValue<int>() ?? 1}",
             VJoyHatDescriptor.ActionTag =>
                 $"Device {cfg["vjoyId"]?.GetValue<int>() ?? 1}, Hat {cfg["hatIndex"]?.GetValue<int>() ?? 1}",
+            ButtonsToHatDescriptor.ActionTag =>
+                BuildButtonsToHatSummary(cfg),
+            ButtonsToAxesDescriptor.ActionTag =>
+                BuildButtonsToAxesSummary(cfg),
             ChangeModeActionDescriptor.ActionTag =>
                 $"→ {cfg["targetMode"]?.GetValue<string>() ?? "(unset)"}",
             MacroActionDescriptor.ActionTag =>
@@ -101,5 +111,34 @@ public sealed class BoundActionViewModel : ViewModelBase
         var behavior = cfg["behavior"]?.GetValue<string>() ?? "Hold";
         var keysPart = keys.Length > 0 ? keys : "(no keys)";
         return behavior == "Hold" ? keysPart : $"{keysPart} [{behavior}]";
+    }
+
+    private static string BuildButtonsToHatSummary(JsonObject? cfg)
+    {
+        if (cfg is null) return "(unconfigured)";
+
+        var vjoyId = cfg["vjoyId"]?.GetValue<int>() ?? 1;
+        var hatIndex = cfg["hatIndex"]?.GetValue<int>() ?? 1;
+        var up = cfg["upButtonId"]?.GetValue<int>() ?? 0;
+        var down = cfg["downButtonId"]?.GetValue<int>() ?? 0;
+        var left = cfg["leftButtonId"]?.GetValue<int>() ?? 0;
+        var right = cfg["rightButtonId"]?.GetValue<int>() ?? 0;
+
+        return $"U{up} D{down} L{left} R{right} → vJoy {vjoyId} Hat {hatIndex}";
+    }
+
+    private static string BuildButtonsToAxesSummary(JsonObject? cfg)
+    {
+        if (cfg is null) return "(unconfigured)";
+
+        var vjoyId = cfg["vjoyId"]?.GetValue<int>() ?? 1;
+        var xAxisIndex = cfg["xAxisIndex"]?.GetValue<int>() ?? 1;
+        var yAxisIndex = cfg["yAxisIndex"]?.GetValue<int>() ?? 2;
+        var up = cfg["upButtonId"]?.GetValue<int>() ?? 0;
+        var down = cfg["downButtonId"]?.GetValue<int>() ?? 0;
+        var left = cfg["leftButtonId"]?.GetValue<int>() ?? 0;
+        var right = cfg["rightButtonId"]?.GetValue<int>() ?? 0;
+
+        return $"U{up} D{down} L{left} R{right} → vJoy {vjoyId} X{xAxisIndex}/Y{yAxisIndex}";
     }
 }

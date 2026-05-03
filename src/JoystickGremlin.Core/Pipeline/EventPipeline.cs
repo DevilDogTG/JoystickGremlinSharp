@@ -20,6 +20,7 @@ public sealed class EventPipeline : IEventPipeline
     private readonly IDeviceManager _deviceManager;
     private readonly IModeManager _modeManager;
     private readonly IActionRegistry _actionRegistry;
+    private readonly IProfileState _profileState;
     private readonly ILogger<EventPipeline> _logger;
 
     // Functor cache keyed by BoundAction reference. Ensures stateful functors (e.g. Toggle)
@@ -36,12 +37,16 @@ public sealed class EventPipeline : IEventPipeline
         IDeviceManager deviceManager,
         IModeManager modeManager,
         IActionRegistry actionRegistry,
+        IProfileState profileState,
         ILogger<EventPipeline> logger)
     {
         _deviceManager = deviceManager;
         _modeManager = modeManager;
         _actionRegistry = actionRegistry;
+        _profileState = profileState;
         _logger = logger;
+
+        _profileState.ProfileChanged += OnProfileChanged;
     }
 
     /// <inheritdoc/>
@@ -83,7 +88,19 @@ public sealed class EventPipeline : IEventPipeline
             return;
 
         Stop();
+        _profileState.ProfileChanged -= OnProfileChanged;
         _disposed = true;
+    }
+
+    private void OnProfileChanged(object? sender, ProfileModel? profile)
+    {
+        _profile = profile;
+        _functorCache.Clear();
+
+        _logger.LogTrace(
+            "Event pipeline refreshed action functor cache after profile change; running={IsRunning}, profile={ProfileName}",
+            IsRunning,
+            profile?.Name ?? "(null)");
     }
 
     private void OnInputReceived(object? sender, InputEvent rawEvent)

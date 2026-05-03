@@ -43,6 +43,12 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     private int _editVJoyAxisIndex = 1;
     private int _editVJoyButtonIndex = 1;
     private int _editVJoyHatIndex = 1;
+    private int _editButtonsToAxesXAxisIndex = 1;
+    private int _editButtonsToAxesYAxisIndex = 2;
+    private int _editDirectionalUpButtonId = 1;
+    private int _editDirectionalDownButtonId = 2;
+    private int _editDirectionalLeftButtonId = 3;
+    private int _editDirectionalRightButtonId = 4;
     private string _editTargetModeName = string.Empty;
     private string _editMacroKeys = string.Empty;
     private string _editMapToKeyboardKeys = string.Empty;
@@ -105,6 +111,12 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
                 this.WhenAnyValue(x => x.EditVJoyAxisIndex).Select(_ => Unit.Default),
                 this.WhenAnyValue(x => x.EditVJoyButtonIndex).Select(_ => Unit.Default),
                 this.WhenAnyValue(x => x.EditVJoyHatIndex).Select(_ => Unit.Default),
+                this.WhenAnyValue(x => x.EditButtonsToAxesXAxisIndex).Select(_ => Unit.Default),
+                this.WhenAnyValue(x => x.EditButtonsToAxesYAxisIndex).Select(_ => Unit.Default),
+                this.WhenAnyValue(x => x.EditDirectionalUpButtonId).Select(_ => Unit.Default),
+                this.WhenAnyValue(x => x.EditDirectionalDownButtonId).Select(_ => Unit.Default),
+                this.WhenAnyValue(x => x.EditDirectionalLeftButtonId).Select(_ => Unit.Default),
+                this.WhenAnyValue(x => x.EditDirectionalRightButtonId).Select(_ => Unit.Default),
                 this.WhenAnyValue(x => x.EditTargetModeName).Select(_ => Unit.Default),
                 this.WhenAnyValue(x => x.EditMacroKeys).Select(_ => Unit.Default),
                 this.WhenAnyValue(x => x.EditMapToKeyboardKeys).Select(_ => Unit.Default),
@@ -209,6 +221,48 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _editVJoyHatIndex, value);
     }
 
+    /// <summary>Gets or sets the X axis index for the selected buttons-to-axes action.</summary>
+    public int EditButtonsToAxesXAxisIndex
+    {
+        get => _editButtonsToAxesXAxisIndex;
+        set => this.RaiseAndSetIfChanged(ref _editButtonsToAxesXAxisIndex, value);
+    }
+
+    /// <summary>Gets or sets the Y axis index for the selected buttons-to-axes action.</summary>
+    public int EditButtonsToAxesYAxisIndex
+    {
+        get => _editButtonsToAxesYAxisIndex;
+        set => this.RaiseAndSetIfChanged(ref _editButtonsToAxesYAxisIndex, value);
+    }
+
+    /// <summary>Gets or sets the source button ID used for the Up direction.</summary>
+    public int EditDirectionalUpButtonId
+    {
+        get => _editDirectionalUpButtonId;
+        set => this.RaiseAndSetIfChanged(ref _editDirectionalUpButtonId, value);
+    }
+
+    /// <summary>Gets or sets the source button ID used for the Down direction.</summary>
+    public int EditDirectionalDownButtonId
+    {
+        get => _editDirectionalDownButtonId;
+        set => this.RaiseAndSetIfChanged(ref _editDirectionalDownButtonId, value);
+    }
+
+    /// <summary>Gets or sets the source button ID used for the Left direction.</summary>
+    public int EditDirectionalLeftButtonId
+    {
+        get => _editDirectionalLeftButtonId;
+        set => this.RaiseAndSetIfChanged(ref _editDirectionalLeftButtonId, value);
+    }
+
+    /// <summary>Gets or sets the source button ID used for the Right direction.</summary>
+    public int EditDirectionalRightButtonId
+    {
+        get => _editDirectionalRightButtonId;
+        set => this.RaiseAndSetIfChanged(ref _editDirectionalRightButtonId, value);
+    }
+
     /// <summary>Gets or sets the target mode name for the change-mode action config form.</summary>
     public string EditTargetModeName
     {
@@ -260,6 +314,12 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets whether the map-to-keyboard config section should be shown.</summary>
     public bool ShowMapToKeyboardConfig => SelectedBoundAction?.IsMapToKeyboard ?? false;
+
+    /// <summary>Gets whether the buttons-to-hat config section should be shown.</summary>
+    public bool ShowButtonsToHatConfig => SelectedBoundAction?.IsButtonsToHat ?? false;
+
+    /// <summary>Gets whether the buttons-to-axes config section should be shown.</summary>
+    public bool ShowButtonsToAxesConfig => SelectedBoundAction?.IsButtonsToAxes ?? false;
 
     /// <summary>Gets whether any config section is visible (i.e. a non-inherited action is selected).</summary>
     public bool ShowConfigPanel => SelectedBoundAction is not null && !SelectedBoundAction.IsInherited;
@@ -415,6 +475,8 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         this.RaisePropertyChanged(nameof(ShowChangeModeConfig));
         this.RaisePropertyChanged(nameof(ShowMacroConfig));
         this.RaisePropertyChanged(nameof(ShowMapToKeyboardConfig));
+        this.RaisePropertyChanged(nameof(ShowButtonsToHatConfig));
+        this.RaisePropertyChanged(nameof(ShowButtonsToAxesConfig));
         this.RaisePropertyChanged(nameof(ShowConfigPanel));
         this.RaisePropertyChanged(nameof(ShowInheritedPanel));
 
@@ -435,6 +497,23 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
                 EditVJoyDeviceId = cfg?["vjoyId"]?.GetValue<int>() ?? 1;
                 EditVJoyHatIndex = cfg?["hatIndex"]?.GetValue<int>() ?? 1;
                 break;
+            case ButtonsToHatDescriptor.ActionTag:
+                EditVJoyDeviceId = cfg?["vjoyId"]?.GetValue<int>() ?? 1;
+                EditVJoyHatIndex = cfg?["hatIndex"]?.GetValue<int>() ?? 1;
+                EditDirectionalUpButtonId = cfg?["upButtonId"]?.GetValue<int>() ?? 1;
+                EditDirectionalDownButtonId = cfg?["downButtonId"]?.GetValue<int>() ?? 2;
+                EditDirectionalLeftButtonId = cfg?["leftButtonId"]?.GetValue<int>() ?? 3;
+                EditDirectionalRightButtonId = cfg?["rightButtonId"]?.GetValue<int>() ?? 4;
+                break;
+            case ButtonsToAxesDescriptor.ActionTag:
+                EditVJoyDeviceId = cfg?["vjoyId"]?.GetValue<int>() ?? 1;
+                EditButtonsToAxesXAxisIndex = cfg?["xAxisIndex"]?.GetValue<int>() ?? 1;
+                EditButtonsToAxesYAxisIndex = cfg?["yAxisIndex"]?.GetValue<int>() ?? 2;
+                EditDirectionalUpButtonId = cfg?["upButtonId"]?.GetValue<int>() ?? 1;
+                EditDirectionalDownButtonId = cfg?["downButtonId"]?.GetValue<int>() ?? 2;
+                EditDirectionalLeftButtonId = cfg?["leftButtonId"]?.GetValue<int>() ?? 3;
+                EditDirectionalRightButtonId = cfg?["rightButtonId"]?.GetValue<int>() ?? 4;
+                break;
             case ChangeModeActionDescriptor.ActionTag:
                 EditTargetModeName = cfg?["targetMode"]?.GetValue<string>() ?? string.Empty;
                 break;
@@ -452,6 +531,14 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     {
         if (SelectedNewActionType is null || SelectedInput is null) return;
         if (SelectedEditModeEntry is null) return;
+        if (IsMultiButtonAction(SelectedNewActionType.Tag) && SelectedInput.InputType != InputType.JoystickButton)
+        {
+            _logger.LogWarning(
+                "Cannot add action {ActionTag} to non-button input type {InputType}",
+                SelectedNewActionType.Tag,
+                SelectedInput.InputType);
+            return;
+        }
 
         var binding = FindOrCreateBinding(create: true);
         if (binding is null) return;
@@ -469,23 +556,62 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         var insertIdx = BoundActions.Count(bvm => !bvm.IsInherited);
         BoundActions.Insert(insertIdx, vm);
         SelectedBoundAction = vm;
+        SyncMultiButtonBindings(newAction);
+        RebuildBoundActions();
+        SelectedBoundAction = BoundActions.FirstOrDefault(bvm => !bvm.IsInherited && ReferenceEquals(bvm.Model, newAction))
+                           ?? BoundActions.FirstOrDefault(bvm => !bvm.IsInherited && GetMappingId(bvm.Model.Configuration) == GetMappingId(newAction.Configuration))
+                           ?? BoundActions.FirstOrDefault(bvm => !bvm.IsInherited);
         _profileState.NotifyProfileModified();
     }
 
-    private static JsonObject? BuildDefaultConfig(string tag) => tag switch
+    private JsonObject? BuildDefaultConfig(string tag)
     {
-        VJoyAxisDescriptor.ActionTag   => new JsonObject { ["vjoyId"] = 1, ["axisIndex"]   = 1 },
-        VJoyButtonDescriptor.ActionTag => new JsonObject { ["vjoyId"] = 1, ["buttonIndex"] = 1 },
-        VJoyHatDescriptor.ActionTag    => new JsonObject { ["vjoyId"] = 1, ["hatIndex"]    = 1 },
-        ChangeModeActionDescriptor.ActionTag  => new JsonObject { ["targetMode"] = string.Empty },
-        MacroActionDescriptor.ActionTag       => new JsonObject { ["keys"] = string.Empty, ["onPress"] = true },
-        MapToKeyboardActionDescriptor.ActionTag => new JsonObject { ["keys"] = string.Empty, ["behavior"] = "Hold" },
-        _ => null,
-    };
+        var selectedButtonId = SelectedInput?.Identifier ?? 1;
+
+        return tag switch
+        {
+            VJoyAxisDescriptor.ActionTag   => new JsonObject { ["vjoyId"] = 1, ["axisIndex"]   = 1 },
+            VJoyButtonDescriptor.ActionTag => new JsonObject { ["vjoyId"] = 1, ["buttonIndex"] = 1 },
+            VJoyHatDescriptor.ActionTag    => new JsonObject { ["vjoyId"] = 1, ["hatIndex"]    = 1 },
+            ButtonsToHatDescriptor.ActionTag => new JsonObject
+            {
+                ["mappingId"] = Guid.NewGuid().ToString("N"),
+                ["vjoyId"] = 1,
+                ["hatIndex"] = 1,
+                ["upButtonId"] = selectedButtonId,
+                ["downButtonId"] = selectedButtonId,
+                ["leftButtonId"] = selectedButtonId,
+                ["rightButtonId"] = selectedButtonId,
+            },
+            ButtonsToAxesDescriptor.ActionTag => new JsonObject
+            {
+                ["mappingId"] = Guid.NewGuid().ToString("N"),
+                ["vjoyId"] = 1,
+                ["xAxisIndex"] = 1,
+                ["yAxisIndex"] = 2,
+                ["upButtonId"] = selectedButtonId,
+                ["downButtonId"] = selectedButtonId,
+                ["leftButtonId"] = selectedButtonId,
+                ["rightButtonId"] = selectedButtonId,
+            },
+            ChangeModeActionDescriptor.ActionTag  => new JsonObject { ["targetMode"] = string.Empty },
+            MacroActionDescriptor.ActionTag       => new JsonObject { ["keys"] = string.Empty, ["onPress"] = true },
+            MapToKeyboardActionDescriptor.ActionTag => new JsonObject { ["keys"] = string.Empty, ["behavior"] = "Hold" },
+            _ => null,
+        };
+    }
 
     private void RemoveAction()
     {
         if (SelectedBoundAction is null || SelectedBoundAction.IsInherited) return;
+
+        if (IsMultiButtonAction(SelectedBoundAction.ActionTag))
+        {
+            RemoveSynchronizedMultiButtonActions(SelectedBoundAction.Model);
+            RebuildBoundActions();
+            _profileState.NotifyProfileModified();
+            return;
+        }
 
         var binding = FindOrCreateBinding(create: false);
         if (binding is null) return;
@@ -554,6 +680,27 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
                 ["vjoyId"]   = EditVJoyDeviceId,
                 ["hatIndex"] = EditVJoyHatIndex,
             },
+            ButtonsToHatDescriptor.ActionTag => new JsonObject
+            {
+                ["mappingId"] = GetOrCreateMappingId(model.Configuration),
+                ["vjoyId"] = EditVJoyDeviceId,
+                ["hatIndex"] = EditVJoyHatIndex,
+                ["upButtonId"] = EditDirectionalUpButtonId,
+                ["downButtonId"] = EditDirectionalDownButtonId,
+                ["leftButtonId"] = EditDirectionalLeftButtonId,
+                ["rightButtonId"] = EditDirectionalRightButtonId,
+            },
+            ButtonsToAxesDescriptor.ActionTag => new JsonObject
+            {
+                ["mappingId"] = GetOrCreateMappingId(model.Configuration),
+                ["vjoyId"] = EditVJoyDeviceId,
+                ["xAxisIndex"] = EditButtonsToAxesXAxisIndex,
+                ["yAxisIndex"] = EditButtonsToAxesYAxisIndex,
+                ["upButtonId"] = EditDirectionalUpButtonId,
+                ["downButtonId"] = EditDirectionalDownButtonId,
+                ["leftButtonId"] = EditDirectionalLeftButtonId,
+                ["rightButtonId"] = EditDirectionalRightButtonId,
+            },
             ChangeModeActionDescriptor.ActionTag => new JsonObject
             {
                 ["targetMode"] = EditTargetModeName,
@@ -571,17 +718,195 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
             _ => model.Configuration,
         };
 
-        // Rebuild VM at current index to refresh summary.
-        var idx = BoundActions.IndexOf(SelectedBoundAction);
-        if (idx >= 0)
+        SyncMultiButtonBindings(model);
+
+        if (IsMultiButtonAction(model.ActionTag))
         {
-            var refreshed = new BoundActionViewModel(model, _actionRegistry);
-            BoundActions[idx] = refreshed;
-            SelectedBoundAction = refreshed;
+            var mappingId = GetMappingId(model.Configuration);
+            RebuildBoundActions();
+            SelectedBoundAction = mappingId is null
+                ? BoundActions.FirstOrDefault(vm => !vm.IsInherited)
+                : BoundActions.FirstOrDefault(vm =>
+                    !vm.IsInherited &&
+                    vm.ActionTag == model.ActionTag &&
+                    GetMappingId(vm.Model.Configuration) == mappingId);
+        }
+        else
+        {
+            // Rebuild VM at current index to refresh summary.
+            var idx = BoundActions.IndexOf(SelectedBoundAction);
+            if (idx >= 0)
+            {
+                var refreshed = new BoundActionViewModel(model, _actionRegistry);
+                BoundActions[idx] = refreshed;
+                SelectedBoundAction = refreshed;
+            }
         }
 
         _profileState.NotifyProfileModified();
         _logger.LogTrace("Action config applied for tag {Tag}", model.ActionTag);
+    }
+
+    private void SyncMultiButtonBindings(BoundAction model)
+    {
+        if (!IsMultiButtonAction(model.ActionTag)) return;
+
+        var profile = _profileState.CurrentProfile;
+        if (profile is null || SelectedDevice is null || SelectedEditModeEntry is null) return;
+
+        var mappingId = GetOrCreateMappingId(model.Configuration);
+        var mode = profile.Modes.FirstOrDefault(m => m.Name == SelectedEditModeEntry.Name);
+        if (mode is null) return;
+
+        var referencedButtonIds = GetReferencedButtonIds(model.Configuration);
+        var deviceGuid = SelectedDevice.Device.Guid;
+
+        foreach (var binding in mode.Bindings
+                     .Where(b => b.DeviceGuid == deviceGuid && b.InputType == InputType.JoystickButton))
+        {
+            var peerAction = binding.Actions.FirstOrDefault(a =>
+                a.ActionTag == model.ActionTag &&
+                GetMappingId(a.Configuration) == mappingId);
+
+            if (peerAction is null) continue;
+
+            if (!referencedButtonIds.Contains(binding.Identifier))
+            {
+                binding.Actions.Remove(peerAction);
+                continue;
+            }
+
+            if (!ReferenceEquals(peerAction, model))
+            {
+                peerAction.Configuration = (JsonObject?)model.Configuration?.DeepClone();
+            }
+        }
+
+        foreach (var buttonId in referencedButtonIds)
+        {
+            var binding = FindOrCreateButtonBinding(mode, deviceGuid, buttonId, create: true);
+            if (binding is null) continue;
+
+            var peerAction = binding.Actions.FirstOrDefault(a =>
+                a.ActionTag == model.ActionTag &&
+                GetMappingId(a.Configuration) == mappingId);
+
+            if (peerAction is null)
+            {
+                if (ReferenceEquals(model, binding.Actions.FirstOrDefault(a => ReferenceEquals(a, model))))
+                {
+                    continue;
+                }
+
+                binding.Actions.Add(new BoundAction
+                {
+                    ActionTag = model.ActionTag,
+                    Configuration = (JsonObject?)model.Configuration?.DeepClone(),
+                });
+            }
+            else if (!ReferenceEquals(peerAction, model))
+            {
+                peerAction.Configuration = (JsonObject?)model.Configuration?.DeepClone();
+            }
+        }
+    }
+
+    private void RemoveSynchronizedMultiButtonActions(BoundAction model)
+    {
+        var profile = _profileState.CurrentProfile;
+        if (profile is null || SelectedDevice is null || SelectedEditModeEntry is null)
+        {
+            RemoveCurrentActionOnly(model);
+            return;
+        }
+
+        var mappingId = GetMappingId(model.Configuration);
+        if (mappingId is null)
+        {
+            RemoveCurrentActionOnly(model);
+            return;
+        }
+
+        var mode = profile.Modes.FirstOrDefault(m => m.Name == SelectedEditModeEntry.Name);
+        if (mode is null)
+        {
+            RemoveCurrentActionOnly(model);
+            return;
+        }
+
+        var deviceGuid = SelectedDevice.Device.Guid;
+        foreach (var binding in mode.Bindings
+                     .Where(b => b.DeviceGuid == deviceGuid && b.InputType == InputType.JoystickButton))
+        {
+            binding.Actions.RemoveAll(action =>
+                action.ActionTag == model.ActionTag &&
+                GetMappingId(action.Configuration) == mappingId);
+        }
+    }
+
+    private void RemoveCurrentActionOnly(BoundAction model)
+    {
+        var binding = FindOrCreateBinding(create: false);
+        binding?.Actions.Remove(model);
+    }
+
+    private static bool IsMultiButtonAction(string actionTag) =>
+        actionTag is ButtonsToHatDescriptor.ActionTag or ButtonsToAxesDescriptor.ActionTag;
+
+    private static string GetOrCreateMappingId(JsonObject? configuration)
+    {
+        if (configuration?["mappingId"]?.GetValue<string>() is { Length: > 0 } mappingId)
+        {
+            return mappingId;
+        }
+
+        mappingId = Guid.NewGuid().ToString("N");
+        configuration?["mappingId"] = mappingId;
+        return mappingId;
+    }
+
+    private static string? GetMappingId(JsonObject? configuration) =>
+        configuration?["mappingId"]?.GetValue<string>();
+
+    private static HashSet<int> GetReferencedButtonIds(JsonObject? configuration)
+    {
+        HashSet<int> buttonIds = [];
+
+        AddIfPositive(buttonIds, configuration?["upButtonId"]?.GetValue<int>() ?? 0);
+        AddIfPositive(buttonIds, configuration?["downButtonId"]?.GetValue<int>() ?? 0);
+        AddIfPositive(buttonIds, configuration?["leftButtonId"]?.GetValue<int>() ?? 0);
+        AddIfPositive(buttonIds, configuration?["rightButtonId"]?.GetValue<int>() ?? 0);
+
+        return buttonIds;
+    }
+
+    private static void AddIfPositive(ISet<int> target, int value)
+    {
+        if (value > 0)
+        {
+            target.Add(value);
+        }
+    }
+
+    private static InputBinding? FindOrCreateButtonBinding(Mode mode, Guid deviceGuid, int buttonId, bool create)
+    {
+        var binding = mode.Bindings.FirstOrDefault(
+            b => b.DeviceGuid == deviceGuid &&
+                 b.InputType == InputType.JoystickButton &&
+                 b.Identifier == buttonId);
+
+        if (binding is null && create)
+        {
+            binding = new InputBinding
+            {
+                DeviceGuid = deviceGuid,
+                InputType = InputType.JoystickButton,
+                Identifier = buttonId,
+            };
+            mode.Bindings.Add(binding);
+        }
+
+        return binding;
     }
 
     private void OverrideInheritedAction()
