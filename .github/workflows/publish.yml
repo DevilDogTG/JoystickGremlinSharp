@@ -13,6 +13,10 @@ jobs:
     permissions:
       contents: write
 
+    env:
+      SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
+      SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,11 +65,8 @@ jobs:
             --outputDir installer/out/
 
       - name: Sign main EXE
-        if: ${{ secrets.SIGNING_CERT_BASE64 != '' }}
+        if: ${{ env.SIGNING_CERT_BASE64 != '' }}
         shell: pwsh
-        env:
-          SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
-          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
         run: |
           $certPath = Join-Path $env:RUNNER_TEMP 'signing.pfx'
           [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:SIGNING_CERT_BASE64))
@@ -85,11 +86,8 @@ jobs:
           Remove-Item $certPath -Force
 
       - name: Sign installer EXE
-        if: ${{ secrets.SIGNING_CERT_BASE64 != '' }}
+        if: ${{ env.SIGNING_CERT_BASE64 != '' }}
         shell: pwsh
-        env:
-          SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
-          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
         run: |
           $certPath = Join-Path $env:RUNNER_TEMP 'signing.pfx'
           [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:SIGNING_CERT_BASE64))
