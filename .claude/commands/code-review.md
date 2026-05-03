@@ -10,6 +10,10 @@ description: >
 
 Review the changes on this branch compared to `main` using the instructions below.
 
+If the review is for an existing PR, do not stop at local analysis: after producing the review,
+publish it to GitHub as a PR review, then after fixes are applied publish a follow-up PR comment
+summarizing what was fixed and the resulting review status.
+
 
 # C# & Avalonia Code Review Skill
 
@@ -138,6 +142,26 @@ describe a refactor path:
 Only include this section if there are ≥2 CRITICAL findings or the architecture is
 fundamentally inverted (logic in View, data in ViewModel without encapsulation, etc.).
 
+## Step 6 — Publish Review To GitHub
+
+When a PR number is available, publish the review result instead of leaving it only in terminal output:
+
+1. Choose the GitHub review state from the findings:
+   - **APPROVE**: no blocking findings remain
+   - **COMMENT**: findings are advisory or informational only
+   - **REQUEST_CHANGES**: one or more blocking findings remain
+2. Submit the review to the PR with a concise summary of the findings
+3. Verify the PR now shows the submitted review state
+
+If fixes are made after the initial review:
+
+1. Re-review the updated diff
+2. Post a PR comment with a **fix summary**:
+   - what issues were fixed
+   - what issues, if any, still remain
+   - the resulting final status (approve / comment / request changes)
+3. Update the PR review status if the verdict changed after the fixes
+
 
 ## Tone & Style Rules
 
@@ -147,3 +171,4 @@ fundamentally inverted (logic in View, data in ViewModel without encapsulation, 
   e.g., *Avalonia Documentation → Reactive Bindings*, *ReactiveUI → WhenAnyValue*
 - If something is genuinely fine, say so. Don't pad findings.
 - If you need to assume a .NET version or library version, state it once at the top of the review.
+- A review is not complete until it is published to the PR when a PR exists.

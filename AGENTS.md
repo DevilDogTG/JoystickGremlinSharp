@@ -688,8 +688,8 @@ Specialized skills are available in `.claude/commands/` to automate common tasks
 
 | Skill | Purpose | Usage |
 |---|---|---|
-| `code-review` | Structured code review for C#/.NET/Avalonia code. Checks ReactiveUI patterns, XAML bindings, threading, C# correctness, Avalonia conventions. Surfaces CRITICAL (crashes, deadlocks, data loss), WARNING (perf, memory, maintenance), and STYLE (idiom violations). | Invoke when PR code needs review or before pushing |
-| `finish-feature` | Automates finalization of a feature branch: commit → push → PR → code review → summary. Five-step workflow for release-ready code. | Use after completing feature implementation |
+| `code-review` | Structured code review for C#/.NET/Avalonia code. Checks ReactiveUI patterns, XAML bindings, threading, C# correctness, Avalonia conventions. Surfaces CRITICAL (crashes, deadlocks, data loss), WARNING (perf, memory, maintenance), and STYLE (idiom violations). Publishes the review to the PR on GitHub when a PR exists, then posts a fix-summary follow-up comment after fixes are applied. | Invoke when PR code needs review or before pushing |
+| `finish-feature` | Automates finalization of a feature branch: commit → push → PR → code review → summary. The workflow now publishes the GitHub PR review and posts a fix-status summary comment instead of stopping at terminal output only. | Use after completing feature implementation |
 
 **Skill locations**:
 - `.claude/commands/code-review.md` — C#/.NET/Avalonia code review checklist
@@ -727,3 +727,9 @@ gh pr create --base main --head <branch> --title "..." --body "..."
 - Metadata: Read-only
 - Contents: Read-only
 - Pull requests: Read and write
+
+### PR Review Publishing
+
+- When a PR review is performed, always publish it to GitHub with `gh pr review`; terminal-only review output is not sufficient.
+- After follow-up fixes are pushed, post a `gh pr comment` fix-summary note describing what was fixed, what remains, and the resulting review status.
+- **GitHub limitation**: the PR author cannot submit `Request changes` on their own PR. In that case, use a comment review plus a PR comment to record the blocking verdict and required fixes.
