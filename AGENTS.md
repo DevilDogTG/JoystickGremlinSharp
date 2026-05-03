@@ -8,18 +8,17 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > Legacy folders `doc/`, `gfx/`, and `gh_page/` have been removed (Python Sphinx docs and
 > GitHub Pages from the original project — not applicable to the C# rewrite).
 
-> **Phase status**: Phases 4–9 complete. Release pipeline complete and verified. 135 tests passing, 0 build warnings.
-> All PRs merged (#2–#10). Release v10.0.3 published: `JoystickGremlinSharp-10.0.3-Setup.exe` with
-> auto-generated release notes. Workflow migrated to main-first + tag-based release (no merge-back). ✅
-> PR #11 (`features/ui-fixes-polish`) in review: sidebar icon compact layout, parent-mode binding fix,
-> tree-mode visual display for Profile page and toolbar ComboBox.
-> GitHub Actions permissions must be set to "Allow all actions and reusable workflows"
-> (Settings → Actions → General) for workflows to run on `main`.
-> Release pipeline requires either `RELEASE_TOKEN` secret (fine-grained PAT: Contents+PRs write)
-> OR repo setting: Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests".
-> **Avalonia 11.x + ReactiveUI.Avalonia + ReactiveUI**.
-> **FluentAssertions 8.9.0** — Xceed license accepted for this project.
-> Remaining: response curve editor (axes), condition-based action pipeline.
+> **Status**: Phase complete. All core features implemented and released.
+> - Release v10.0.3 published with auto-generated release notes
+> - Workflow: main-first + tag-based release (no merge-back)
+> - 135 tests passing, 0 build warnings
+> - Latest: PR #19 (`features/bindings-page-ux-improvements`) — improved Bindings page UX
+> - GitHub Actions permissions must be set to "Allow all actions and reusable workflows"
+>   (Settings → Actions → General) for workflows to run on `main`
+> - Release pipeline requires either `RELEASE_TOKEN` secret (fine-grained PAT: Contents+PRs write)
+>   OR repo setting: Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"
+> - **Skills**: Updated code-review (C#/.NET/Avalonia), new finish-feature (automated release workflow)
+> - **Remaining optional features**: response curve editor (axes), condition-based action pipeline
 
 
 ## Project Overview
@@ -50,8 +49,11 @@ vJoy, supporting macros, modes, response curves, and condition-based action pipe
 ## Build, Lint, and Test Commands
 
 ```powershell
-# Build the solution
+# Build the solution (Debug mode)
 dotnet build
+
+# Build with Release config (matches CI gate -warnaserror)
+dotnet build --configuration Release -warnaserror
 
 # Run all tests
 dotnet test
@@ -128,8 +130,9 @@ src/JoystickGremlin.App/
                       ProfilePageViewModel — mode list (DFS tree order), add/remove/edit mode,
                                             parent-mode selection (AvailableParentNames rebuilt before EditParentName is set)
                       SettingsPageViewModel — app settings via ISettingsService + IStartupService
-                      BindingsPageViewModel — three-panel editor: device→input→bound actions
-                      BoundActionViewModel  — wraps BoundAction; computes ConfigSummary
+                      BindingsPageViewModel — mode selector (independent of runtime mode), inherited bindings,
+                                             auto-apply config (debounced 300ms)
+                      BoundActionViewModel  — wraps BoundAction; computes ConfigSummary; tracks InheritedFromMode
                       InputDescriptorViewModel — represents single axis/button/hat slot
                       ModeViewModel         — wraps Mode for Profile page; Depth + TreePadding (left-indent only)
                       ModeTreeEntry         — record(Name, IndentedLabel) for toolbar ComboBox tree display
@@ -416,6 +419,43 @@ public interface IProfileRepository
 Use `JsonSerializerOptions` with `WriteIndented = true` for human-readable profile files.
 
 
+## Profile Hierarchy & Inheritance
+
+Modes form a **tree hierarchy** within a profile, enabling inheritance of bindings to reduce duplication.
+
+### Hierarchy Model
+
+- Each `Mode` has an optional `ParentModeName` (string?, null = root mode)
+- Multiple root modes are allowed (forest, not strict tree)
+- Circular references are prevented at validation time
+- At runtime, modes form an **active mode stack** via `IModeManager`
+
+### Binding Resolution
+
+When resolving input bindings for an active mode:
+
+1. Check current mode for matching binding (device + input match)
+2. If not found, walk up the inheritance chain via `GetInheritanceChain(modeName, profile)`
+3. Stop at **first matching binding** — inherits the action from ancestor
+4. If no ancestor has it, the input fires no action (silent pass-through)
+
+**Key semantics**:
+- No merge; single binding per input slot per mode lineage
+- First-match-wins (child always shadows parent, even if child binding is intentionally "empty")
+- Parent rename orphans children (no automatic name tracking); deletion orphans children (no cascade)
+
+### Bindings Page UX
+
+The Bindings page (App/Views/BindingsPageView.axaml) includes three UX enhancements for hierarchy editing:
+
+| Feature | Description |
+|---|---|
+| **Mode Selector** | Independent `ComboBox` (AvailableEditModeEntries) lets users edit any mode without changing the runtime active mode. Decoupled from IModeManager.ActiveModeName. |
+| **Inherited Bindings Display** | RebuildBoundActions walks the inheritance chain and marks actions with `InheritedFromMode` (string?). Child actions shown as read-only "(↑ From: ParentName)" entries, muted opacity. |
+| **Override Button** | When an inherited action is selected, "Override in this mode" button copies the action into the current edit mode, removing inheritance. |
+| **Auto-Apply Config** | Config changes auto-save via Observable.Merge throttled at 300ms (no manual Apply button). |
+
+
 ## Testing Conventions
 
 - Tests go in `tests/JoystickGremlin.Core.Tests/`
@@ -553,16 +593,31 @@ hotfix/description  ──fix──►  PR → main  ──rebase-merge──►
 | Publish | `publish.yml` | Push tag `v*` | Build installer, create GitHub Release |
 
 
+## AI Skills & Workflows
+
+Specialized skills are available in `.claude/commands/` to automate common tasks:
+
+| Skill | Purpose | Usage |
+|---|---|---|
+| `code-review` | Structured code review for C#/.NET/Avalonia code. Checks ReactiveUI patterns, XAML bindings, threading, C# correctness, Avalonia conventions. Surfaces CRITICAL (crashes, deadlocks, data loss), WARNING (perf, memory, maintenance), and STYLE (idiom violations). | Invoke when PR code needs review or before pushing |
+| `finish-feature` | Automates finalization of a feature branch: commit → push → PR → code review → summary. Five-step workflow for release-ready code. | Use after completing feature implementation |
+
+**Skill locations**:
+- `.claude/commands/code-review.md` — C#/.NET/Avalonia code review checklist
+- `.claude/commands/finish-feature.md` — Release workflow automation
+
+
 ## Pre-commit Checks
 
 Before considering a task complete, run:
 
 ```powershell
-dotnet build
+dotnet build --configuration Release -warnaserror
 dotnet test
 ```
 
-> Current baseline: **135 tests, 0 failures**.
+> Current baseline: **135 tests, 0 failures, 0 build warnings**.
+
 
 
 ## GitHub Workflow
