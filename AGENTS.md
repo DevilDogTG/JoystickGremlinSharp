@@ -543,7 +543,36 @@ gh repo set-default DevilDogTG/JoystickGremlinSharp
 gh pr create --base main --head <branch> --title "..." --body "..."
 ```
 
+> **Agent note**: `gh` is installed at `C:\Program Files\GitHub CLI\gh.exe` but may not be on PATH.
+> Use `& "C:\Program Files\GitHub CLI\gh.exe"` in PowerShell if `gh` is not recognized.
+
 **Fine-grained PAT minimum permissions** (repository: `JoystickGremlinSharp` only):
 - Metadata: Read-only
 - Contents: Read-only
 - Pull requests: Read and write
+
+
+### Keeping a branch up to date (rebase, not merge)
+
+This repo enforces **rebase-merge** on all PRs. Always sync feature branches with rebase:
+
+```powershell
+# ✅ Correct — keeps history linear
+git fetch origin
+git rebase origin/main
+# resolve conflicts per file if needed, then:
+git add <file>
+git rebase --continue
+git push origin <branch> --force-with-lease
+
+# ❌ Wrong — creates merge commit, blocks GitHub rebase-merge
+git merge main
+```
+
+**Recovery if a branch already has merge commits:**
+```powershell
+# Create a clean branch from main, cherry-pick only real work commits
+git checkout -b <branch>-clean origin/main
+git cherry-pick <sha1> [<sha2> ...]   # skip empty ones with: git cherry-pick --skip
+git push origin HEAD:<original-branch> --force-with-lease
+```
