@@ -499,6 +499,35 @@ The workflow:
    renames the installer to `JoystickGremlinSharp-{version}-Setup.exe`, and creates a GitHub
    Release with auto-generated release notes and the versioned installer as the only asset
 
+### Hotfix Process
+
+Use a hotfix when `main` has a bug that needs an immediate patch release without waiting for
+the normal feature cycle.
+
+```
+hotfix/description  ──fix──►  PR → main  ──rebase-merge──►  release.yml (patch) ──►  vX.Y.(Z+1)
+```
+
+1. **Create a hotfix branch from `main`** (or from the specific tag if main has moved on):
+   ```powershell
+   git fetch origin
+   git checkout -b hotfix/description origin/main
+   # OR from a specific tag:
+   git checkout -b hotfix/description v10.1.2
+   ```
+2. **Implement the fix** — commit with `fix:` prefix; run `dotnet build && dotnet test`
+3. **Open PR → `main`** — same process as any feature PR:
+   ```powershell
+   git push -u origin hotfix/description
+   & "C:\Program Files\GitHub CLI\gh.exe" pr create --base main --head hotfix/description --title "fix: <description>" --body "..."
+   ```
+4. **Rebase-merge the PR into `main`** — the fix is now live on `main`
+5. **Trigger a patch release** — go to **Actions → Release → Run workflow**, select `main`,
+   choose `patch`, then follow the normal [Completing the Release](#completing-the-release) steps
+
+> **Note**: `tag.yml` only fires for `release/*` PRs, not `hotfix/*`. Always trigger `release.yml`
+> after merging a hotfix to create the proper patch release tag + installer.
+
 ### Building Locally
 
 ```powershell
@@ -526,7 +555,7 @@ dotnet build
 dotnet test
 ```
 
-> Current baseline: **131 tests, 0 failures** (as of `features/installer-systemtray`).
+> Current baseline: **135 tests, 0 failures**.
 
 
 ## GitHub Workflow
