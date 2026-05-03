@@ -36,13 +36,17 @@ if ($null -eq $Password) {
     $Password = Read-Host -AsSecureString -Prompt 'Certificate password'
     $Confirm  = Read-Host -AsSecureString -Prompt 'Confirm password'
 
-    $plain1 = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-                  [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password))
-    $plain2 = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-                  [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Confirm))
-
-    if ($plain1 -ne $plain2) {
-        throw 'Passwords do not match.'
+    $bstr1 = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
+    $bstr2 = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Confirm)
+    try {
+        $plain1 = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr1)
+        $plain2 = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr2)
+        if ($plain1 -ne $plain2) {
+            throw 'Passwords do not match.'
+        }
+    } finally {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr1)
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr2)
     }
 }
 
