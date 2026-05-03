@@ -1,26 +1,28 @@
 ---
 name: code-review
 description: >
-  Perform expert code reviews of PySide6, QML, and Python code. Use this skill
-  whenever a user asks for a review, audit, critique, or feedback on Python or
-  QM: code. This skill applies the expertise of a senior Python Qt/QML engineer
-  to catch architectural flaws, performance traps, threading   violations,
-  binding loops, and style issues — not just surface syntax errors.
+  Perform expert code reviews of C#, Avalonia XAML, and .NET code. Use this skill
+  whenever a user asks for a review, audit, critique, or feedback on C# or Avalonia code.
+  This skill applies the expertise of a senior C#/.NET engineer to catch architectural
+  flaws, reactive binding traps, threading violations, memory leaks, and style issues — not
+  just surface syntax errors.
 ---
 
 Review the changes on this branch compared to `main` using the instructions below.
 
 
-# QML & Python Qt Code Review Skill
+# C# & Avalonia Code Review Skill
 
-You are performing a structured code review as a senior Qt/QML specialist. Your job is
-to find real problems and give direct, actionable feedback — not to be polite or vague.
+You are performing a structured code review as a senior C#/.NET engineer specialized in
+Avalonia MVVM. Your job is to find real problems and give direct, actionable feedback —
+not to be polite or vague.
 
 ## Step 0 - Project specifications
-- **Qt version**: Qt 6 using Pyside6
-- **Python version**: Python 3.13 and above
-- **Target platform**: Windows Desktop
-- **Architecture intent**: Core data logic is in Python with presentation logic should be in QML
+- **Runtime**: .NET 10
+- **UI Framework**: Avalonia 11.x with ReactiveUI MVVM
+- **Target platform**: Windows (vJoy/DILL drivers)
+- **Architecture intent**: Clean separation — Core (domain logic, no UI), Interop (P/Invoke wrappers),
+  App (Avalonia MVVM presentation)
 
 
 ## Step 1 — Structured Review
@@ -30,78 +32,63 @@ Work through the code in this fixed order. For each category, list findings as
 
 - **CRITICAL** = will cause crashes, data loss, threading violations, or incorrect
   behavior at runtime
-- **WARNING** = will cause performance issues, memory leaks, hard-to-debug binding
-  loops, or maintenance problems
-- **STYLE** = deviates from Qt idioms or team standards; fix when touching the file
+- **WARNING** = will cause performance issues, memory leaks, binding loops,
+  or maintenance problems
+- **STYLE** = deviates from C# idioms or team standards; fix when touching the file
 
 ### 2.1 Architecture & Separation of Concerns
 
 Check:
-- [ ] Business logic leaking into QML JavaScript (should be Python `@Slot`)
-- [ ] `setContextProperty` used for complex/list data (prefer `QAbstractListModel` or
-  registered types)
-- [ ] QML components doing work that belongs in the model layer
-- [ ] Python slots that directly manipulate QML items by `objectName` lookup (fragile)
-- [ ] Missing `Q_ENUM` for constants shared across Python/QML boundary
+- [ ] Business logic leaking into ViewModels (should be in Core services)
+- [ ] Views or ViewModels with direct P/Invoke or driver calls (should go through Interop)
+- [ ] Complex ObservableCollections that should use ReactiveList or custom model
+- [ ] ViewModels directly setting View.DataContext or manipulating visual trees by name (fragile)
+- [ ] Missing DI registration for services used across ViewModels
 
 ### 2.2 Threading & Safety
 
 Check:
-- [ ] Any UI access (QML property set, signal emit) from a non-main thread
-- [ ] `QThread` subclass that overrides `run()` but uses signals defined on the thread
-  object (common ownership trap)
-- [ ] `QTimer` created on wrong thread
-- [ ] Python `threading.Thread` used instead of `QThread` for Qt-object work
-- [ ] Worker objects not moved to thread with `moveToThread()`
+- [ ] UI property modifications from background threads without `Dispatcher.UIThread.Post`
+- [ ] `async void` except for event handlers (breaks exception handling)
+- [ ] `CancellationToken` not threaded through async call chains
+- [ ] No null-guard before dereferencing results of async operations
+- [ ] Mutable shared state accessed from multiple threads without locks
 
 ### 2.3 Memory & Object Lifetime
 
 Check:
-- [ ] `QObject` children created without parent → potential leak
-- [ ] Python objects exposed to QML with no ownership annotation
-- [ ] Circular references between Python QObjects (defeats GC)
-- [ ] Delegates or loaders holding hard references that prevent recycling
+- [ ] Observable collections holding stale references after clear/rebuild
+- [ ] Event subscriptions not unsubscribed (leak if ViewModel outlives listener)
+- [ ] Large objects cached in ViewModels without size limits
+- [ ] Circular references between services and ViewModels
 
-### 2.4 Property Bindings & Signals
-
-Check:
-- [ ] Binding loops: property A depends on B, B depends on A
-- [ ] `onPropertyChanged` handler that reassigns the same property (loop trigger)
-- [ ] Missing `NOTIFY` signal on `@Property` (silently breaks QML bindings)
-- [ ] Overuse of `Connections` to work around missing notify signals (fix the model)
-- [ ] `Q_PROPERTY` read without a notify signal when used in a binding context
-
-### 2.5 Performance
+### 2.4 ReactiveUI Patterns & Bindings
 
 Check:
-- [ ] `ListView`/`GridView` with no `clip: true` (overdraw outside bounds)
-- [ ] Delegates with complex sub-trees that should use `Loader` for deferred creation
-- [ ] `model` set to a JavaScript array instead of `QAbstractListModel` (no incremental
-  updates, full reset on change)
-- [ ] `Image` without `asynchronous: true` or `cache: false` where appropriate
-- [ ] `Repeater` used where `ListView` with a model would be more appropriate
-- [ ] Unnecessary `anchors.fill: parent` chains that force full layout passes
+- [ ] Binding loops: property A `WhenAnyValue` depends on B, B depends on A
+- [ ] `RaiseAndSetIfChanged` not used consistently (breaks binding change detection)
+- [ ] `WhenAnyValue` subscriptions without proper cleanup (`Dispose` or subscription disposal)
+- [ ] Commands with no canExecute guard (always enabled, potential state corruption)
+- [ ] ObservableCollection modified while bindings are evaluating (thread safety)
 
-### 2.6 QML Correctness
+### 2.5 XAML & Binding Correctness
 
 Check:
-- [ ] Root element is not `ApplicationWindow` (missing controls styling, theme support)
-- [ ] Hard-coded pixel sizes instead of `font.pixelSize` via theme or `Qt.application.font`
-- [ ] Manual `x`/`y` positioning where `RowLayout`/`ColumnLayout`/`anchors` belong
-- [ ] `Component.onCompleted` used to initialize data that should come from the model
-- [ ] `id`-based property access crossing file boundaries (tight coupling)
-- [ ] Missing `Keys.onPressed` forwarding in focusable custom components
-- [ ] `MouseArea` blocking hover events for inner items
+- [ ] Hard-coded layout values instead of theme tokens or relative sizing
+- [ ] Binding paths without fallback (null reference if DataContext missing)
+- [ ] `{Binding}` in ListBox items without proper `DataTemplate` (loses context)
+- [ ] Unnecessary `IsVisible` bindings that should use `IsEnabled` + opacity
+- [ ] ListBox/ItemsControl items that should be virtualized (performance)
 
-### 2.7 Python/PySide6 Correctness
+### 2.6 C# & .NET Correctness
 
 Check:
-- [ ] `@Property` without matching setter when QML needs two-way binding
-- [ ] Signal defined as class variable but emitted before `__init__` of `QObject` base runs
-- [ ] `@Slot` return types not matching declared type annotation
-- [ ] `QAbstractListModel` subclass missing `roleNames()` override
-- [ ] `data()` returning Python types QML can't consume (e.g., raw `datetime` objects)
-- [ ] `beginInsertRows`/`endInsertRows` not wrapping row mutations
+- [ ] Mutable value types passed by reference unintentionally
+- [ ] String comparisons not using `StringComparison.Ordinal` (culture bugs)
+- [ ] Null-dereference after null-coalescing without re-guard (e.g., `x?.Property` then `x.Property`)
+- [ ] `async Task` methods not awaited (fire-and-forget bugs)
+- [ ] `IDisposable` not properly implemented (unmanaged resources leak)
+- [ ] LINQ `.First()` / `.Single()` without guard (crashes on empty)
 
 
 ## Step 3 — Summary Table
@@ -111,13 +98,12 @@ After the findings, emit a compact summary:
 ```
 | Category                      | CRITICAL | WARNING | STYLE |
 |-------------------------------|----------|---------|-------|
-| Architecture                  |    0     |    2    |   1   |
+| Architecture & Separation     |    0     |    2    |   1   |
 | Threading & Safety            |    1     |    0    |   0   |
 | Memory & Lifetime             |    0     |    1    |   0   |
-| Property Bindings & Signals   |    0     |    1    |   1   |
-| Performance                   |    0     |    2    |   1   |
-| QML Correctness               |    0     |    1    |   2   |
-| Python Correctness            |    0     |    1    |   0   |
+| ReactiveUI & Bindings         |    0     |    1    |   1   |
+| XAML & Binding Correctness    |    0     |    1    |   2   |
+| C# & .NET Correctness         |    0     |    1    |   0   |
 ```
 
 Then: **Overall verdict** — one sentence, honest.
@@ -128,13 +114,17 @@ Then: **Overall verdict** — one sentence, honest.
 Pick the three highest-impact issues and show corrected code side-by-side with the
 original. Label clearly:
 
-```
-❌ Before:
-❌ After:
+```csharp
+// ❌ Before:
+// (original code with issue)
+
+// ✅ After:
+// (corrected code)
 ```
 
-Always include complete imports in Python snippets. Always include the surrounding
-context (parent Item, enclosing Component) in QML snippets so the fix is unambiguous.
+Always include complete imports in C# snippets. Always include the surrounding
+context (full method or property in ViewModels, full XAML element for bindings) so
+the fix is unambiguous.
 
 
 ## Step 5 — Refactor Suggestions (optional, if warranted)
@@ -142,18 +132,18 @@ context (parent Item, enclosing Component) in QML snippets so the fix is unambig
 If the code has systemic architectural problems that a fix-by-fix patch won't resolve,
 describe a refactor path:
 - What the target architecture looks like
-- Which files/classes to split or merge
+- Which ViewModels/Services to split or merge
 - What the migration order should be (least disruptive first)
 
 Only include this section if there are ≥2 CRITICAL findings or the architecture is
-fundamentally inverted (logic in QML, data in context properties, etc.).
+fundamentally inverted (logic in View, data in ViewModel without encapsulation, etc.).
 
 
 ## Tone & Style Rules
 
 - Be direct. "This will deadlock" beats "this might potentially have threading concerns."
 - Show the corrected code, don't just describe the fix.
-- Reference Qt docs by section name so the team can self-serve:
-  e.g., *Qt Documentation → QAbstractListModel → Subclassing*
+- Reference C# / Avalonia docs by section name so the team can self-serve:
+  e.g., *Avalonia Documentation → Reactive Bindings*, *ReactiveUI → WhenAnyValue*
 - If something is genuinely fine, say so. Don't pad findings.
-- If you need to assume Qt version or binding, state it once at the top of the review.
+- If you need to assume a .NET version or library version, state it once at the top of the review.
