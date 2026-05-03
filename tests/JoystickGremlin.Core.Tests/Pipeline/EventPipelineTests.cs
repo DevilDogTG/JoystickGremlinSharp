@@ -36,10 +36,11 @@ public sealed class EventPipelineTests
         return profile;
     }
 
-    private static (EventPipeline pipeline, FakeDeviceManager deviceMgr, Mock<IModeManager> modeMgr, Mock<IActionRegistry> registry)
+    private static (EventPipeline pipeline, FakeDeviceManager deviceMgr, Mock<IModeManager> modeMgr, Mock<IActionRegistry> registry, ProfileState profileState)
         CreateSut(string activeMode = "Default")
     {
         var deviceMgr = new FakeDeviceManager();
+        var profileState = new ProfileState();
 
         var modeMgr = new Mock<IModeManager>();
         modeMgr.SetupGet(m => m.ActiveModeName).Returns(activeMode);
@@ -52,9 +53,10 @@ public sealed class EventPipelineTests
             deviceMgr,
             modeMgr.Object,
             registry.Object,
+            profileState,
             NullLogger<EventPipeline>.Instance);
 
-        return (pipeline, deviceMgr, modeMgr, registry);
+        return (pipeline, deviceMgr, modeMgr, registry, profileState);
     }
 
     // ── IsRunning ──────────────────────────────────────────────────────────
@@ -62,14 +64,14 @@ public sealed class EventPipelineTests
     [Fact]
     public void IsRunning_BeforeStart_IsFalse()
     {
-        var (pipeline, _, _, _) = CreateSut();
+        var (pipeline, _, _, _, _) = CreateSut();
         pipeline.IsRunning.Should().BeFalse();
     }
 
     [Fact]
     public void IsRunning_AfterStart_IsTrue()
     {
-        var (pipeline, _, modeMgr, _) = CreateSut();
+        var (pipeline, _, modeMgr, _, _) = CreateSut();
         pipeline.Start(new ProfileModel());
         pipeline.IsRunning.Should().BeTrue();
         pipeline.Stop();
@@ -78,7 +80,7 @@ public sealed class EventPipelineTests
     [Fact]
     public void IsRunning_AfterStop_IsFalse()
     {
-        var (pipeline, _, _, _) = CreateSut();
+        var (pipeline, _, _, _, _) = CreateSut();
         pipeline.Start(new ProfileModel());
         pipeline.Stop();
         pipeline.IsRunning.Should().BeFalse();
@@ -90,7 +92,7 @@ public sealed class EventPipelineTests
     public async Task InputReceived_MatchingBinding_DispatchesFunctor()
     {
         var deviceGuid = Guid.NewGuid();
-        var (pipeline, deviceMgr, _, registry) = CreateSut("Default");
+        var (pipeline, deviceMgr, _, registry, _) = CreateSut("Default");
 
         var executed = new TaskCompletionSource<InputEvent>();
         var fakeFunctor = new FakeFunctor(ev => executed.SetResult(ev));
@@ -112,7 +114,7 @@ public sealed class EventPipelineTests
     public async Task InputReceived_NoMatchingBinding_DoesNotDispatch()
     {
         var deviceGuid = Guid.NewGuid();
-        var (pipeline, deviceMgr, _, registry) = CreateSut("Default");
+        var (pipeline, deviceMgr, _, registry, _) = CreateSut("Default");
 
         var dispatched = false;
         registry.Setup(r => r.Resolve(It.IsAny<string>()))
@@ -160,7 +162,8 @@ public sealed class EventPipelineTests
         var registry = new Mock<IActionRegistry>();
         registry.Setup(r => r.Resolve("inherited-action")).Returns(descriptor);
 
-        var pipeline = new EventPipeline(deviceMgr, modeMgr.Object, registry.Object, NullLogger<EventPipeline>.Instance);
+        var profileState = new ProfileState();
+        var pipeline = new EventPipeline(deviceMgr, modeMgr.Object, registry.Object, profileState, NullLogger<EventPipeline>.Instance);
         pipeline.Start(profile);
 
         deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 1, 1.0, string.Empty));
@@ -177,7 +180,7 @@ public sealed class EventPipelineTests
         // Verifies that the same functor instance is reused so stateful functors
         // (e.g. Toggle) retain state between events.
         var deviceGuid = Guid.NewGuid();
-        var (pipeline, deviceMgr, _, registry) = CreateSut("Default");
+        var (pipeline, deviceMgr, _, registry, _) = CreateSut("Default");
 
         int createCount = 0;
         var executedEvents = new List<InputEvent>();
@@ -212,7 +215,7 @@ public sealed class EventPipelineTests
     public void Stop_ClearsFunctorCache_SoRestartCreatesNewFunctors()
     {
         var deviceGuid = Guid.NewGuid();
-        var (pipeline, _, _, registry) = CreateSut("Default");
+        var (pipeline, _, _, registry, _) = CreateSut("Default");
 
         int createCount = 0;
         var descriptorMock = new Mock<IActionDescriptor>();
@@ -239,10 +242,43 @@ public sealed class EventPipelineTests
     [Fact]
     public void Dispose_WhenRunning_StopsAndUnsibscribes()
     {
-        var (pipeline, _, _, _) = CreateSut();
+        var (pipeline, _, _, _, _) = CreateSut();
         pipeline.Start(new ProfileModel());
         pipeline.Dispose();
         pipeline.IsRunning.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ProfileModified_WhileRunning_ClearsFunctorCache_AndRecreatesFunctor()
+    {
+        var deviceGuid = Guid.NewGuid();
+        var (pipeline, deviceMgr, _, registry, profileState) = CreateSut("Default");
+
+        int createCount = 0;
+        var descriptorMock = new Mock<IActionDescriptor>();
+        descriptorMock.SetupGet(d => d.Tag).Returns("refresh-action");
+        descriptorMock.Setup(d => d.CreateFunctor(It.IsAny<JsonObject?>()))
+            .Returns(() =>
+            {
+                createCount++;
+                return new FakeFunctor(_ => { });
+            });
+        registry.Setup(r => r.Resolve("refresh-action")).Returns(descriptorMock.Object);
+
+        var profile = MakeProfile(deviceGuid, "Default", "refresh-action");
+        profileState.SetProfile(profile);
+        pipeline.Start(profile);
+
+        deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 1, 1.0, string.Empty));
+        await Task.Delay(50);
+
+        profileState.NotifyProfileModified();
+
+        deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 1, 1.0, string.Empty));
+        await Task.Delay(50);
+
+        createCount.Should().Be(2, "profile edits while running must invalidate cached functors");
+        pipeline.Stop();
     }
 
     // ── Test doubles ───────────────────────────────────────────────────────

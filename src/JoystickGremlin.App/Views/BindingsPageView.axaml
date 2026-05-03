@@ -198,24 +198,125 @@
                                           Width="100" HorizontalAlignment="Left"/>
                         </StackPanel>
 
-                        <!-- vJoy Hat config -->
-                        <StackPanel Spacing="6" IsVisible="{Binding ShowVJoyHatConfig}">
-                            <TextBlock Text="vJoy Device ID"/>
-                            <NumericUpDown Value="{Binding EditVJoyDeviceId}"
-                                          Minimum="1" Maximum="16"
+                         <!-- vJoy Hat config -->
+                         <StackPanel Spacing="6" IsVisible="{Binding ShowVJoyHatConfig}">
+                             <TextBlock Text="vJoy Device ID"/>
+                             <NumericUpDown Value="{Binding EditVJoyDeviceId}"
+                                           Minimum="1" Maximum="16"
                                           FormatString="0"
                                           Width="100" HorizontalAlignment="Left"/>
                             <TextBlock Text="Hat Index"/>
-                            <NumericUpDown Value="{Binding EditVJoyHatIndex}"
-                                          Minimum="1" Maximum="4"
-                                          FormatString="0"
-                                          Width="100" HorizontalAlignment="Left"/>
-                        </StackPanel>
+                             <NumericUpDown Value="{Binding EditVJoyHatIndex}"
+                                           Minimum="1" Maximum="4"
+                                           FormatString="0"
+                                           Width="100" HorizontalAlignment="Left"/>
+                         </StackPanel>
 
-                        <!-- Change Mode config -->
-                        <StackPanel Spacing="6" IsVisible="{Binding ShowChangeModeConfig}">
-                            <TextBlock Text="Target Mode"/>
-                            <ComboBox ItemsSource="{Binding AvailableModeNames}"
+                         <!-- Buttons to Hat config -->
+                         <StackPanel Spacing="6" IsVisible="{Binding ShowButtonsToHatConfig}">
+                             <TextBlock Text="Target vJoy Device ID"/>
+                             <NumericUpDown Value="{Binding EditVJoyDeviceId}"
+                                           Minimum="1" Maximum="16"
+                                           FormatString="0"
+                                           Width="100" HorizontalAlignment="Left"/>
+                             <TextBlock Text="Target Hat Index"/>
+                             <NumericUpDown Value="{Binding EditVJoyHatIndex}"
+                                           Minimum="1" Maximum="4"
+                                           FormatString="0"
+                                           Width="100" HorizontalAlignment="Left"/>
+                             <TextBlock Text="Directional source buttons"/>
+                             <Grid ColumnDefinitions="Auto,Auto"
+                                   RowDefinitions="Auto,Auto,Auto,Auto"
+                                   ColumnSpacing="12"
+                                   RowSpacing="6">
+                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Up"/>
+                                 <NumericUpDown Grid.Row="0" Grid.Column="1"
+                                                Value="{Binding EditDirectionalUpButtonId}"
+                                                Minimum="1" Maximum="128"
+                                                FormatString="0"
+                                                Width="100" HorizontalAlignment="Left"/>
+                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="Down"/>
+                                 <NumericUpDown Grid.Row="1" Grid.Column="1"
+                                                Value="{Binding EditDirectionalDownButtonId}"
+                                                Minimum="1" Maximum="128"
+                                                FormatString="0"
+                                                Width="100" HorizontalAlignment="Left"/>
+                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="Left"/>
+                                 <NumericUpDown Grid.Row="2" Grid.Column="1"
+                                                Value="{Binding EditDirectionalLeftButtonId}"
+                                                Minimum="1" Maximum="128"
+                                                FormatString="0"
+                                                Width="100" HorizontalAlignment="Left"/>
+                                 <TextBlock Grid.Row="3" Grid.Column="0" Text="Right"/>
+                                 <NumericUpDown Grid.Row="3" Grid.Column="1"
+                                                Value="{Binding EditDirectionalRightButtonId}"
+                                                Minimum="1" Maximum="128"
+                                                FormatString="0"
+                                                Width="100" HorizontalAlignment="Left"/>
+                             </Grid>
+                             <TextBlock TextWrapping="Wrap"
+                                        FontSize="11"
+                                        Opacity="0.65"
+                                        Text="This mapping is mirrored onto each referenced source button in the current edit mode so all four buttons participate in the shared hat state."/>
+                         </StackPanel>
+
+                         <!-- Buttons to Axes config -->
+                         <StackPanel Spacing="6" IsVisible="{Binding ShowButtonsToAxesConfig}">
+                             <TextBlock Text="Target vJoy Device ID"/>
+                             <NumericUpDown Value="{Binding EditVJoyDeviceId}"
+                                           Minimum="1" Maximum="16"
+                                           FormatString="0"
+                                           Width="100" HorizontalAlignment="Left"/>
+                             <TextBlock Text="Target X Axis Index"/>
+                             <NumericUpDown Value="{Binding EditButtonsToAxesXAxisIndex}"
+                                           Minimum="1" Maximum="8"
+                                           FormatString="0"
+                                           Width="100" HorizontalAlignment="Left"/>
+                             <TextBlock Text="Target Y Axis Index"/>
+                             <NumericUpDown Value="{Binding EditButtonsToAxesYAxisIndex}"
+                                           Minimum="1" Maximum="8"
+                                           FormatString="0"
+                                           Width="100" HorizontalAlignment="Left"/>
+                             <TextBlock Text="Directional source buttons"/>
+                             <Grid ColumnDefinitions="Auto,Auto"
+                                   RowDefinitions="Auto,Auto,Auto,Auto"
+                                   ColumnSpacing="12"
+                                   RowSpacing="6">
+                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Up"/>
+                                 <NumericUpDown Grid.Row="0" Grid.Column="1"
+                                                Value="{Binding EditDirectionalUpButtonId}"
+                                                Minimum="1" Maximum="128"
+                                                FormatString="0"
+                                                Width="100" HorizontalAlignment="Left"/>
+                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="Down"/>
+                                 <NumericUpDown Grid.Row="1" Grid.Column="1"
+                                                Value="{Binding EditDirectionalDownButtonId}"
+                                                Minimum="1" Maximum="128"
+                                                FormatString="0"
+                                                Width="100" HorizontalAlignment="Left"/>
+                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="Left"/>
+                                 <NumericUpDown Grid.Row="2" Grid.Column="1"
+                                                Value="{Binding EditDirectionalLeftButtonId}"
+                                                Minimum="1" Maximum="128"
+                                                FormatString="0"
+                                                Width="100" HorizontalAlignment="Left"/>
+                                 <TextBlock Grid.Row="3" Grid.Column="0" Text="Right"/>
+                                 <NumericUpDown Grid.Row="3" Grid.Column="1"
+                                                Value="{Binding EditDirectionalRightButtonId}"
+                                                Minimum="1" Maximum="128"
+                                                FormatString="0"
+                                                Width="100" HorizontalAlignment="Left"/>
+                             </Grid>
+                             <TextBlock TextWrapping="Wrap"
+                                        FontSize="11"
+                                        Opacity="0.65"
+                                        Text="This mapping is mirrored onto each referenced source button in the current edit mode so the shared X/Y axis state updates from every configured button."/>
+                         </StackPanel>
+
+                         <!-- Change Mode config -->
+                         <StackPanel Spacing="6" IsVisible="{Binding ShowChangeModeConfig}">
+                             <TextBlock Text="Target Mode"/>
+                             <ComboBox ItemsSource="{Binding AvailableModeNames}"
                                       SelectedItem="{Binding EditTargetModeName}"
                                       MinWidth="160"
                                       HorizontalAlignment="Left"/>
