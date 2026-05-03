@@ -44,9 +44,22 @@ Automate the feature completion process: commit → push → PR → code review.
 
 1. Invoke the **code-review** skill on the feature branch
 2. Generate structured review with findings summary + top 3 fixes
-3. Output review results inline
+3. Post the review to the PR on GitHub:
+   - use **Approve** when there are no blocking findings
+   - use **Comment** when findings are informational/non-blocking
+   - use **Request changes** when there are blocking issues that must be fixed before merge
+4. Confirm the review appears on the PR with the expected GitHub review status
+5. Output the same review results inline in the terminal summary
 
-### Step 5 — Summary & Next Steps
+### Step 5 — Fix Follow-up & Summary
+
+1. If review findings are fixed in the same workflow:
+   - push the fix commit(s)
+   - update the PR review status appropriately on GitHub
+   - post a PR comment summarizing what was fixed and the final result
+2. If findings remain unfixed:
+   - leave the blocking review status in place
+   - post a PR comment summarizing the outstanding issues and required next action
 
 Print a completion summary:
 - PR number and URL
@@ -59,5 +72,6 @@ Print a completion summary:
 - All steps are autonomous; no user input required once started
 - If any step fails, report error and stop (don't swallow failures)
 - Use `git` CLI for git operations, `gh` CLI for GitHub
+- Use `gh pr review` to publish the review result to GitHub and `gh pr comment` for the fix-summary follow-up
 - Assume SSH-based git URLs (no https auth needed)
 - Log all operations at INFO level for audit trail
