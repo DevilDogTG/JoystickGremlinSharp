@@ -39,4 +39,16 @@ public sealed class AppSettings
     /// Entries are evaluated in list order; the first match wins.
     /// </summary>
     public List<ProcessProfileMapping> ProcessMappings { get; set; } = [];
+
+    /// <summary>Gets or sets whether the FFB bridge is enabled.</summary>
+    public bool EnableFfbBridge { get; set; } = false;
+
+    /// <summary>Gets or sets the vJoy device ID to monitor for FFB data. Defaults to 1.</summary>
+    public uint FfbVJoyDeviceId { get; set; } = 1;
+
+    /// <summary>Gets or sets the instance GUID of the physical wheel to send FFB to. Null = auto-discover first MOZA device.</summary>
+    public string? FfbWheelInstanceGuid { get; set; }
+
+    /// <summary>Gets or sets the FFB gain multiplier as a percentage (0–100). Defaults to 100.</summary>
+    public int FfbGainPercent { get; set; } = 100;
 }
