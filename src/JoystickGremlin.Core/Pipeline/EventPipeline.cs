@@ -93,12 +93,21 @@ public sealed class EventPipeline : IEventPipeline
 
         // Enrich the event with the current mode name.
         var enriched = rawEvent with { Mode = _modeManager.ActiveModeName };
+        _logger.LogDebug(
+            "Pipeline received input: device {DeviceGuid}, type {InputType}, identifier {Identifier}, value {Value}, mode {Mode}",
+            enriched.DeviceGuid,
+            enriched.InputType,
+            enriched.Identifier,
+            enriched.Value,
+            enriched.Mode);
 
         // Resolve the inheritance chain for the active mode.
         var chain = _modeManager.GetInheritanceChain(enriched.Mode, _profile);
+        var chainText = string.Join(" -> ", chain);
 
         // Find matching bindings from most-specific to least-specific mode.
         List<BoundAction>? actions = null;
+        string? matchedModeName = null;
         foreach (var modeName in chain)
         {
             var mode = _profile.Modes.FirstOrDefault(
@@ -115,12 +124,28 @@ public sealed class EventPipeline : IEventPipeline
             if (binding is not null)
             {
                 actions = binding.Actions;
+                matchedModeName = modeName;
                 break;
             }
         }
 
         if (actions is null || actions.Count == 0)
+        {
+            _logger.LogDebug(
+                "No binding matched input: device {DeviceGuid}, type {InputType}, identifier {Identifier}, mode chain {ModeChain}",
+                enriched.DeviceGuid,
+                enriched.InputType,
+                enriched.Identifier,
+                chainText);
             return;
+        }
+
+        _logger.LogDebug(
+            "Matched binding in mode {MatchedMode} for input {InputType} {Identifier}; dispatching {ActionCount} actions",
+            matchedModeName,
+            enriched.InputType,
+            enriched.Identifier,
+            actions.Count);
 
         // Dispatch each bound action's functor asynchronously, fire-and-forget with logging.
         foreach (var boundAction in actions)
@@ -135,6 +160,10 @@ public sealed class EventPipeline : IEventPipeline
             var functor = _functorCache.GetOrAdd(
                 boundAction,
                 ba => descriptor.CreateFunctor(ba.Configuration));
+            _logger.LogDebug(
+                "Dispatching action {ActionTag} with configuration {Configuration}",
+                boundAction.ActionTag,
+                boundAction.Configuration?.ToJsonString() ?? "(null)");
             _ = Task.Run(async () =>
             {
                 try

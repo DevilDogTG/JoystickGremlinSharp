@@ -3,6 +3,7 @@
 using System.Text.Json.Nodes;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.Events;
+using JoystickGremlin.Core.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace JoystickGremlin.Core.Actions.VJoy;
@@ -62,13 +63,39 @@ public sealed class VJoyHatDescriptor : IActionDescriptor
         {
             try
             {
-                var device = _manager.GetDevice(_vjoyId);
-                // Value is degrees (0–35999) for directional, or -1 for center.
-                device.SetHat(_hatIndex, (int)inputEvent.Value);
+                _logger.LogDebug(
+                    "Executing vJoy hat action: source device {SourceDeviceGuid} input {Identifier} value {Value} -> vJoy {VJoyId} hat {HatIndex}",
+                    inputEvent.DeviceGuid,
+                    inputEvent.Identifier,
+                    inputEvent.Value,
+                    _vjoyId,
+                    _hatIndex);
+                var device = _manager.GetOrAcquireDevice(_vjoyId);
+                int degrees = (int)inputEvent.Value;
+                try
+                {
+                    device.SetHat(_hatIndex, degrees);
+                }
+                catch (VJoyException)
+                {
+                    _logger.LogWarning(
+                        "vJoy device {VJoyId} ownership lost; re-acquiring and retrying hat {HatIndex}",
+                        _vjoyId,
+                        _hatIndex);
+                    device = _manager.ForceReacquireDevice(_vjoyId);
+                    device.SetHat(_hatIndex, degrees);
+                }
+                _logger.LogDebug("vJoy hat action succeeded for device {VJoyId} hat {HatIndex}", _vjoyId, _hatIndex);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "vJoy hat action failed for device {Id} hat {Hat}", _vjoyId, _hatIndex);
+                _logger.LogWarning(
+                    ex,
+                    "vJoy hat action failed for source device {SourceDeviceGuid} input {Identifier} -> device {Id} hat {Hat}",
+                    inputEvent.DeviceGuid,
+                    inputEvent.Identifier,
+                    _vjoyId,
+                    _hatIndex);
             }
 
             return Task.CompletedTask;

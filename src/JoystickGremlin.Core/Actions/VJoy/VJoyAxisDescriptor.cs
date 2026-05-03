@@ -3,6 +3,7 @@
 using System.Text.Json.Nodes;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.Events;
+using JoystickGremlin.Core.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace JoystickGremlin.Core.Actions.VJoy;
@@ -61,12 +62,38 @@ public sealed class VJoyAxisDescriptor : IActionDescriptor
         {
             try
             {
-                var device = _manager.GetDevice(_vjoyId);
-                device.SetAxis(_axisIndex, inputEvent.Value);
+                _logger.LogDebug(
+                    "Executing vJoy axis action: source device {SourceDeviceGuid} input {Identifier} value {Value} -> vJoy {VJoyId} axis {AxisIndex}",
+                    inputEvent.DeviceGuid,
+                    inputEvent.Identifier,
+                    inputEvent.Value,
+                    _vjoyId,
+                    _axisIndex);
+                var device = _manager.GetOrAcquireDevice(_vjoyId);
+                try
+                {
+                    device.SetAxis(_axisIndex, inputEvent.Value);
+                }
+                catch (VJoyException)
+                {
+                    _logger.LogWarning(
+                        "vJoy device {VJoyId} ownership lost; re-acquiring and retrying axis {AxisIndex}",
+                        _vjoyId,
+                        _axisIndex);
+                    device = _manager.ForceReacquireDevice(_vjoyId);
+                    device.SetAxis(_axisIndex, inputEvent.Value);
+                }
+                _logger.LogDebug("vJoy axis action succeeded for device {VJoyId} axis {AxisIndex}", _vjoyId, _axisIndex);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "vJoy axis action failed for device {Id} axis {Axis}", _vjoyId, _axisIndex);
+                _logger.LogWarning(
+                    ex,
+                    "vJoy axis action failed for source device {SourceDeviceGuid} input {Identifier} -> device {Id} axis {Axis}",
+                    inputEvent.DeviceGuid,
+                    inputEvent.Identifier,
+                    _vjoyId,
+                    _axisIndex);
             }
 
             return Task.CompletedTask;

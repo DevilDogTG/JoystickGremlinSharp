@@ -101,6 +101,64 @@ public class VJoyManagedTests
         ids.Should().BeEquivalentTo([1u, 2u, 3u]);
     }
 
+    [Fact]
+    public void GetOrAcquireDevice_WhenAlreadyAcquired_ReturnsExistingDevice()
+    {
+        var existingDevice = new Mock<IVirtualDevice>();
+        existingDevice.SetupGet(d => d.DeviceId).Returns(2u);
+
+        var manager = new Mock<IVirtualDeviceManager>();
+        manager.Setup(m => m.GetDevice(2u)).Returns(existingDevice.Object);
+
+        var device = manager.Object.GetOrAcquireDevice(2u);
+
+        device.Should().BeSameAs(existingDevice.Object);
+        manager.Verify(m => m.GetDevice(2u), Times.Once);
+        manager.Verify(m => m.AcquireDevice(It.IsAny<uint>()), Times.Never);
+    }
+
+    [Fact]
+    public void GetOrAcquireDevice_WhenNotAcquired_AcquiresRequestedDevice()
+    {
+        var acquiredDevice = new Mock<IVirtualDevice>();
+        acquiredDevice.SetupGet(d => d.DeviceId).Returns(2u);
+
+        var manager = new Mock<IVirtualDeviceManager>();
+        manager.Setup(m => m.GetDevice(2u))
+            .Throws(new VJoyException("vJoy device 2 has not been acquired. Call AcquireDevice first."));
+        manager.Setup(m => m.AcquireDevice(2u)).Returns(acquiredDevice.Object);
+
+        var device = manager.Object.GetOrAcquireDevice(2u);
+
+        device.Should().BeSameAs(acquiredDevice.Object);
+        manager.Verify(m => m.GetDevice(2u), Times.Once);
+        manager.Verify(m => m.AcquireDevice(2u), Times.Once);
+    }
+
+    [Fact]
+    public void ForceReacquireDevice_ReleasesAndReacquires()
+    {
+        var freshDevice = new Mock<IVirtualDevice>();
+        freshDevice.SetupGet(d => d.DeviceId).Returns(1u);
+
+        var manager = new Mock<IVirtualDeviceManager>();
+        manager.Setup(m => m.AcquireDevice(1u)).Returns(freshDevice.Object);
+
+        var device = manager.Object.ForceReacquireDevice(1u);
+
+        manager.Verify(m => m.ReleaseDevice(1u), Times.Once);
+        manager.Verify(m => m.AcquireDevice(1u), Times.Once);
+        device.Should().BeSameAs(freshDevice.Object);
+    }
+
+    [Fact]
+    public void ForceReacquireDevice_NullManager_ThrowsArgumentNullException()
+    {
+        IVirtualDeviceManager? manager = null;
+        Action act = () => manager!.ForceReacquireDevice(1u);
+        act.Should().Throw<ArgumentNullException>();
+    }
+
     // ── Axis normalisation formula tests (unit test without DLL) ────────────
 
     [Theory]

@@ -3,6 +3,7 @@
 using System.Text.Json.Nodes;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.Events;
+using JoystickGremlin.Core.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace JoystickGremlin.Core.Actions.VJoy;
@@ -61,12 +62,45 @@ public sealed class VJoyButtonDescriptor : IActionDescriptor
         {
             try
             {
-                var device = _manager.GetDevice(_vjoyId);
-                device.SetButton(_buttonIndex, inputEvent.Value >= 0.5);
+                _logger.LogDebug(
+                    "Executing vJoy button action: source device {SourceDeviceGuid} input {Identifier} value {Value} -> vJoy {VJoyId} button {ButtonIndex}",
+                    inputEvent.DeviceGuid,
+                    inputEvent.Identifier,
+                    inputEvent.Value,
+                    _vjoyId,
+                    _buttonIndex);
+                var device = _manager.GetOrAcquireDevice(_vjoyId);
+                bool pressed = inputEvent.Value >= 0.5;
+                try
+                {
+                    device.SetButton(_buttonIndex, pressed);
+                }
+                catch (VJoyException)
+                {
+                    // Device ownership may have been lost (another app took control).
+                    // Release, re-acquire, and retry once.
+                    _logger.LogWarning(
+                        "vJoy device {VJoyId} ownership lost; re-acquiring and retrying button {ButtonIndex}",
+                        _vjoyId,
+                        _buttonIndex);
+                    device = _manager.ForceReacquireDevice(_vjoyId);
+                    device.SetButton(_buttonIndex, pressed);
+                }
+                _logger.LogDebug(
+                    "vJoy button action succeeded for device {VJoyId} button {ButtonIndex} pressed {Pressed}",
+                    _vjoyId,
+                    _buttonIndex,
+                    pressed);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "vJoy button action failed for device {Id} button {Button}", _vjoyId, _buttonIndex);
+                _logger.LogWarning(
+                    ex,
+                    "vJoy button action failed for source device {SourceDeviceGuid} input {Identifier} -> device {Id} button {Button}",
+                    inputEvent.DeviceGuid,
+                    inputEvent.Identifier,
+                    _vjoyId,
+                    _buttonIndex);
             }
 
             return Task.CompletedTask;

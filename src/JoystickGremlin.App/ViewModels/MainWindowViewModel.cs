@@ -189,6 +189,8 @@ public sealed class MainWindowViewModel : ViewModelBase
     /// </summary>
     public async Task InitializeAsync()
     {
+        _logger.LogInformation("Initializing main window and device services");
+
         await _settingsService.LoadAsync();
         _settingsPage.LoadFromSettings();
 
@@ -196,6 +198,8 @@ public sealed class MainWindowViewModel : ViewModelBase
         _devicesPage.RefreshDevices();
         _bindingsPage.RefreshDevices();
         _inputViewerPage.RefreshDevices();
+
+        _logger.LogInformation("Device manager initialized with {DeviceCount} physical devices", _deviceManager.Devices.Count);
 
         var lastPath = _settingsService.Settings.LastProfilePath;
         if (!string.IsNullOrEmpty(lastPath) && File.Exists(lastPath))
@@ -205,6 +209,7 @@ public sealed class MainWindowViewModel : ViewModelBase
                 var profile = await _profileRepository.LoadAsync(lastPath);
                 _modeManager.Reset(profile);
                 _profileState.SetProfile(profile, lastPath);
+                _logger.LogInformation("Auto-loaded last profile from {ProfilePath}", lastPath);
             }
             catch (Exception ex)
             {
@@ -247,6 +252,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     {
         if (_isGremlinActive)
         {
+            _logger.LogInformation("Stopping Gremlin event pipeline");
             _eventPipeline.Stop();
             IsGremlinActive = false;
         }
@@ -254,6 +260,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         {
             var profile = _profileState.CurrentProfile;
             if (profile is null) return Task.CompletedTask;
+            _logger.LogInformation("Starting Gremlin event pipeline for profile {Profile}", profile.Name);
             _eventPipeline.Start(profile);
             IsGremlinActive = true;
         }

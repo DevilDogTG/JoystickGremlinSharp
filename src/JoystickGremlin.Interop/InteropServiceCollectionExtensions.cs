@@ -28,6 +28,10 @@ public static class InteropServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddInteropServices(this IServiceCollection services)
     {
+        // Must run before any P/Invoke into vJoyInterface.dll so the resolver
+        // can redirect loads to the installed (driver-matched) DLL.
+        VJoyNativeLibraryLoader.EnsureLoaded();
+
         services.AddSingleton<IDeviceManager, DillDeviceManager>();
         services.AddSingleton<IVirtualDeviceManager, VJoyDeviceManager>();
 
