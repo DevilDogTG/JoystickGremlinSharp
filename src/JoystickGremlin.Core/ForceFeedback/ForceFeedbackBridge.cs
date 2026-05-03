@@ -17,8 +17,8 @@ public sealed class ForceFeedbackBridge : IForceFeedbackBridge
 
     private volatile ForceFeedbackBridgeState _state = ForceFeedbackBridgeState.Disabled;
     private long _totalCommandsForwarded;
-    private DateTimeOffset? _lastCommandTime;
-    private bool _disposed;
+    private long _lastCommandTimeTicks; // 0 = never; written/read with Interlocked
+    private volatile bool _disposed;
 
     /// <summary>
     /// Initialises a new <see cref="ForceFeedbackBridge"/> with the specified source and sink.
@@ -40,16 +40,10 @@ public sealed class ForceFeedbackBridge : IForceFeedbackBridge
     public ForceFeedbackBridgeState State => _state;
 
     /// <inheritdoc />
-    public IForceFeedbackSource Source => _source;
+    public IForceFeedbackSource? Source => _source;
 
     /// <inheritdoc />
-    public IForceFeedbackSink Sink => _sink;
-
-    /// <inheritdoc />
-    IForceFeedbackSource? IForceFeedbackBridge.Source => _source;
-
-    /// <inheritdoc />
-    IForceFeedbackSink? IForceFeedbackBridge.Sink => _sink;
+    public IForceFeedbackSink? Sink => _sink;
 
     /// <inheritdoc />
     public event EventHandler<ForceFeedbackBridgeState>? StateChanged;
@@ -58,7 +52,14 @@ public sealed class ForceFeedbackBridge : IForceFeedbackBridge
     public long TotalCommandsForwarded => Interlocked.Read(ref _totalCommandsForwarded);
 
     /// <inheritdoc />
-    public DateTimeOffset? LastCommandTime => _lastCommandTime;
+    public DateTimeOffset? LastCommandTime
+    {
+        get
+        {
+            long ticks = Interlocked.Read(ref _lastCommandTimeTicks);
+            return ticks == 0 ? null : new DateTimeOffset(ticks, TimeSpan.Zero);
+        }
+    }
 
     /// <inheritdoc />
     public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -132,7 +133,7 @@ public sealed class ForceFeedbackBridge : IForceFeedbackBridge
         {
             _sink.SendCommand(command);
             Interlocked.Increment(ref _totalCommandsForwarded);
-            _lastCommandTime = DateTimeOffset.UtcNow;
+            Interlocked.Exchange(ref _lastCommandTimeTicks, DateTimeOffset.UtcNow.UtcTicks);
         }
         catch (Exception ex)
         {

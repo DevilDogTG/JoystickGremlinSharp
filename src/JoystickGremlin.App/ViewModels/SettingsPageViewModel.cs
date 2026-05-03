@@ -223,7 +223,9 @@ public sealed class SettingsPageViewModel : ViewModelBase
 
     private void OnBridgeStateChanged(object? sender, ForceFeedbackBridgeState state)
     {
-        FfbBridgeStatus = state.ToString();
+        // StateChanged can fire on the vJoy native callback thread; dispatch to UI thread
+        // before updating the ReactiveUI property, which drives Avalonia bindings.
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => FfbBridgeStatus = state.ToString());
     }
 
     private void AddMapping()

@@ -11,7 +11,7 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > **Status**: Phase complete. All core features implemented and released.
 > - Release v10.0.3 published with auto-generated release notes
 > - Workflow: main-first + tag-based release (no merge-back)
-> - 226 tests passing, 0 build warnings
+> - 225 tests passing, 0 build warnings
 > - Latest: Force Feedback bridge (PR #25), configurable vjoy-button threshold (PR #27), vJoy virtual device filtering (PR #26)
 > - GitHub Actions permissions must be set to "Allow all actions and reusable workflows"
 >   (Settings → Actions → General) for workflows to run on `main`
@@ -714,7 +714,7 @@ dotnet build --configuration Release -warnaserror
 dotnet test
 ```
 
-> Current baseline: **221 tests, 0 failures, 0 build warnings**.
+> Current baseline: **225 tests, 0 failures, 0 build warnings**.
 
 
 
