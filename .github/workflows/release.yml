@@ -49,8 +49,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout main
@@ -87,6 +85,8 @@ jobs:
           git checkout -b ${{ steps.version.outputs.branch }}
 
       - name: Bump version.json
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           python3 -c "
           import json
@@ -135,3 +135,4 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Next step:**" >> $GITHUB_STEP_SUMMARY
           echo "Merge the PR into \`main\` (rebase merge) to trigger tag creation, installer build, and GitHub Release." >> $GITHUB_STEP_SUMMARY
+
