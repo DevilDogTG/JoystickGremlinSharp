@@ -41,7 +41,6 @@ public sealed class MainWindowViewModel : ViewModelBase
     private ViewModelBase _currentPage;
     private NavItemViewModel? _selectedNavItem;
     private bool _isGremlinActive;
-    private string _selectedModeName = string.Empty;
     private string _profilePath = "(no profile)";
     private bool _hasProfile;
     private bool _suppressModeUpdate;
@@ -88,7 +87,6 @@ public sealed class MainWindowViewModel : ViewModelBase
         };
 
         NavItems = new ObservableCollection<NavItemViewModel>(navItems);
-        AvailableModes = new ObservableCollection<string>();
         AvailableModeEntries = new ObservableCollection<ModeTreeEntry>();
         _currentPage = devicesPage;
         _selectedNavItem = navItems[0];
@@ -116,9 +114,6 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     /// <summary>Gets the sidebar navigation items.</summary>
     public ObservableCollection<NavItemViewModel> NavItems { get; }
-
-    /// <summary>Gets the list of mode names for the current profile.</summary>
-    public ObservableCollection<string> AvailableModes { get; }
 
     /// <summary>Gets the list of mode entries with indented display labels for the mode selector ComboBox.</summary>
     public ObservableCollection<ModeTreeEntry> AvailableModeEntries { get; }
@@ -161,25 +156,6 @@ public sealed class MainWindowViewModel : ViewModelBase
     {
         get => _isGremlinActive;
         private set => this.RaiseAndSetIfChanged(ref _isGremlinActive, value);
-    }
-
-    /// <summary>
-    /// Gets or sets the name of the currently selected (active) mode.
-    /// Setting this from the UI switches the active mode via <see cref="IModeManager"/>.
-    /// </summary>
-    public string SelectedModeName
-    {
-        get => _selectedModeName;
-        set
-        {
-            if (_suppressModeUpdate || value == _selectedModeName) return;
-            this.RaiseAndSetIfChanged(ref _selectedModeName, value);
-            if (!string.IsNullOrEmpty(value))
-            {
-                try { _modeManager.SwitchTo(value); }
-                catch (Exception ex) { _logger.LogWarning(ex, "Failed to switch mode to {Mode}", value); }
-            }
-        }
     }
 
     /// <summary>Gets or sets the display path of the currently loaded profile.</summary>
@@ -379,32 +355,24 @@ public sealed class MainWindowViewModel : ViewModelBase
                 ? Path.GetFileName(_profileState.FilePath)
                 : profile is not null ? "(unsaved)" : "(no profile)";
 
-            AvailableModes.Clear();
             AvailableModeEntries.Clear();
             if (profile is not null)
             {
-                foreach (var mode in profile.Modes)
-                    AvailableModes.Add(mode.Name);
-
-                foreach (var entry in BuildModeEntries(profile.Modes))
+                foreach (var entry in ModeTreeHelper.BuildEntries(profile.Modes))
                     AvailableModeEntries.Add(entry);
 
                 var currentMode = _modeManager.ActiveModeName;
+                var initial = AvailableModeEntries.FirstOrDefault(e => e.Name == currentMode)
+                    ?? AvailableModeEntries.FirstOrDefault();
                 _suppressModeUpdate = true;
-                _selectedModeName = AvailableModes.Contains(currentMode)
-                    ? currentMode
-                    : AvailableModes.FirstOrDefault() ?? string.Empty;
-                _selectedModeEntry = AvailableModeEntries.FirstOrDefault(e => e.Name == _selectedModeName);
-                this.RaisePropertyChanged(nameof(SelectedModeName));
+                _selectedModeEntry = initial;
                 this.RaisePropertyChanged(nameof(SelectedModeEntry));
                 _suppressModeUpdate = false;
             }
             else
             {
                 _suppressModeUpdate = true;
-                _selectedModeName = string.Empty;
                 _selectedModeEntry = null;
-                this.RaisePropertyChanged(nameof(SelectedModeName));
                 this.RaisePropertyChanged(nameof(SelectedModeEntry));
                 _suppressModeUpdate = false;
             }
@@ -416,45 +384,9 @@ public sealed class MainWindowViewModel : ViewModelBase
         Dispatcher.UIThread.Post(() =>
         {
             _suppressModeUpdate = true;
-            _selectedModeName = modeName;
             _selectedModeEntry = AvailableModeEntries.FirstOrDefault(e => e.Name == modeName);
-            this.RaisePropertyChanged(nameof(SelectedModeName));
             this.RaisePropertyChanged(nameof(SelectedModeEntry));
             _suppressModeUpdate = false;
         });
-    }
-
-    /// <summary>
-    /// Builds a DFS-ordered list of <see cref="ModeTreeEntry"/> items with indented display labels.
-    /// Each depth level adds two leading spaces to the label.
-    /// </summary>
-    private static IEnumerable<ModeTreeEntry> BuildModeEntries(List<JoystickGremlin.Core.Profile.Mode> modes)
-    {
-        var childrenOf = modes
-            .Where(m => !string.IsNullOrEmpty(m.ParentModeName))
-            .GroupBy(m => m.ParentModeName!, StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
-
-        var rootModes = modes.Where(m => string.IsNullOrEmpty(m.ParentModeName)).ToList();
-        var visited = new HashSet<string>(StringComparer.Ordinal);
-        var result = new List<ModeTreeEntry>();
-
-        void Visit(JoystickGremlin.Core.Profile.Mode mode, int depth)
-        {
-            if (!visited.Add(mode.Name)) return;
-            var indent = new string(' ', depth * 2);
-            result.Add(new ModeTreeEntry(mode.Name, indent + mode.Name));
-            if (childrenOf.TryGetValue(mode.Name, out var children))
-                foreach (var child in children)
-                    Visit(child, depth + 1);
-        }
-
-        foreach (var root in rootModes)
-            Visit(root, 0);
-
-        foreach (var mode in modes.Where(m => !visited.Contains(m.Name)))
-            result.Add(new ModeTreeEntry(mode.Name, mode.Name));
-
-        return result;
     }
 }

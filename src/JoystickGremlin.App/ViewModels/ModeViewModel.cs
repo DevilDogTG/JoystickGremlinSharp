@@ -65,7 +65,7 @@ public sealed class ModeViewModel : ViewModelBase
     /// Gets the left padding for tree-style visual indentation in the mode list.
     /// Each level adds 14 px of left indent.
     /// </summary>
-    public Thickness TreePadding => new Thickness(_depth * 14.0, 2, 4, 2);
+    public Thickness TreePadding => new Thickness(_depth * 14.0, 0, 0, 0);
 
     /// <summary>
     /// Applies the current ViewModel state back to the underlying <see cref="Mode"/> model.
