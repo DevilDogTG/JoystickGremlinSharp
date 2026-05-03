@@ -156,10 +156,13 @@ When a PR number is available, publish the review result instead of leaving it o
 If fixes are made after the initial review:
 
 1. Re-review the updated diff
-2. Post a PR comment with a **fix summary**:
+2. Post a **reply to the original review comment** (not a new standalone PR comment) with a **fix summary**:
    - what issues were fixed
    - what issues, if any, still remain
    - the resulting final status (approve / comment / request changes)
+   - Use `gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews/{review_id}` to get the review ID,
+     then reply via `gh api repos/{owner}/{repo}/pulls/{pr_number}/comments` with `in_reply_to`
+     set to the review comment ID, or use `gh pr comment --reply-to <comment_id>` if available
 3. Update the PR review status if the verdict changed after the fixes
 
 

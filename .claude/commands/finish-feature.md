@@ -2,13 +2,17 @@
 name: finish-feature
 description: >
   Complete a feature: commit, push, raise PR, and perform code review all in one workflow.
-  Use this when you're ready to finalize and ship a feature branch. Runs all steps
-  autonomously and returns a summary of the PR + review findings.
+  Use this when you're ready to finalize and ship a feature branch. Runs steps up to code
+  review autonomously, then waits for user confirmation before finishing.
 ---
 
 # Finish Feature Workflow
 
-Automate the feature completion process: commit → push → PR → code review.
+Automate the feature completion process: commit → push → PR → code review → **wait for user confirmation** → finish.
+
+> **IMPORTANT**: After the code review is posted to the PR, **always stop and ask the user
+> for confirmation** before taking any further action (merging, marking complete, etc.).
+> Do not autonomously complete the workflow end-to-end without user sign-off.
 
 ## Prerequisites
 
@@ -51,17 +55,30 @@ Automate the feature completion process: commit → push → PR → code review.
 4. Confirm the review appears on the PR with the expected GitHub review status
 5. Output the same review results inline in the terminal summary
 
-### Step 5 — Fix Follow-up & Summary
+### Step 5 — Pause and Confirm
 
-1. If review findings are fixed in the same workflow:
-   - push the fix commit(s)
-   - update the PR review status appropriately on GitHub
-   - post a PR comment summarizing what was fixed and the final result
-2. If findings remain unfixed:
-   - leave the blocking review status in place
-   - post a PR comment summarizing the outstanding issues and required next action
+After the review is posted:
+1. **Stop and ask the user** whether to proceed (fix issues, merge, or leave as-is)
+2. Do NOT autonomously fix findings, merge, or mark complete without explicit user instruction
+3. Present a brief summary: PR URL, verdict, finding counts, suggested next action
 
-Print a completion summary:
+### Step 6 — Fix Follow-up (only if user confirms)
+
+If the user confirms fixes should be applied:
+1. Fix the reported issues, push the fix commit(s)
+2. Update the PR review status appropriately on GitHub
+3. Post a **reply to the original review comment** (not a new top-level PR comment) summarizing
+   what was fixed and the final status — use `gh api` to post a reply to the review thread:
+   ```
+   gh api repos/{owner}/{repo}/pulls/{pr}/reviews/{review_id}/comments
+   ```
+   or use `gh pr comment --reply-to <comment_id>` if the review body has a thread ID
+
+If findings remain unfixed:
+- Leave the blocking review status in place
+- Post a **reply to the original review comment** summarizing outstanding issues and required next action
+
+Print a final summary:
 - PR number and URL
 - Review verdict (Approve / Request Changes / Comment)
 - Top findings (CRITICAL / WARNING count)
@@ -69,9 +86,10 @@ Print a completion summary:
 
 ## Implementation Notes
 
-- All steps are autonomous; no user input required once started
+- Steps 1–4 (commit → push → PR → review) run autonomously; **Step 5 always pauses for user input**
 - If any step fails, report error and stop (don't swallow failures)
 - Use `git` CLI for git operations, `gh` CLI for GitHub
-- Use `gh pr review` to publish the review result to GitHub and `gh pr comment` for the fix-summary follow-up
+- Use `gh pr review` to publish the review result to GitHub
+- Fix-summary feedback must be a **reply to the review comment**, not a new standalone PR comment
 - Assume SSH-based git URLs (no https auth needed)
 - Log all operations at INFO level for audit trail
