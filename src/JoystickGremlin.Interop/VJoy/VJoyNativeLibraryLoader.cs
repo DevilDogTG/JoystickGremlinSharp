@@ -35,12 +35,11 @@ internal static class VJoyNativeLibraryLoader
         lock (_lock)
         {
             if (_registered) return;
+            NativeLibrary.SetDllImportResolver(
+                typeof(VJoyNative).Assembly,
+                ResolveLibrary);
             _registered = true;
         }
-
-        NativeLibrary.SetDllImportResolver(
-            typeof(VJoyNative).Assembly,
-            ResolveLibrary);
     }
 
     private static IntPtr ResolveLibrary(

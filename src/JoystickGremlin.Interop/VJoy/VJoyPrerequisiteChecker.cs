@@ -37,15 +37,26 @@ public static class VJoyPrerequisiteChecker
         if (!File.Exists(dllPath))
             return VJoyPrerequisiteResult.NotInstalled();
 
-        var fileInfo = FileVersionInfo.GetVersionInfo(dllPath);
-        var productVersion = fileInfo.ProductVersion ?? string.Empty;
-
-        var isCompatible = productVersion.StartsWith(RequiredMajorMinor, StringComparison.OrdinalIgnoreCase);
-        return new VJoyPrerequisiteResult(
-            IsInstalled: true,
-            IsCompatible: isCompatible,
-            InstalledVersion: productVersion,
-            InstallPath: installDir);
+        try
+        {
+            var fileInfo = FileVersionInfo.GetVersionInfo(dllPath);
+            var productVersion = fileInfo.ProductVersion ?? string.Empty;
+            var isCompatible = productVersion.StartsWith(RequiredMajorMinor, StringComparison.OrdinalIgnoreCase);
+            return new VJoyPrerequisiteResult(
+                IsInstalled: true,
+                IsCompatible: isCompatible,
+                InstalledVersion: productVersion,
+                InstallPath: installDir);
+        }
+        catch
+        {
+            // DLL exists but cannot be read (locked, corrupt, access denied) — treat as incompatible.
+            return new VJoyPrerequisiteResult(
+                IsInstalled: true,
+                IsCompatible: false,
+                InstalledVersion: null,
+                InstallPath: installDir);
+        }
     }
 }
 
@@ -66,10 +77,11 @@ public sealed record VJoyPrerequisiteResult(
     public bool IsOk => IsInstalled && IsCompatible;
 
     /// <summary>Returns a human-readable summary of why the check failed, or <c>null</c> if OK.</summary>
-    public string? FailureReason => (IsInstalled, IsCompatible) switch
+    public string? FailureReason => (IsInstalled, IsCompatible, InstalledVersion) switch
     {
-        (false, _) => "vJoy is not installed.",
-        (true, false) => $"vJoy {InstalledVersion} is installed, but v2.2.x or later (BrunnerInnovation fork) is required.",
+        (false, _, _) => "vJoy is not installed.",
+        (true, false, null) => "vJoy is installed but its version could not be read (DLL may be locked or corrupt).",
+        (true, false, _) => $"vJoy {InstalledVersion} is installed, but v2.2.x or later (BrunnerInnovation fork) is required.",
         _ => null
     };
 
