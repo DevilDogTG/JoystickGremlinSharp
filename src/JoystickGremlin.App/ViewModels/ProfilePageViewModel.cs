@@ -100,13 +100,57 @@ public sealed class ProfilePageViewModel : ViewModelBase, IDisposable
     {
         Modes.Clear();
         if (profile is null) return;
-        foreach (var mode in profile.Modes)
-            Modes.Add(new ModeViewModel(mode));
+        foreach (var (mode, depth) in FlattenModeTree(profile.Modes))
+        {
+            var vm = new ModeViewModel(mode) { Depth = depth };
+            Modes.Add(vm);
+        }
         SelectedMode = Modes.Count > 0 ? Modes[0] : null;
+    }
+
+    /// <summary>
+    /// Performs a DFS traversal of the mode hierarchy, yielding each mode with its depth.
+    /// Root modes (no parent) come first; children follow immediately after their parent.
+    /// Orphaned modes (parent name not found) are appended at the end as depth 0.
+    /// </summary>
+    private static IEnumerable<(JoystickGremlin.Core.Profile.Mode mode, int depth)> FlattenModeTree(
+        List<JoystickGremlin.Core.Profile.Mode> modes)
+    {
+        var childrenOf = modes
+            .Where(m => !string.IsNullOrEmpty(m.ParentModeName))
+            .GroupBy(m => m.ParentModeName!, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
+
+        var rootModes = modes.Where(m => string.IsNullOrEmpty(m.ParentModeName)).ToList();
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        var result = new List<(JoystickGremlin.Core.Profile.Mode, int)>();
+
+        void Visit(JoystickGremlin.Core.Profile.Mode mode, int depth)
+        {
+            if (!visited.Add(mode.Name)) return;
+            result.Add((mode, depth));
+            if (childrenOf.TryGetValue(mode.Name, out var children))
+                foreach (var child in children)
+                    Visit(child, depth + 1);
+        }
+
+        foreach (var root in rootModes)
+            Visit(root, 0);
+
+        // Append any orphaned modes (parent referenced but not found in list)
+        foreach (var mode in modes.Where(m => !visited.Contains(m.Name)))
+            result.Add((mode, 0));
+
+        return result;
     }
 
     private void OnSelectedModeChanged(ModeViewModel? mode)
     {
+        // Rebuild parent options FIRST so the ComboBox item list is populated
+        // before we set EditParentName. Without this, AvailableParentNames.Clear()
+        // causes Avalonia TwoWay-binding feedback that resets EditParentName to null.
+        RebuildParentOptions(mode);
+
         if (mode is null)
         {
             EditName = string.Empty;
@@ -117,14 +161,14 @@ public sealed class ProfilePageViewModel : ViewModelBase, IDisposable
             EditName = mode.Name;
             EditParentName = mode.ParentModeName ?? RootModeOption;
         }
-        RebuildParentOptions();
     }
 
-    private void RebuildParentOptions()
+    private void RebuildParentOptions(ModeViewModel? excludeMode = null)
     {
+        var toExclude = excludeMode ?? SelectedMode;
         AvailableParentNames.Clear();
         AvailableParentNames.Add(RootModeOption);
-        foreach (var m in Modes.Where(m => m != SelectedMode))
+        foreach (var m in Modes.Where(m => m != toExclude))
             AvailableParentNames.Add(m.Name);
     }
 

@@ -56,11 +56,17 @@
                                VerticalAlignment="Center"
                                Opacity="0.6"
                                FontSize="12"/>
-                    <ComboBox ItemsSource="{Binding AvailableModes}"
-                              SelectedItem="{Binding SelectedModeName}"
+                    <ComboBox ItemsSource="{Binding AvailableModeEntries}"
+                              SelectedItem="{Binding SelectedModeEntry}"
                               IsEnabled="{Binding HasProfile}"
                               MinWidth="120"
-                              FontSize="12"/>
+                              FontSize="12">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ModeTreeEntry">
+                                <TextBlock Text="{Binding IndentedLabel}" FontFamily="Consolas,Courier New,monospace"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
                 </StackPanel>
 
                 <!-- Start / Stop toggle -->
@@ -83,10 +89,10 @@
                  ScrollViewer.VerticalScrollBarVisibility="Disabled">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="vm:NavItemViewModel">
-                    <StackPanel Margin="4,8" HorizontalAlignment="Center"
+                    <StackPanel Margin="3,3" HorizontalAlignment="Center"
                                 ToolTip.Tip="{Binding Title}">
                         <TextBlock Text="{Binding Icon}"
-                                   FontSize="22"
+                                   FontSize="18"
                                    HorizontalAlignment="Center"/>
                     </StackPanel>
                 </DataTemplate>

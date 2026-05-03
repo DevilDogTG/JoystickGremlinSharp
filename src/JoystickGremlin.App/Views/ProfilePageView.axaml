@@ -29,7 +29,7 @@
                      BorderThickness="0,0,1,0">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="vm:ModeViewModel">
-                        <StackPanel Margin="4,4" Spacing="2">
+                        <StackPanel Margin="{Binding TreePadding}" Spacing="2">
                             <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
                             <TextBlock FontSize="11" Opacity="0.6"
                                        Text="{Binding ParentModeName,

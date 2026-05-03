@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+using Avalonia;
 using JoystickGremlin.Core.Profile;
 using ReactiveUI;
 
@@ -12,6 +13,7 @@ public sealed class ModeViewModel : ViewModelBase
 {
     private string _name;
     private string? _parentModeName;
+    private int _depth;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ModeViewModel"/>.
@@ -43,6 +45,27 @@ public sealed class ModeViewModel : ViewModelBase
 
     /// <summary>Gets a value indicating whether this mode has no parent (root mode).</summary>
     public bool IsRoot => string.IsNullOrEmpty(ParentModeName);
+
+    /// <summary>
+    /// Gets or sets the depth of this mode in the hierarchy (0 = root, 1 = child, etc.).
+    /// Set by <see cref="ProfilePageViewModel"/> during tree construction.
+    /// </summary>
+    public int Depth
+    {
+        get => _depth;
+        set
+        {
+            if (_depth == value) return;
+            this.RaiseAndSetIfChanged(ref _depth, value);
+            this.RaisePropertyChanged(nameof(TreePadding));
+        }
+    }
+
+    /// <summary>
+    /// Gets the left padding for tree-style visual indentation in the mode list.
+    /// Each level adds 14 px of left indent.
+    /// </summary>
+    public Thickness TreePadding => new Thickness(_depth * 14.0, 2, 4, 2);
 
     /// <summary>
     /// Applies the current ViewModel state back to the underlying <see cref="Mode"/> model.

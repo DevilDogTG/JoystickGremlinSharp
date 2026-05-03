@@ -45,6 +45,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     private string _profilePath = "(no profile)";
     private bool _hasProfile;
     private bool _suppressModeUpdate;
+    private ModeTreeEntry? _selectedModeEntry;
 
     /// <summary>
     /// Initializes a new instance of <see cref="MainWindowViewModel"/>.
@@ -88,6 +89,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         NavItems = new ObservableCollection<NavItemViewModel>(navItems);
         AvailableModes = new ObservableCollection<string>();
+        AvailableModeEntries = new ObservableCollection<ModeTreeEntry>();
         _currentPage = devicesPage;
         _selectedNavItem = navItems[0];
 
@@ -117,6 +119,28 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     /// <summary>Gets the list of mode names for the current profile.</summary>
     public ObservableCollection<string> AvailableModes { get; }
+
+    /// <summary>Gets the list of mode entries with indented display labels for the mode selector ComboBox.</summary>
+    public ObservableCollection<ModeTreeEntry> AvailableModeEntries { get; }
+
+    /// <summary>
+    /// Gets or sets the currently selected mode entry in the toolbar ComboBox.
+    /// Setting this switches the active mode via <see cref="IModeManager"/>.
+    /// </summary>
+    public ModeTreeEntry? SelectedModeEntry
+    {
+        get => _selectedModeEntry;
+        set
+        {
+            if (_suppressModeUpdate || value == _selectedModeEntry) return;
+            this.RaiseAndSetIfChanged(ref _selectedModeEntry, value);
+            if (value is not null && !string.IsNullOrEmpty(value.Name))
+            {
+                try { _modeManager.SwitchTo(value.Name); }
+                catch (Exception ex) { _logger.LogWarning(ex, "Failed to switch mode to {Mode}", value.Name); }
+            }
+        }
+    }
 
     /// <summary>Gets or sets the page ViewModel currently displayed in the content area.</summary>
     public ViewModelBase CurrentPage
@@ -356,24 +380,32 @@ public sealed class MainWindowViewModel : ViewModelBase
                 : profile is not null ? "(unsaved)" : "(no profile)";
 
             AvailableModes.Clear();
+            AvailableModeEntries.Clear();
             if (profile is not null)
             {
                 foreach (var mode in profile.Modes)
                     AvailableModes.Add(mode.Name);
+
+                foreach (var entry in BuildModeEntries(profile.Modes))
+                    AvailableModeEntries.Add(entry);
 
                 var currentMode = _modeManager.ActiveModeName;
                 _suppressModeUpdate = true;
                 _selectedModeName = AvailableModes.Contains(currentMode)
                     ? currentMode
                     : AvailableModes.FirstOrDefault() ?? string.Empty;
+                _selectedModeEntry = AvailableModeEntries.FirstOrDefault(e => e.Name == _selectedModeName);
                 this.RaisePropertyChanged(nameof(SelectedModeName));
+                this.RaisePropertyChanged(nameof(SelectedModeEntry));
                 _suppressModeUpdate = false;
             }
             else
             {
                 _suppressModeUpdate = true;
                 _selectedModeName = string.Empty;
+                _selectedModeEntry = null;
                 this.RaisePropertyChanged(nameof(SelectedModeName));
+                this.RaisePropertyChanged(nameof(SelectedModeEntry));
                 _suppressModeUpdate = false;
             }
         });
@@ -385,8 +417,44 @@ public sealed class MainWindowViewModel : ViewModelBase
         {
             _suppressModeUpdate = true;
             _selectedModeName = modeName;
+            _selectedModeEntry = AvailableModeEntries.FirstOrDefault(e => e.Name == modeName);
             this.RaisePropertyChanged(nameof(SelectedModeName));
+            this.RaisePropertyChanged(nameof(SelectedModeEntry));
             _suppressModeUpdate = false;
         });
+    }
+
+    /// <summary>
+    /// Builds a DFS-ordered list of <see cref="ModeTreeEntry"/> items with indented display labels.
+    /// Each depth level adds two leading spaces to the label.
+    /// </summary>
+    private static IEnumerable<ModeTreeEntry> BuildModeEntries(List<JoystickGremlin.Core.Profile.Mode> modes)
+    {
+        var childrenOf = modes
+            .Where(m => !string.IsNullOrEmpty(m.ParentModeName))
+            .GroupBy(m => m.ParentModeName!, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
+
+        var rootModes = modes.Where(m => string.IsNullOrEmpty(m.ParentModeName)).ToList();
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        var result = new List<ModeTreeEntry>();
+
+        void Visit(JoystickGremlin.Core.Profile.Mode mode, int depth)
+        {
+            if (!visited.Add(mode.Name)) return;
+            var indent = new string(' ', depth * 2);
+            result.Add(new ModeTreeEntry(mode.Name, indent + mode.Name));
+            if (childrenOf.TryGetValue(mode.Name, out var children))
+                foreach (var child in children)
+                    Visit(child, depth + 1);
+        }
+
+        foreach (var root in rootModes)
+            Visit(root, 0);
+
+        foreach (var mode in modes.Where(m => !visited.Contains(m.Name)))
+            result.Add(new ModeTreeEntry(mode.Name, mode.Name));
+
+        return result;
     }
 }
