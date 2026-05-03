@@ -9,8 +9,10 @@ using Microsoft.Extensions.Logging;
 namespace JoystickGremlin.Core.Actions.VJoy;
 
 /// <summary>
-/// Descriptor for the vJoy button action. Maps a physical button input to a virtual button output.
-/// Configuration keys: <c>vjoyId</c> (uint, default 1), <c>buttonIndex</c> (int, default 1).
+/// Descriptor for the vJoy button action. Maps a physical button or axis input to a virtual button output.
+/// Configuration keys: <c>vjoyId</c> (uint, default 1), <c>buttonIndex</c> (int, default 1),
+/// <c>threshold</c> (double 0–1, default 0.5 — axis value above which the virtual button is pressed).
+/// Lower values create a hair-trigger (e.g. 0.05); higher values require deeper travel (e.g. 0.9).
 /// </summary>
 public sealed class VJoyButtonDescriptor : IActionDescriptor
 {
@@ -40,7 +42,9 @@ public sealed class VJoyButtonDescriptor : IActionDescriptor
     {
         var vjoyId = (uint)(configuration?["vjoyId"]?.GetValue<int>() ?? 1);
         var buttonIndex = configuration?["buttonIndex"]?.GetValue<int>() ?? 1;
-        return new VJoyButtonFunctor(_virtualDeviceManager, vjoyId, buttonIndex, _logger);
+        var threshold = configuration?["threshold"]?.GetValue<double>() ?? 0.5;
+        threshold = Math.Clamp(threshold, 0.0, 1.0);
+        return new VJoyButtonFunctor(_virtualDeviceManager, vjoyId, buttonIndex, threshold, _logger);
     }
 
     private sealed class VJoyButtonFunctor : IActionFunctor
@@ -48,13 +52,15 @@ public sealed class VJoyButtonDescriptor : IActionDescriptor
         private readonly IVirtualDeviceManager _manager;
         private readonly uint _vjoyId;
         private readonly int _buttonIndex;
+        private readonly double _threshold;
         private readonly ILogger _logger;
 
-        internal VJoyButtonFunctor(IVirtualDeviceManager manager, uint vjoyId, int buttonIndex, ILogger logger)
+        internal VJoyButtonFunctor(IVirtualDeviceManager manager, uint vjoyId, int buttonIndex, double threshold, ILogger logger)
         {
             _manager = manager;
             _vjoyId = vjoyId;
             _buttonIndex = buttonIndex;
+            _threshold = threshold;
             _logger = logger;
         }
 
@@ -70,7 +76,7 @@ public sealed class VJoyButtonDescriptor : IActionDescriptor
                     _vjoyId,
                     _buttonIndex);
                 var device = _manager.GetOrAcquireDevice(_vjoyId);
-                bool pressed = inputEvent.Value >= 0.5;
+                bool pressed = inputEvent.Value >= _threshold;
                 try
                 {
                     device.SetButton(_buttonIndex, pressed);

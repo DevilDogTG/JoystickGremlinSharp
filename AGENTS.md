@@ -355,7 +355,7 @@ Actions are **statically registered** (no runtime plugin discovery).
 | Tag | Class | Config keys |
 |---|---|---|
 | `"vjoy-axis"` | `VJoyAxisDescriptor` | `vjoyId` (uint, default 1), `axisIndex` (int, default 1) |
-| `"vjoy-button"` | `VJoyButtonDescriptor` | `vjoyId` (uint, default 1), `buttonIndex` (int, default 1) |
+| `"vjoy-button"` | `VJoyButtonDescriptor` | `vjoyId` (uint, default 1), `buttonIndex` (int, default 1), `threshold` (double 0–1, default 0.5 — axis value at which button is considered pressed; use 0.05 for hair-trigger) |
 | `"vjoy-hat"` | `VJoyHatDescriptor` | `vjoyId` (uint, default 1), `hatIndex` (int, default 1) |
 | `"buttons-to-hat"` | `ButtonsToHatDescriptor` | `vjoyId` (uint, default 1), `hatIndex` (int, default 1), `upButtonId`, `downButtonId`, `leftButtonId`, `rightButtonId` (int) |
 | `"buttons-to-axes"` | `ButtonsToAxesDescriptor` | `vjoyId` (uint, default 1), `xAxisIndex` (int, default 1), `yAxisIndex` (int, default 2), `upButtonId`, `downButtonId`, `leftButtonId`, `rightButtonId` (int) |
