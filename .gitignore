@@ -64,6 +64,10 @@ packages/
 **/publish/
 **/PublishProfiles/
 
+# Code signing certificates (never commit private keys)
+*.pfx
+*.p12
+
 # Test results
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
