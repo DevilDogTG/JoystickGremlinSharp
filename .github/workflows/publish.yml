@@ -61,7 +61,7 @@ jobs:
             --outputDir installer/out/
 
       - name: Sign main EXE
-        if: ${{ secrets.SIGNING_CERT_BASE64 != '' }}
+        if: secrets.SIGNING_CERT_BASE64 != ''
         shell: pwsh
         env:
           SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
@@ -74,6 +74,7 @@ jobs:
                         Where-Object { $_.FullName -like '*x64*' } |
                         Sort-Object FullName -Descending |
                         Select-Object -First 1 -ExpandProperty FullName
+          if ($null -eq $signtool) { throw 'signtool.exe not found in Windows SDK. Ensure windows-2022 runner is used.' }
 
           & $signtool sign /fd SHA256 /p $env:SIGNING_CERT_PASSWORD /f $certPath `
             /t http://timestamp.digicert.com `
@@ -84,7 +85,7 @@ jobs:
           Remove-Item $certPath -Force
 
       - name: Sign installer EXE
-        if: ${{ secrets.SIGNING_CERT_BASE64 != '' }}
+        if: secrets.SIGNING_CERT_BASE64 != ''
         shell: pwsh
         env:
           SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
@@ -97,8 +98,10 @@ jobs:
                         Where-Object { $_.FullName -like '*x64*' } |
                         Sort-Object FullName -Descending |
                         Select-Object -First 1 -ExpandProperty FullName
+          if ($null -eq $signtool) { throw 'signtool.exe not found in Windows SDK. Ensure windows-2022 runner is used.' }
 
           $setup = Get-ChildItem 'installer/out/' -Filter '*Setup.exe' | Select-Object -First 1
+          if ($null -eq $setup) { throw 'No *-Setup.exe found in installer/out/ — vpk pack may have failed.' }
           & $signtool sign /fd SHA256 /p $env:SIGNING_CERT_PASSWORD /f $certPath `
             /t http://timestamp.digicert.com `
             $setup.FullName
