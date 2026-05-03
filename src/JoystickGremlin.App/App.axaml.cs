@@ -14,8 +14,10 @@ using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Profile;
 using JoystickGremlin.Core.Startup;
 using JoystickGremlin.Interop;
+using JoystickGremlin.Interop.VJoy;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace JoystickGremlin.App;
 
@@ -53,6 +55,15 @@ public partial class App : Application
             _mainWindow.Opened += async (_, _) =>
             {
                 filePickerService.SetTopLevel(_mainWindow);
+
+                // Check vJoy prerequisite before initialising — show a warning dialog if not met.
+                var vjoyCheck = VJoyPrerequisiteChecker.Check();
+                if (!vjoyCheck.IsOk)
+                {
+                    var dialog = new VJoyWarningDialog(vjoyCheck);
+                    await dialog.ShowDialog(_mainWindow);
+                }
+
                 await mainWindowVm.InitializeAsync();
 
                 // After settings are loaded, hide window if start-minimized is set.
@@ -70,7 +81,11 @@ public partial class App : Application
                 }
             };
 
-            desktop.Exit += (_, _) => _services.Dispose();
+            desktop.Exit += (_, _) =>
+            {
+                _services.Dispose();
+                Log.CloseAndFlush();
+            };
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -111,7 +126,34 @@ public partial class App : Application
     {
         var services = new ServiceCollection();
 
-        services.AddLogging();
+        var logDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "JoystickGremlinSharp",
+            "logs");
+        Directory.CreateDirectory(logDirectory);
+
+        var logFilePath = Path.Combine(logDirectory, "JoystickGremlinSharp-.log");
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .Enrich.FromLogContext()
+            .WriteTo.File(
+                logFilePath,
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 7,
+                shared: true,
+                flushToDiskInterval: TimeSpan.FromSeconds(1),
+                outputTemplate:
+                    "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}")
+            .CreateLogger();
+
+        Log.Information("Diagnostic logging enabled. Log files are written to {LogFilePath}", logFilePath);
+
+        services.AddLogging(builder =>
+        {
+            builder.ClearProviders();
+            builder.SetMinimumLevel(LogLevel.Debug);
+            builder.AddSerilog(Log.Logger, dispose: false);
+        });
 
         // Page ViewModels — singletons so state persists when navigating between pages.
         services.AddSingleton<DevicesPageViewModel>();

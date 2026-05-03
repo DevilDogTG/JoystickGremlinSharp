@@ -68,44 +68,5 @@ internal static class VJoyNativeLibraryLoader
         return IntPtr.Zero;
     }
 
-    /// <summary>
-    /// Reads the vJoy installation directory from the Windows uninstall registry.
-    /// Returns <c>null</c> if vJoy is not installed or the registry entry is absent.
-    /// </summary>
-    private static string? GetVJoyInstallDir()
-    {
-        const string uninstallKey =
-            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
-
-        var result = SearchUninstallKey(Registry.LocalMachine.OpenSubKey(uninstallKey));
-        if (result is not null)
-            return result;
-
-        // Some 32-bit installers write under WOW6432Node.
-        return SearchUninstallKey(
-            Registry.LocalMachine.OpenSubKey(
-                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"));
-    }
-
-    private static string? SearchUninstallKey(RegistryKey? root)
-    {
-        if (root is null)
-            return null;
-
-        using (root)
-        {
-            foreach (var name in root.GetSubKeyNames())
-            {
-                using var sub = root.OpenSubKey(name);
-                if (sub?.GetValue("DisplayName") is string display &&
-                    display.Contains("vJoy", StringComparison.OrdinalIgnoreCase) &&
-                    sub.GetValue("InstallLocation") is string location)
-                {
-                    return location;
-                }
-            }
-        }
-
-        return null;
-    }
+    private static string? GetVJoyInstallDir() => VJoyRegistryHelper.GetInstallDir();
 }

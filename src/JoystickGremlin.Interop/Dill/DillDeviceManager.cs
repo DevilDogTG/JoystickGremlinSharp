@@ -3,6 +3,7 @@
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.Events;
 using JoystickGremlin.Core.Exceptions;
+using Microsoft.Extensions.Logging;
 
 namespace JoystickGremlin.Interop.Dill;
 
@@ -21,6 +22,7 @@ public sealed class DillDeviceManager : IDeviceManager
     private static readonly object _initLock = new();
 
     private readonly List<DillDevice> _devices = [];
+    private readonly ILogger<DillDeviceManager> _logger;
 
     // Stored to prevent the GC from collecting unmanaged delegates.
     private InputEventCallback? _inputEventCallback;
@@ -40,11 +42,21 @@ public sealed class DillDeviceManager : IDeviceManager
     /// <inheritdoc/>
     public event EventHandler<InputEvent>? InputReceived;
 
+    /// <summary>
+    /// Initializes a new instance of <see cref="DillDeviceManager"/>.
+    /// </summary>
+    public DillDeviceManager(ILogger<DillDeviceManager> logger)
+    {
+        _logger = logger;
+    }
+
     /// <inheritdoc/>
     /// <exception cref="DeviceException">Thrown if DILL cannot be initialised.</exception>
     public void Initialize()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+
+        _logger.LogInformation("Initializing DILL device manager");
 
         lock (_initLock)
         {
@@ -52,6 +64,7 @@ public sealed class DillDeviceManager : IDeviceManager
             {
                 DillNative.init();
                 _dillInitialized = true;
+                _logger.LogInformation("DILL native library initialized");
             }
         }
 
@@ -108,19 +121,26 @@ public sealed class DillDeviceManager : IDeviceManager
     {
         _devices.Clear();
         uint count = DillNative.get_device_count();
+        _logger.LogInformation("Refreshing physical devices from DILL; reported device count {DeviceCount}", count);
         for (uint i = 0; i < count; i++)
         {
             var summary = DillNative.get_device_information_by_index(i);
-            _devices.Add(new DillDevice(summary));
+            var device = new DillDevice(summary);
+            _devices.Add(device);
+            _logger.LogInformation(
+                "Detected device {Name} ({Guid}) axes {AxisCount} buttons {ButtonCount} hats {HatCount} virtual {IsVirtual}",
+                device.Name,
+                device.Guid,
+                device.AxisCount,
+                device.ButtonCount,
+                device.HatCount,
+                device.IsVirtual);
         }
     }
 
     private void OnNativeInputEvent(NativeJoystickInputData data)
     {
         if (_disposed)
-            return;
-
-        if (InputReceived is null)
             return;
 
         InputType? inputType = data.InputType switch
@@ -132,7 +152,10 @@ public sealed class DillDeviceManager : IDeviceManager
         };
 
         if (inputType is null)
+        {
+            _logger.LogDebug("Ignoring DILL input event with unknown input type {InputType}", data.InputType);
             return;
+        }
 
         // DILL reports InputIndex as a 1-based index for all input types (buttons, axes, hats),
         // matching the 1-based identifiers used throughout the rest of the system.
@@ -151,6 +174,20 @@ public sealed class DillDeviceManager : IDeviceManager
             value,
             string.Empty);
 
+        _logger.LogDebug(
+            "DILL input event: device {DeviceGuid}, type {InputType}, identifier {Identifier}, raw value {RawValue}, normalized value {Value}",
+            evt.DeviceGuid,
+            evt.InputType,
+            evt.Identifier,
+            data.Value,
+            evt.Value);
+
+        if (InputReceived is null)
+        {
+            _logger.LogDebug("No subscribers are listening for DILL input events");
+            return;
+        }
+
         InputReceived.Invoke(this, evt);
     }
 
@@ -165,11 +202,13 @@ public sealed class DillDeviceManager : IDeviceManager
         {
             _devices.RemoveAll(d => d.Guid == device.Guid);
             _devices.Add(device);
+            _logger.LogInformation("Device connected: {Name} ({Guid})", device.Name, device.Guid);
             DeviceConnected?.Invoke(this, device);
         }
         else if (actionType == 2)
         {
             _devices.RemoveAll(d => d.Guid == device.Guid);
+            _logger.LogInformation("Device disconnected: {Name} ({Guid})", device.Name, device.Guid);
             DeviceDisconnected?.Invoke(this, device);
         }
     }

@@ -16,8 +16,8 @@ namespace JoystickGremlin.Interop.VJoy;
 /// </remarks>
 public sealed class VJoyDeviceManager : IVirtualDeviceManager
 {
-    /// <summary>Minimum supported vJoy driver version (2.1.8).</summary>
-    private const short MinVJoyVersion = 0x218;
+    /// <summary>Minimum supported vJoy driver version (BrunnerInnovation fork v2.2.2).</summary>
+    private const short MinVJoyVersion = 0x222;
 
     /// <summary>Maximum number of vJoy device slots supported by the driver.</summary>
     private const uint MaxDeviceSlots = 16;
