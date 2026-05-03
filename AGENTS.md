@@ -274,6 +274,9 @@ All P/Invoke declarations live in `JoystickGremlin.Interop`:
 ```
 src/JoystickGremlin.Interop/
   VJoy/             VJoyNative.cs (DllImport), VJoyDevice.cs (IVirtualDevice impl)
+                    VJoyNativeLibraryLoader.cs — SetDllImportResolver; prefers installed DLL
+                    VJoyRegistryHelper.cs — shared helper to read vJoy install dir from registry
+                    VJoyPrerequisiteChecker.cs — startup check (no P/Invoke): IsInstalled/IsCompatible
   Dill/             DillNative.cs (DllImport), DillDevice.cs (IPhysicalDevice impl)
   Startup/          WindowsStartupService.cs (IStartupService — HKCU Run registry)
 ```
@@ -300,8 +303,25 @@ internal static partial class VJoyNative
 
 ### Native DLL Deployment
 
-The native DLLs (`vJoyInterface.dll`, `dill.dll`) from the Python source are copied to the
-output directory via `<Content CopyToOutputDirectory="PreserveNewest">` in the `.csproj`.
+`dill.dll` is bundled in the repository (`src/JoystickGremlin.Interop/Dill/dill.dll`) and copied to
+the output directory via `<Content CopyToOutputDirectory="PreserveNewest">` in the `.csproj`.
+
+**vJoy is a prerequisite — not bundled (functional), install separately.**
+The app ships a reference copy of `vJoyInterface.dll` v2.2.2.0 for dependency resolution, but at
+runtime `VJoyNativeLibraryLoader` always prefers the DLL from the user's vJoy installation so the
+SDK and kernel driver versions match.
+
+#### Required vJoy version
+- **Fork**: [BrunnerInnovation/vJoy](https://github.com/BrunnerInnovation/vJoy) v2.2.x or later
+- **Download**: https://github.com/BrunnerInnovation/vJoy/releases
+- The app checks this requirement at startup (`VJoyPrerequisiteChecker`) and shows a warning
+  dialog with the download link if vJoy is absent or an incompatible version is found.
+
+#### vJoy DLL loading strategy (`VJoyNativeLibraryLoader`)
+`NativeLibrary.SetDllImportResolver` is registered once (before any P/Invoke) to redirect
+`vJoyInterface.dll` loads to `<InstallDir>\x64\vJoyInterface.dll`. The install directory is read
+from the Windows uninstall registry (`HKLM\...\Uninstall`, also checks `WOW6432Node`). Falls back
+to the bundled DLL if the installed path cannot be found.
 
 ### DILL Index and Value Conventions
 
