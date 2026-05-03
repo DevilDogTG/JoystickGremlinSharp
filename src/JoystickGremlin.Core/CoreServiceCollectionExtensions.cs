@@ -7,6 +7,7 @@ using JoystickGremlin.Core.Actions.Macro;
 using JoystickGremlin.Core.ProcessMonitor;
 using JoystickGremlin.Core.Actions.VJoy;
 using JoystickGremlin.Core.Configuration;
+using JoystickGremlin.Core.ForceFeedback;
 using JoystickGremlin.Core.Modes;
 using JoystickGremlin.Core.Pipeline;
 using JoystickGremlin.Core.Profile;
@@ -55,6 +56,9 @@ public static class CoreServiceCollectionExtensions
 
         // Startup service — NullStartupService by default; override in Interop for real registry integration.
         services.TryAddSingleton<IStartupService, NullStartupService>();
+
+        // FFB bridge — NullForceFeedbackBridge by default; override in Interop for real bridge.
+        services.TryAddSingleton<IForceFeedbackBridge, NullForceFeedbackBridge>();
 
         return services;
     }
