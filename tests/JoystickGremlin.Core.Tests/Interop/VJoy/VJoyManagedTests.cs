@@ -79,15 +79,20 @@ public class VJoyManagedTests
     }
 
     [Fact]
-    public void MockVirtualDeviceManager_AcquireTwice_ThrowsVJoyException()
+    public void MockVirtualDeviceManager_AcquireTwice_ReturnsExistingDevice()
     {
+        // AcquireDevice is now idempotent: a second call for the same device returns
+        // the already-acquired instance rather than throwing.
+        var mockDevice = new Mock<IVirtualDevice>();
+        mockDevice.SetupGet(d => d.DeviceId).Returns(1u);
+
         var manager = new Mock<IVirtualDeviceManager>();
-        manager.Setup(m => m.AcquireDevice(1u))
-               .Throws(new VJoyException("vJoy device 1 is already acquired by this process."));
+        manager.Setup(m => m.AcquireDevice(1u)).Returns(mockDevice.Object);
 
-        Action act = () => manager.Object.AcquireDevice(1u);
+        var first = manager.Object.AcquireDevice(1u);
+        var second = manager.Object.AcquireDevice(1u);
 
-        act.Should().Throw<VJoyException>().WithMessage("*already acquired*");
+        first.Should().BeSameAs(second);
     }
 
     [Fact]
@@ -104,17 +109,18 @@ public class VJoyManagedTests
     [Fact]
     public void GetOrAcquireDevice_WhenAlreadyAcquired_ReturnsExistingDevice()
     {
+        // GetOrAcquireDevice now delegates entirely to AcquireDevice, which is idempotent.
         var existingDevice = new Mock<IVirtualDevice>();
         existingDevice.SetupGet(d => d.DeviceId).Returns(2u);
 
         var manager = new Mock<IVirtualDeviceManager>();
-        manager.Setup(m => m.GetDevice(2u)).Returns(existingDevice.Object);
+        manager.Setup(m => m.AcquireDevice(2u)).Returns(existingDevice.Object);
 
         var device = manager.Object.GetOrAcquireDevice(2u);
 
         device.Should().BeSameAs(existingDevice.Object);
-        manager.Verify(m => m.GetDevice(2u), Times.Once);
-        manager.Verify(m => m.AcquireDevice(It.IsAny<uint>()), Times.Never);
+        manager.Verify(m => m.AcquireDevice(2u), Times.Once);
+        manager.Verify(m => m.GetDevice(It.IsAny<uint>()), Times.Never);
     }
 
     [Fact]
@@ -124,14 +130,11 @@ public class VJoyManagedTests
         acquiredDevice.SetupGet(d => d.DeviceId).Returns(2u);
 
         var manager = new Mock<IVirtualDeviceManager>();
-        manager.Setup(m => m.GetDevice(2u))
-            .Throws(new VJoyException("vJoy device 2 has not been acquired. Call AcquireDevice first."));
         manager.Setup(m => m.AcquireDevice(2u)).Returns(acquiredDevice.Object);
 
         var device = manager.Object.GetOrAcquireDevice(2u);
 
         device.Should().BeSameAs(acquiredDevice.Object);
-        manager.Verify(m => m.GetDevice(2u), Times.Once);
         manager.Verify(m => m.AcquireDevice(2u), Times.Once);
     }
 

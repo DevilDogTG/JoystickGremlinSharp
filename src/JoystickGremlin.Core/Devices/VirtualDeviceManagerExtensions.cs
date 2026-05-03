@@ -11,7 +11,8 @@ public static class VirtualDeviceManagerExtensions
 {
     /// <summary>
     /// Returns the requested vJoy device, acquiring it on demand when it has not yet been acquired
-    /// by the current process.
+    /// by the current process. Thread-safe: concurrent calls for the same device ID are serialized
+    /// inside <see cref="IVirtualDeviceManager.AcquireDevice"/>, which is idempotent.
     /// </summary>
     /// <param name="manager">The virtual device manager.</param>
     /// <param name="vjoyId">The 1-based vJoy device identifier.</param>
@@ -23,15 +24,7 @@ public static class VirtualDeviceManagerExtensions
     public static IVirtualDevice GetOrAcquireDevice(this IVirtualDeviceManager manager, uint vjoyId)
     {
         ArgumentNullException.ThrowIfNull(manager);
-
-        try
-        {
-            return manager.GetDevice(vjoyId);
-        }
-        catch (VJoyException)
-        {
-            return manager.AcquireDevice(vjoyId);
-        }
+        return manager.AcquireDevice(vjoyId);
     }
 
     /// <summary>

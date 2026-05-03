@@ -22,7 +22,7 @@ public sealed class ButtonsToAxesFunctorTests
     public ButtonsToAxesFunctorTests()
     {
         _virtualDeviceManagerMock
-            .Setup(m => m.GetDevice(It.IsAny<uint>()))
+            .Setup(m => m.AcquireDevice(It.IsAny<uint>()))
             .Returns(_virtualDeviceMock.Object);
 
         _descriptor = new ButtonsToAxesDescriptor(_virtualDeviceManagerMock.Object, _loggerMock.Object);
@@ -206,10 +206,6 @@ public sealed class ButtonsToAxesFunctorTests
             });
 
         _virtualDeviceManagerMock
-            .Setup(m => m.GetDevice(1))
-            .Throws(new VJoyException("Device not acquired"));
-
-        _virtualDeviceManagerMock
             .Setup(m => m.AcquireDevice(1))
             .Returns(_virtualDeviceMock.Object);
 
@@ -244,14 +240,14 @@ public sealed class ButtonsToAxesFunctorTests
         var functor = _descriptor.CreateFunctor(config);
         
         _virtualDeviceManagerMock
-            .Setup(m => m.GetDevice(2))
+            .Setup(m => m.AcquireDevice(2))
             .Returns(_virtualDeviceMock.Object);
         
         var @event = CreateButtonEvent(10, 1.0); // Up button
 
         await functor.ExecuteAsync(@event);
 
-        _virtualDeviceManagerMock.Verify(m => m.GetDevice(2), Times.Once);
+        _virtualDeviceManagerMock.Verify(m => m.AcquireDevice(2), Times.AtLeast(1));
         _virtualDeviceMock.Verify(v => v.SetAxis(5, 0.0), Times.Once); // X axis (no left/right)
         _virtualDeviceMock.Verify(v => v.SetAxis(6, 1.0), Times.Once); // Y axis (up pressed)
     }

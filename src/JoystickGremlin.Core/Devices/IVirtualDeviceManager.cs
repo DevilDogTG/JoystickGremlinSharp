@@ -16,6 +16,8 @@ public interface IVirtualDeviceManager : IDisposable
 
     /// <summary>
     /// Acquires the specified vJoy device for exclusive use by this process.
+    /// Idempotent: if this process already holds the device, the existing instance is returned
+    /// without resetting it. Thread-safe: concurrent calls for the same device ID are serialized.
     /// </summary>
     /// <param name="vjoyId">1-based vJoy device identifier.</param>
     /// <returns>The acquired virtual device.</returns>
