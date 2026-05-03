@@ -61,7 +61,7 @@ jobs:
             --outputDir installer/out/
 
       - name: Sign main EXE
-        if: secrets.SIGNING_CERT_BASE64 != ''
+        if: ${{ secrets.SIGNING_CERT_BASE64 != '' }}
         shell: pwsh
         env:
           SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
@@ -85,7 +85,7 @@ jobs:
           Remove-Item $certPath -Force
 
       - name: Sign installer EXE
-        if: secrets.SIGNING_CERT_BASE64 != ''
+        if: ${{ secrets.SIGNING_CERT_BASE64 != '' }}
         shell: pwsh
         env:
           SIGNING_CERT_BASE64: ${{ secrets.SIGNING_CERT_BASE64 }}
