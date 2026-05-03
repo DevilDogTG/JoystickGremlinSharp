@@ -116,7 +116,8 @@ public sealed class BoundActionViewModel : ViewModelBase
         return $"Device {device}, Button {button}{thresholdPart}";
     }
 
-    private static string BuildMapToKeyboardSummary(JsonObject? cfg)    {
+    private static string BuildMapToKeyboardSummary(JsonObject? cfg)
+    {
         if (cfg is null) return "(no keys)";
         var keys     = cfg["keys"]?.GetValue<string>() ?? string.Empty;
         var behavior = cfg["behavior"]?.GetValue<string>() ?? "Hold";
