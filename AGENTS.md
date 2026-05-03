@@ -11,14 +11,14 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > **Status**: Phase complete. All core features implemented and released.
 > - Release v10.0.3 published with auto-generated release notes
 > - Workflow: main-first + tag-based release (no merge-back)
-> - 135 tests passing, 0 build warnings
-> - Latest: PR #19 (`features/bindings-page-ux-improvements`) — improved Bindings page UX
+> - 173 tests passing, 0 build warnings
+> - Latest: Multi-button to virtual output mapping (buttons-to-hat, buttons-to-axes actions)
 > - GitHub Actions permissions must be set to "Allow all actions and reusable workflows"
 >   (Settings → Actions → General) for workflows to run on `main`
 > - Release pipeline requires either `RELEASE_TOKEN` secret (fine-grained PAT: Contents+PRs write)
 >   OR repo setting: Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"
 > - **Skills**: Updated code-review (C#/.NET/Avalonia), new finish-feature (automated release workflow)
-> - **Remaining optional features**: response curve editor (axes), condition-based action pipeline
+> - **Remaining optional features**: response curve editor (axes), condition-based action pipeline, UI for button mapping configuration
 
 
 ## Project Overview
@@ -354,12 +354,77 @@ Actions are **statically registered** (no runtime plugin discovery).
 
 | Tag | Class | Config keys |
 |---|---|---|
-| `"vjoy-axis"` | `VJoyAxisActionDescriptor` | `deviceId`, `axisId` |
-| `"vjoy-button"` | `VJoyButtonActionDescriptor` | `deviceId`, `buttonId` |
-| `"vjoy-hat"` | `VJoyHatActionDescriptor` | `deviceId`, `hatId` |
-| `"macro"` | `MacroActionDescriptor` | `keys` (comma-separated), `onPress` (bool) |
+| `"vjoy-axis"` | `VJoyAxisDescriptor` | `vjoyId` (uint, default 1), `axisIndex` (int, default 1) |
+| `"vjoy-button"` | `VJoyButtonDescriptor` | `vjoyId` (uint, default 1), `buttonIndex` (int, default 1) |
+| `"vjoy-hat"` | `VJoyHatDescriptor` | `vjoyId` (uint, default 1), `hatIndex` (int, default 1) |
+| `"buttons-to-hat"` | `ButtonsToHatDescriptor` | `vjoyId` (uint, default 1), `hatIndex` (int, default 1), `upButtonId`, `downButtonId`, `leftButtonId`, `rightButtonId` (int) |
+| `"buttons-to-axes"` | `ButtonsToAxesDescriptor` | `vjoyId` (uint, default 1), `xAxisIndex` (int, default 1), `yAxisIndex` (int, default 2), `upButtonId`, `downButtonId`, `leftButtonId`, `rightButtonId` (int) |
+| `"macro"` | `MacroActionDescriptor` | `keys` (comma-separated), `onPress` (bool, default true) |
 | `"change-mode"` | `ChangeModeActionDescriptor` | `targetMode` (string) |
-| `"map-to-keyboard"` | `MapToKeyboardActionDescriptor` | `keys` (comma-separated key names), `behavior` ("Hold"/"Toggle"/"PressOnly"/"ReleaseOnly") |
+| `"map-to-keyboard"` | `MapToKeyboardActionDescriptor` | `keys` (comma-separated key names), `behavior` ("Hold"/"Toggle"/"PressOnly"/"ReleaseOnly", default "Hold") |
+
+### Multi-Button to Virtual Output Mapping
+
+**New actions** (v10.1+) enable stateful mapping of 4 physical buttons (Up/Down/Left/Right) to virtual outputs:
+
+#### `buttons-to-hat` (D-Pad Mapping)
+
+Maps four physical buttons to a single vJoy Hat/POV output with modal state tracking:
+- **Button state machine**: Tracks which of the 4 buttons are currently pressed
+- **Hat output**: Calculates 360° directional output (0° = Up, 90° = Right, 180° = Down, 270° = Left, diagonals at 45° intervals)
+- **Center (-1)**: When no buttons are pressed, opposite directions pressed (e.g., Up+Down), or all four pressed
+- **State sharing**: Multiple button bindings to the same vJoy hat share state (keyed by vjoyId:hatIndex)
+
+**Configuration example**:
+```json
+{
+  "actionTag": "buttons-to-hat",
+  "configuration": {
+    "vjoyId": 1,
+    "hatIndex": 1,
+    "upButtonId": 5,
+    "downButtonId": 6,
+    "leftButtonId": 7,
+    "rightButtonId": 8
+  }
+}
+```
+
+**Setup**: Create 4 separate input bindings (one for each physical button) with the same action config. The functor will recognize each button and update shared state accordingly.
+
+#### `buttons-to-axes` (Analog Stick Mapping)
+
+Maps four physical buttons to dual vJoy axes (X/Y) with coordinated state tracking:
+- **Button state machine**: Tracks all 4 button states (shared across Up/Down/Left/Right)
+- **Y-axis output**: Up → +1.0, Down → -1.0, Up+Down → 0.0
+- **X-axis output**: Right → +1.0, Left → -1.0, Left+Right → 0.0
+- **Atomic updates**: Both axes written together when state changes (no intermediate values visible to games)
+- **State sharing**: Multiple button bindings to the same vJoy axes share state (keyed by vjoyId:xAxisIndex:yAxisIndex)
+
+**Configuration example**:
+```json
+{
+  "actionTag": "buttons-to-axes",
+  "configuration": {
+    "vjoyId": 1,
+    "xAxisIndex": 1,
+    "yAxisIndex": 2,
+    "upButtonId": 5,
+    "downButtonId": 6,
+    "leftButtonId": 7,
+    "rightButtonId": 8
+  }
+}
+```
+
+**Setup**: Same as buttons-to-hat — create 4 bindings, one per button, all referencing the same action config.
+
+#### Implementation Details
+
+- **State storage**: Per-descriptor class-level dictionaries (keyed by vjoyId:indices) maintain state across multiple functors
+- **Thread safety**: Locked state updates prevent race conditions (important for 1000 Hz polling)
+- **Threshold**: Values ≥0.5 treated as pressed; <0.5 treated as released (standard joystick button convention)
+- **Tested**: All 16 button state permutations tested for both Hat and Axes (ButtonsToHatFunctorTests, ButtonsToAxesFunctorTests)
 
 ### IKeyboardSimulator
 
@@ -591,6 +656,30 @@ hotfix/description  ──fix──►  PR → main  ──rebase-merge──►
 | Release | `release.yml` | Manual dispatch on main | Bump version, open PR |
 | Tag Release | `tag.yml` | Release PR merged → main | Create vX.Y.Z git tag |
 | Publish | `publish.yml` | Push tag `v*` | Build installer, create GitHub Release |
+
+### GitHub Actions Git Auth
+
+All workflows that perform `git push` (release.yml, tag.yml) must include explicit `GH_TOKEN` environment variable in the step. This ensures git operations succeed with proper authentication — the token from `actions/checkout` doesn't persist reliably for subsequent shell operations.
+
+**Correct pattern:**
+```yaml
+- name: Push tag/branch
+  env:
+    GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+  run: git push origin <ref>
+```
+
+### RELEASE_TOKEN Setup
+
+For the release pipeline to work end-to-end, `RELEASE_TOKEN` must be configured:
+
+1. Create fine-grained PAT at: https://github.com/settings/personal-access-tokens/new
+   - **Repository access**: `JoystickGremlinSharp` only
+   - **Permissions**: Contents (read/write), Pull requests (read/write)
+2. Store in repo: Settings → Secrets and variables → Actions → New secret
+   - **Name**: `RELEASE_TOKEN`
+   - **Secret**: Paste the token
+3. Workflows fall back to `GITHUB_TOKEN` if `RELEASE_TOKEN` is missing, but may have limited permissions
 
 
 ## AI Skills & Workflows
