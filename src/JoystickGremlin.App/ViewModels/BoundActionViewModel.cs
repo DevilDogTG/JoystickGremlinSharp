@@ -46,13 +46,26 @@ public sealed class BoundActionViewModel : ViewModelBase
     public bool IsMapToKeyboard => ActionTag == MapToKeyboardActionDescriptor.ActionTag;
 
     /// <summary>
+    /// Gets the name of the ancestor mode this action is inherited from,
+    /// or <c>null</c> if the action is defined directly in the editing mode.
+    /// </summary>
+    public string? InheritedFromMode { get; }
+
+    /// <summary>Gets whether this action is inherited from a parent mode.</summary>
+    public bool IsInherited => InheritedFromMode is not null;
+
+    /// <summary>
     /// Initializes a new instance of <see cref="BoundActionViewModel"/>.
     /// </summary>
     /// <param name="model">The underlying domain bound action.</param>
     /// <param name="registry">Registry used to resolve the display name.</param>
-    public BoundActionViewModel(BoundAction model, IActionRegistry registry)
+    /// <param name="inheritedFromMode">
+    /// Name of the ancestor mode this action comes from, or <c>null</c> if it is owned by the editing mode.
+    /// </param>
+    public BoundActionViewModel(BoundAction model, IActionRegistry registry, string? inheritedFromMode = null)
     {
         Model = model;
+        InheritedFromMode = inheritedFromMode;
         var descriptor = registry.Resolve(model.ActionTag);
         ActionName = descriptor?.Name ?? model.ActionTag;
         ConfigSummary = BuildSummary(model);

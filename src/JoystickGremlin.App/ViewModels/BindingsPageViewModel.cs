@@ -36,6 +36,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     private InputDescriptorViewModel? _selectedInput;
     private BoundActionViewModel? _selectedBoundAction;
     private IActionDescriptor? _selectedNewActionType;
+    private ModeTreeEntry? _selectedEditModeEntry;
 
     // Edit form state (reflects current SelectedBoundAction config)
     private int _editVJoyDeviceId = 1;
@@ -68,29 +69,48 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         BoundActions = new ObservableCollection<BoundActionViewModel>();
         AvailableActionTypes = new ObservableCollection<IActionDescriptor>();
         AvailableModeNames = new ObservableCollection<string>();
+        AvailableEditModeEntries = new ObservableCollection<ModeTreeEntry>();
 
         var hasInput = this.WhenAnyValue(x => x.SelectedInput).Select(i => i is not null);
         var hasSelection = this.WhenAnyValue(x => x.SelectedBoundAction).Select(a => a is not null);
         var hasNewType = this.WhenAnyValue(x => x.SelectedNewActionType).Select(t => t is not null);
         var canAdd = hasInput.CombineLatest(hasNewType, (i, t) => i && t && HasProfile);
+        var hasInherited = this.WhenAnyValue(x => x.SelectedBoundAction).Select(a => a?.IsInherited == true);
 
         AddActionCommand = ReactiveCommand.Create(AddAction, canAdd);
         RemoveActionCommand = ReactiveCommand.Create(RemoveAction, hasSelection);
         MoveUpCommand = ReactiveCommand.Create(MoveUp, hasSelection);
         MoveDownCommand = ReactiveCommand.Create(MoveDown, hasSelection);
-        ApplyActionConfigCommand = ReactiveCommand.Create(ApplyActionConfig, hasSelection);
+        OverrideInheritedActionCommand = ReactiveCommand.Create(OverrideInheritedAction, hasInherited);
 
         // Rebuild inputs when device selection changes
         _ = this.WhenAnyValue(x => x.SelectedDevice)
             .Subscribe(OnSelectedDeviceChanged);
 
-        // Rebuild bound-action list when input or mode changes
+        // Rebuild bound-action list when input changes
         _ = this.WhenAnyValue(x => x.SelectedInput)
+            .Subscribe(_ => RebuildBoundActions());
+
+        // Rebuild bound-action list when the editing mode changes
+        _ = this.WhenAnyValue(x => x.SelectedEditModeEntry)
             .Subscribe(_ => RebuildBoundActions());
 
         // Populate edit form when selected action changes
         _ = this.WhenAnyValue(x => x.SelectedBoundAction)
             .Subscribe(OnSelectedBoundActionChanged);
+
+        // Auto-apply config changes (debounced) so there is no manual Apply step
+        _ = Observable.Merge(
+                this.WhenAnyValue(x => x.EditVJoyDeviceId).Select(_ => Unit.Default),
+                this.WhenAnyValue(x => x.EditVJoyAxisIndex).Select(_ => Unit.Default),
+                this.WhenAnyValue(x => x.EditVJoyButtonIndex).Select(_ => Unit.Default),
+                this.WhenAnyValue(x => x.EditVJoyHatIndex).Select(_ => Unit.Default),
+                this.WhenAnyValue(x => x.EditTargetModeName).Select(_ => Unit.Default),
+                this.WhenAnyValue(x => x.EditMacroKeys).Select(_ => Unit.Default),
+                this.WhenAnyValue(x => x.EditMapToKeyboardKeys).Select(_ => Unit.Default),
+                this.WhenAnyValue(x => x.EditMapToKeyboardBehavior).Select(_ => Unit.Default))
+            .Throttle(TimeSpan.FromMilliseconds(300))
+            .Subscribe(_ => Dispatcher.UIThread.Post(ApplyActionConfig));
 
         _profileState.ProfileChanged += OnProfileChanged;
         _modeManager.ModeChanged += OnModeChanged;
@@ -112,6 +132,16 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the mode names available for the change-mode config form.</summary>
     public ObservableCollection<string> AvailableModeNames { get; }
+
+    /// <summary>Gets the mode entries available for editing (DFS tree order, same as toolbar).</summary>
+    public ObservableCollection<ModeTreeEntry> AvailableEditModeEntries { get; }
+
+    /// <summary>Gets or sets the mode currently being edited in the bindings panel.</summary>
+    public ModeTreeEntry? SelectedEditModeEntry
+    {
+        get => _selectedEditModeEntry;
+        set => this.RaiseAndSetIfChanged(ref _selectedEditModeEntry, value);
+    }
 
     // ─── Selection Properties ───────────────────────────────────────────────────
 
@@ -231,8 +261,11 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     /// <summary>Gets whether the map-to-keyboard config section should be shown.</summary>
     public bool ShowMapToKeyboardConfig => SelectedBoundAction?.IsMapToKeyboard ?? false;
 
-    /// <summary>Gets whether any config section is visible (i.e. an action is selected).</summary>
-    public bool ShowConfigPanel => SelectedBoundAction is not null;
+    /// <summary>Gets whether any config section is visible (i.e. a non-inherited action is selected).</summary>
+    public bool ShowConfigPanel => SelectedBoundAction is not null && !SelectedBoundAction.IsInherited;
+
+    /// <summary>Gets whether the "Override in this mode" panel should be shown.</summary>
+    public bool ShowInheritedPanel => SelectedBoundAction?.IsInherited == true;
 
     // ─── Commands ───────────────────────────────────────────────────────────────
 
@@ -248,8 +281,11 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the command that moves the selected action down in the list.</summary>
     public ReactiveCommand<Unit, Unit> MoveDownCommand { get; }
 
-    /// <summary>Gets the command that writes the edit form values to the selected action's configuration.</summary>
-    public ReactiveCommand<Unit, Unit> ApplyActionConfigCommand { get; }
+    /// <summary>
+    /// Gets the command that copies the selected inherited action into the editing mode,
+    /// creating a local override.
+    /// </summary>
+    public ReactiveCommand<Unit, Unit> OverrideInheritedActionCommand { get; }
 
     // ─── Public Methods ─────────────────────────────────────────────────────────
 
@@ -269,7 +305,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         });
 
         RefreshActionTypes();
-        RebuildModeNames();
+        RebuildEditModeEntries();
     }
 
     // ─── Private Helpers ────────────────────────────────────────────────────────
@@ -282,13 +318,25 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         SelectedNewActionType = AvailableActionTypes.Count > 0 ? AvailableActionTypes[0] : null;
     }
 
-    private void RebuildModeNames()
+    private void RebuildEditModeEntries()
     {
         var profile = _profileState.CurrentProfile;
+        var prevName = SelectedEditModeEntry?.Name;
+
+        AvailableEditModeEntries.Clear();
         AvailableModeNames.Clear();
+
         if (profile is null) return;
+
+        foreach (var entry in ModeTreeHelper.BuildEntries(profile.Modes))
+            AvailableEditModeEntries.Add(entry);
+
         foreach (var mode in profile.Modes)
             AvailableModeNames.Add(mode.Name);
+
+        // Restore previous selection or default to first entry
+        SelectedEditModeEntry = AvailableEditModeEntries.FirstOrDefault(e => e.Name == prevName)
+                               ?? AvailableEditModeEntries.FirstOrDefault();
     }
 
     private void OnSelectedDeviceChanged(DeviceViewModel? device)
@@ -312,13 +360,51 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         BoundActions.Clear();
         SelectedBoundAction = null;
 
-        var binding = FindOrCreateBinding(create: false);
-        if (binding is null) return;
+        var profile = _profileState.CurrentProfile;
+        var editModeName = SelectedEditModeEntry?.Name;
+        if (profile is null || editModeName is null || SelectedDevice is null || SelectedInput is null)
+            return;
 
-        foreach (var ba in binding.Actions)
-            BoundActions.Add(new BoundActionViewModel(ba, _actionRegistry));
+        var deviceGuid = SelectedDevice.Device.Guid;
+        var inputType  = SelectedInput.InputType;
+        var identifier = SelectedInput.Identifier;
 
-        SelectedBoundAction = BoundActions.Count > 0 ? BoundActions[0] : null;
+        // Own bindings — defined directly in the editing mode.
+        var ownMode = profile.Modes.FirstOrDefault(m => m.Name == editModeName);
+        var ownBinding = ownMode?.Bindings.FirstOrDefault(b =>
+            b.DeviceGuid == deviceGuid &&
+            b.InputType  == inputType  &&
+            b.Identifier == identifier);
+
+        if (ownBinding is not null)
+        {
+            foreach (var ba in ownBinding.Actions)
+                BoundActions.Add(new BoundActionViewModel(ba, _actionRegistry));
+        }
+
+        // Inherited bindings — first ancestor in the chain that defines this input.
+        var chain = _modeManager.GetInheritanceChain(editModeName, profile);
+        for (var i = 1; i < chain.Count; i++)
+        {
+            var ancestorMode = profile.Modes.FirstOrDefault(m => m.Name == chain[i]);
+            if (ancestorMode is null) continue;
+
+            var ancestorBinding = ancestorMode.Bindings.FirstOrDefault(b =>
+                b.DeviceGuid == deviceGuid &&
+                b.InputType  == inputType  &&
+                b.Identifier == identifier);
+
+            if (ancestorBinding is null) continue;
+
+            foreach (var ba in ancestorBinding.Actions)
+                BoundActions.Add(new BoundActionViewModel(ba, _actionRegistry, chain[i]));
+
+            break; // Only the first ancestor wins (matches runtime first-match behavior).
+        }
+
+        // Default selection: first own action; fall back to first inherited.
+        SelectedBoundAction = BoundActions.FirstOrDefault(vm => !vm.IsInherited)
+                           ?? BoundActions.FirstOrDefault();
     }
 
     private void OnSelectedBoundActionChanged(BoundActionViewModel? vm)
@@ -330,6 +416,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         this.RaisePropertyChanged(nameof(ShowMacroConfig));
         this.RaisePropertyChanged(nameof(ShowMapToKeyboardConfig));
         this.RaisePropertyChanged(nameof(ShowConfigPanel));
+        this.RaisePropertyChanged(nameof(ShowInheritedPanel));
 
         if (vm is null) return;
 
@@ -364,34 +451,55 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     private void AddAction()
     {
         if (SelectedNewActionType is null || SelectedInput is null) return;
+        if (SelectedEditModeEntry is null) return;
 
         var binding = FindOrCreateBinding(create: true);
         if (binding is null) return;
 
-        var newAction = new BoundAction { ActionTag = SelectedNewActionType.Tag };
+        var newAction = new BoundAction
+        {
+            ActionTag = SelectedNewActionType.Tag,
+            Configuration = BuildDefaultConfig(SelectedNewActionType.Tag),
+        };
         binding.Actions.Add(newAction);
+
         var vm = new BoundActionViewModel(newAction, _actionRegistry);
-        BoundActions.Add(vm);
+
+        // Insert before any inherited entries to keep own actions at the top.
+        var insertIdx = BoundActions.Count(bvm => !bvm.IsInherited);
+        BoundActions.Insert(insertIdx, vm);
         SelectedBoundAction = vm;
         _profileState.NotifyProfileModified();
     }
 
+    private static JsonObject? BuildDefaultConfig(string tag) => tag switch
+    {
+        VJoyAxisDescriptor.ActionTag   => new JsonObject { ["vjoyId"] = 1, ["axisIndex"]   = 1 },
+        VJoyButtonDescriptor.ActionTag => new JsonObject { ["vjoyId"] = 1, ["buttonIndex"] = 1 },
+        VJoyHatDescriptor.ActionTag    => new JsonObject { ["vjoyId"] = 1, ["hatIndex"]    = 1 },
+        ChangeModeActionDescriptor.ActionTag  => new JsonObject { ["targetMode"] = string.Empty },
+        MacroActionDescriptor.ActionTag       => new JsonObject { ["keys"] = string.Empty, ["onPress"] = true },
+        MapToKeyboardActionDescriptor.ActionTag => new JsonObject { ["keys"] = string.Empty, ["behavior"] = "Hold" },
+        _ => null,
+    };
+
     private void RemoveAction()
     {
-        if (SelectedBoundAction is null) return;
+        if (SelectedBoundAction is null || SelectedBoundAction.IsInherited) return;
 
         var binding = FindOrCreateBinding(create: false);
         if (binding is null) return;
 
         binding.Actions.Remove(SelectedBoundAction.Model);
         BoundActions.Remove(SelectedBoundAction);
-        SelectedBoundAction = BoundActions.Count > 0 ? BoundActions[0] : null;
+        SelectedBoundAction = BoundActions.FirstOrDefault(vm => !vm.IsInherited)
+                           ?? BoundActions.FirstOrDefault();
         _profileState.NotifyProfileModified();
     }
 
     private void MoveUp()
     {
-        if (SelectedBoundAction is null) return;
+        if (SelectedBoundAction is null || SelectedBoundAction.IsInherited) return;
         var idx = BoundActions.IndexOf(SelectedBoundAction);
         if (idx <= 0) return;
 
@@ -407,9 +515,11 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
 
     private void MoveDown()
     {
-        if (SelectedBoundAction is null) return;
+        if (SelectedBoundAction is null || SelectedBoundAction.IsInherited) return;
         var idx = BoundActions.IndexOf(SelectedBoundAction);
-        if (idx < 0 || idx >= BoundActions.Count - 1) return;
+        // Can't move down into inherited territory.
+        var maxIdx = BoundActions.Count(vm => !vm.IsInherited) - 1;
+        if (idx < 0 || idx >= maxIdx) return;
 
         var binding = FindOrCreateBinding(create: false);
         if (binding is null) return;
@@ -424,6 +534,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     private void ApplyActionConfig()
     {
         if (SelectedBoundAction is null) return;
+        if (SelectedBoundAction.IsInherited) return; // Inherited actions are read-only.
 
         var model = SelectedBoundAction.Model;
         model.Configuration = model.ActionTag switch
@@ -473,16 +584,38 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         _logger.LogTrace("Action config applied for tag {Tag}", model.ActionTag);
     }
 
+    private void OverrideInheritedAction()
+    {
+        if (SelectedBoundAction is null || !SelectedBoundAction.IsInherited) return;
+
+        var binding = FindOrCreateBinding(create: true);
+        if (binding is null) return;
+
+        var clonedConfig = (JsonObject?)SelectedBoundAction.Model.Configuration?.DeepClone();
+        var newAction = new BoundAction
+        {
+            ActionTag = SelectedBoundAction.Model.ActionTag,
+            Configuration = clonedConfig,
+        };
+        binding.Actions.Add(newAction);
+
+        RebuildBoundActions();
+        SelectedBoundAction = BoundActions.FirstOrDefault(vm => !vm.IsInherited && vm.ActionTag == newAction.ActionTag)
+                           ?? BoundActions.FirstOrDefault(vm => !vm.IsInherited);
+        _profileState.NotifyProfileModified();
+    }
+
     /// <summary>
-    /// Finds the <see cref="InputBinding"/> for the selected device+input in the current mode.
+    /// Finds the <see cref="InputBinding"/> for the selected device+input in the editing mode.
     /// If <paramref name="create"/> is true, creates the binding (and mode if missing) when absent.
     /// </summary>
     private InputBinding? FindOrCreateBinding(bool create)
     {
         var profile = _profileState.CurrentProfile;
-        if (profile is null || SelectedDevice is null || SelectedInput is null) return null;
+        if (profile is null || SelectedDevice is null || SelectedInput is null || SelectedEditModeEntry is null)
+            return null;
 
-        var modeName = _modeManager.ActiveModeName;
+        var modeName = SelectedEditModeEntry.Name;
         var mode = profile.Modes.FirstOrDefault(m => m.Name == modeName);
 
         if (mode is null)
@@ -521,18 +654,14 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         Dispatcher.UIThread.Post(() =>
         {
             this.RaisePropertyChanged(nameof(HasProfile));
-            RebuildModeNames();
+            RebuildEditModeEntries();
             RebuildBoundActions();
         });
     }
 
     private void OnModeChanged(object? sender, string modeName)
     {
-        Dispatcher.UIThread.Post(() =>
-        {
-            this.RaisePropertyChanged(nameof(CurrentModeName));
-            RebuildBoundActions();
-        });
+        Dispatcher.UIThread.Post(() => this.RaisePropertyChanged(nameof(CurrentModeName)));
     }
 
     /// <inheritdoc/>
