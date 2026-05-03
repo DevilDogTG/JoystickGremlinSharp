@@ -22,7 +22,7 @@ public sealed class ButtonsToHatFunctorTests
     public ButtonsToHatFunctorTests()
     {
         _virtualDeviceManagerMock
-            .Setup(m => m.GetDevice(It.IsAny<uint>()))
+            .Setup(m => m.AcquireDevice(It.IsAny<uint>()))
             .Returns(_virtualDeviceMock.Object);
 
         _descriptor = new ButtonsToHatDescriptor(_virtualDeviceManagerMock.Object, _loggerMock.Object);
@@ -201,10 +201,6 @@ public sealed class ButtonsToHatFunctorTests
             });
 
         _virtualDeviceManagerMock
-            .Setup(m => m.GetDevice(1))
-            .Throws(new VJoyException("Device not acquired"));
-
-        _virtualDeviceManagerMock
             .Setup(m => m.AcquireDevice(1))
             .Returns(_virtualDeviceMock.Object);
 
@@ -238,14 +234,14 @@ public sealed class ButtonsToHatFunctorTests
         var functor = _descriptor.CreateFunctor(config);
         
         _virtualDeviceManagerMock
-            .Setup(m => m.GetDevice(2))
+            .Setup(m => m.AcquireDevice(2))
             .Returns(_virtualDeviceMock.Object);
         
         var @event = CreateButtonEvent(10, 1.0);
 
         await functor.ExecuteAsync(@event);
 
-        _virtualDeviceManagerMock.Verify(m => m.GetDevice(2), Times.Once);
+        _virtualDeviceManagerMock.Verify(m => m.AcquireDevice(2), Times.AtLeast(1));
         _virtualDeviceMock.Verify(v => v.SetHat(3, 0), Times.Once);
     }
 

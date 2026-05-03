@@ -119,7 +119,7 @@ public sealed class VJoyActionTests
     private static Mock<IVirtualDeviceManager> MockManagerWith(Mock<IVirtualDevice> device, uint vjoyId)
     {
         var manager = new Mock<IVirtualDeviceManager>();
-        manager.Setup(m => m.GetDevice(vjoyId)).Returns(device.Object);
+        manager.Setup(m => m.AcquireDevice(vjoyId)).Returns(device.Object);
         return manager;
     }
 }

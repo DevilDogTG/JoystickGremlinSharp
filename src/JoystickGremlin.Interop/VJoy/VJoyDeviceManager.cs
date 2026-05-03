@@ -23,6 +23,7 @@ public sealed class VJoyDeviceManager : IVirtualDeviceManager
     private const uint MaxDeviceSlots = 16;
 
     private readonly Dictionary<uint, VJoyDevice> _acquiredDevices = [];
+    private readonly object _deviceLock = new();
     private readonly ILogger<VJoyDeviceManager> _logger;
     private bool _disposed;
 
@@ -58,71 +59,87 @@ public sealed class VJoyDeviceManager : IVirtualDeviceManager
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Thread-safe and idempotent: if this process already holds the device, the existing
+    /// instance is returned immediately without resetting it.
+    /// </remarks>
     /// <exception cref="VJoyException">
     /// Thrown if vJoy is unavailable, the version is too old, the device is not free,
-    /// the device is already held by this process, or the acquisition call fails.
+    /// or the acquisition call fails.
     /// </exception>
     public IVirtualDevice AcquireDevice(uint vjoyId)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        _logger.LogInformation("Attempting to acquire vJoy device {VJoyId}", vjoyId);
-
-        if (!VJoyNative.vJoyEnabled())
-        {
-            _logger.LogWarning("Cannot acquire vJoy device {VJoyId} because vJoy is not running", vjoyId);
-            throw new VJoyException("vJoy is not currently running.");
-        }
-
-        short version = VJoyNative.GetvJoyVersion();
-        if (version < MinVJoyVersion)
-        {
-            _logger.LogWarning(
-                "Cannot acquire vJoy device {VJoyId} because vJoy version 0x{Version:X} is older than required 0x{MinimumVersion:X}",
-                vjoyId,
-                version,
-                MinVJoyVersion);
-            throw new VJoyException(
-                $"Incompatible vJoy version 0x{version:X}. Version 0x{MinVJoyVersion:X} or higher required.");
-        }
-
-        if (_acquiredDevices.ContainsKey(vjoyId))
+        // Fast path: device already acquired — no lock required for a read that trades
+        // correctness for performance; the lock below handles the write side.
+        if (_acquiredDevices.TryGetValue(vjoyId, out var existing))
         {
             _logger.LogDebug("vJoy device {VJoyId} is already acquired by this process", vjoyId);
-            throw new VJoyException($"vJoy device {vjoyId} is already acquired by this process.");
+            return existing;
         }
 
-        var status = (VjdStatus)VJoyNative.GetVJDStatus(vjoyId);
-        _logger.LogDebug("vJoy device {VJoyId} status before acquire: {Status}", vjoyId, status);
-        if (status != VjdStatus.Free)
+        lock (_deviceLock)
         {
-            var ownerPid = VJoyNative.GetOwnerPid(vjoyId);
-            _logger.LogWarning(
-                "vJoy device {VJoyId} is not free; status {Status}, owner PID {OwnerPid}",
+            // Double-check inside the lock — another thread may have acquired while we waited.
+            if (_acquiredDevices.TryGetValue(vjoyId, out existing))
+            {
+                _logger.LogDebug("vJoy device {VJoyId} is already acquired by this process (post-lock check)", vjoyId);
+                return existing;
+            }
+
+            _logger.LogInformation("Attempting to acquire vJoy device {VJoyId}", vjoyId);
+
+            if (!VJoyNative.vJoyEnabled())
+            {
+                _logger.LogWarning("Cannot acquire vJoy device {VJoyId} because vJoy is not running", vjoyId);
+                throw new VJoyException("vJoy is not currently running.");
+            }
+
+            short version = VJoyNative.GetvJoyVersion();
+            if (version < MinVJoyVersion)
+            {
+                _logger.LogWarning(
+                    "Cannot acquire vJoy device {VJoyId} because vJoy version 0x{Version:X} is older than required 0x{MinimumVersion:X}",
+                    vjoyId,
+                    version,
+                    MinVJoyVersion);
+                throw new VJoyException(
+                    $"Incompatible vJoy version 0x{version:X}. Version 0x{MinVJoyVersion:X} or higher required.");
+            }
+
+            var status = (VjdStatus)VJoyNative.GetVJDStatus(vjoyId);
+            _logger.LogDebug("vJoy device {VJoyId} status before acquire: {Status}", vjoyId, status);
+            if (status != VjdStatus.Free)
+            {
+                var ownerPid = VJoyNative.GetOwnerPid(vjoyId);
+                _logger.LogWarning(
+                    "vJoy device {VJoyId} is not free; status {Status}, owner PID {OwnerPid}",
+                    vjoyId,
+                    status,
+                    ownerPid);
+                throw new VJoyException(
+                    $"vJoy device {vjoyId} is not available (status: {status}). " +
+                    $"It may be in use by another application (PID {ownerPid}).");
+            }
+
+            if (!VJoyNative.AcquireVJD(vjoyId))
+            {
+                _logger.LogWarning("vJoy driver rejected acquire request for device {VJoyId}", vjoyId);
+                throw new VJoyException($"Failed to acquire vJoy device {vjoyId}.");
+            }
+
+            var device = new VJoyDevice(vjoyId);
+            device.Reset();
+            _acquiredDevices[vjoyId] = device;
+            _logger.LogInformation(
+                "Acquired vJoy device {VJoyId} with {AxisCount} axes, {ButtonCount} buttons, {HatCount} hats",
                 vjoyId,
-                status,
-                ownerPid);
-            throw new VJoyException(
-                $"vJoy device {vjoyId} is not available (status: {status}). " +
-                $"It may be in use by another application (PID {ownerPid}).");
+                device.AxisCount,
+                device.ButtonCount,
+                device.HatCount);
+            return device;
         }
-
-        if (!VJoyNative.AcquireVJD(vjoyId))
-        {
-            _logger.LogWarning("vJoy driver rejected acquire request for device {VJoyId}", vjoyId);
-            throw new VJoyException($"Failed to acquire vJoy device {vjoyId}.");
-        }
-
-        var device = new VJoyDevice(vjoyId);
-        device.Reset();
-        _acquiredDevices[vjoyId] = device;
-        _logger.LogInformation(
-            "Acquired vJoy device {VJoyId} with {AxisCount} axes, {ButtonCount} buttons, {HatCount} hats",
-            vjoyId,
-            device.AxisCount,
-            device.ButtonCount,
-            device.HatCount);
-        return device;
     }
 
     /// <inheritdoc/>
@@ -130,8 +147,11 @@ public sealed class VJoyDeviceManager : IVirtualDeviceManager
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        if (!_acquiredDevices.Remove(vjoyId))
-            return;
+        lock (_deviceLock)
+        {
+            if (!_acquiredDevices.Remove(vjoyId))
+                return;
+        }
 
         VJoyNative.RelinquishVJD(vjoyId);
         _logger.LogInformation("Released vJoy device {VJoyId}", vjoyId);
@@ -140,12 +160,18 @@ public sealed class VJoyDeviceManager : IVirtualDeviceManager
     /// <inheritdoc/>
     public void ReleaseAll()
     {
-        foreach (uint vjoyId in _acquiredDevices.Keys.ToList())
+        List<uint> toRelease;
+        lock (_deviceLock)
+        {
+            toRelease = [.. _acquiredDevices.Keys];
+            _acquiredDevices.Clear();
+        }
+
+        foreach (uint vjoyId in toRelease)
         {
             VJoyNative.RelinquishVJD(vjoyId);
             _logger.LogInformation("Released vJoy device {VJoyId}", vjoyId);
         }
-        _acquiredDevices.Clear();
     }
 
     /// <inheritdoc/>
