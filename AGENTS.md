@@ -8,14 +8,16 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > Legacy folders `doc/`, `gfx/`, and `gh_page/` have been removed (Python Sphinx docs and
 > GitHub Pages from the original project — not applicable to the C# rewrite).
 
-> **Phase status**: Phases 4–9 complete. Release pipeline complete and verified. 131 tests passing, 0 build warnings.
+> **Phase status**: Phases 4–9 complete. Release pipeline complete and verified. 135 tests passing, 0 build warnings.
 > All PRs merged (#2–#10). Release v10.0.3 published: `JoystickGremlinSharp-10.0.3-Setup.exe` with
 > auto-generated release notes. Workflow migrated to main-first + tag-based release (no merge-back). ✅
+> PR #11 (`features/ui-fixes-polish`) in review: sidebar icon compact layout, parent-mode binding fix,
+> tree-mode visual display for Profile page and toolbar ComboBox.
 > GitHub Actions permissions must be set to "Allow all actions and reusable workflows"
 > (Settings → Actions → General) for workflows to run on `main`.
 > Release pipeline requires either `RELEASE_TOKEN` secret (fine-grained PAT: Contents+PRs write)
 > OR repo setting: Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests".
-> **Avalonia 12.0.1 + ReactiveUI.Avalonia 12.0.1 + ReactiveUI 23.2.1**.
+> **Avalonia 11.x + ReactiveUI.Avalonia + ReactiveUI**.
 > **FluentAssertions 8.9.0** — Xceed license accepted for this project.
 > Remaining: response curve editor (axes), condition-based action pipeline.
 
@@ -120,13 +122,18 @@ src/JoystickGremlin.App/
   Controls/         Custom Avalonia controls (reusable across views)
   ViewModels/       ReactiveObject-based ViewModels, one per View:
                       MainWindowViewModel  — nav bar, profile load/save, pipeline start/stop,
-                                            CheckForUpdatesCommand (Velopack)
+                                            CheckForUpdatesCommand (Velopack);
+                                            AvailableModeEntries + SelectedModeEntry for mode ComboBox
                       DevicesPageViewModel — lists physical devices from IDeviceManager
-                      ProfilePageViewModel — current mode, mode switcher, profile metadata
+                      ProfilePageViewModel — mode list (DFS tree order), add/remove/edit mode,
+                                            parent-mode selection (AvailableParentNames rebuilt before EditParentName is set)
                       SettingsPageViewModel — app settings via ISettingsService + IStartupService
                       BindingsPageViewModel — three-panel editor: device→input→bound actions
                       BoundActionViewModel  — wraps BoundAction; computes ConfigSummary
                       InputDescriptorViewModel — represents single axis/button/hat slot
+                      ModeViewModel         — wraps Mode for Profile page; Depth + TreePadding (left-indent only)
+                      ModeTreeEntry         — record(Name, IndentedLabel) for toolbar ComboBox tree display
+                      ModeTreeHelper        — static: Flatten() DFS traversal + BuildEntries() for both ViewModels
   Views/            *.axaml Views, code-behind minimal
   FilePickerService.cs  — wraps Avalonia IStorageProvider; call SetTopLevel(mainWindow) before use
   App.axaml         Application definition — includes TrayIcon (Show / Exit context menu)
