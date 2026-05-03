@@ -63,7 +63,7 @@
                               FontSize="12">
                         <ComboBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:ModeTreeEntry">
-                                <TextBlock Text="{Binding IndentedLabel}" FontFamily="Consolas,Courier New,monospace"/>
+                                <TextBlock Text="{Binding IndentedLabel}" FontFamily="Consolas,Courier New"/>
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
