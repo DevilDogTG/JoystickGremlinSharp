@@ -22,6 +22,7 @@ public sealed class DillDeviceManager : IDeviceManager
     private static readonly object _initLock = new();
 
     private readonly List<DillDevice> _devices = [];
+    private readonly HashSet<Guid> _virtualDeviceGuids = [];
     private readonly ILogger<DillDeviceManager> _logger;
 
     // Stored to prevent the GC from collecting unmanaged delegates.
@@ -120,21 +121,30 @@ public sealed class DillDeviceManager : IDeviceManager
     private void RefreshDevices()
     {
         _devices.Clear();
+        _virtualDeviceGuids.Clear();
         uint count = DillNative.get_device_count();
         _logger.LogInformation("Refreshing physical devices from DILL; reported device count {DeviceCount}", count);
         for (uint i = 0; i < count; i++)
         {
             var summary = DillNative.get_device_information_by_index(i);
             var device = new DillDevice(summary);
+            if (device.IsVirtual)
+            {
+                _virtualDeviceGuids.Add(device.Guid);
+                _logger.LogDebug(
+                    "Skipping virtual device {Name} ({Guid}) — vJoy output devices must not appear as physical inputs",
+                    device.Name,
+                    device.Guid);
+                continue;
+            }
             _devices.Add(device);
             _logger.LogInformation(
-                "Detected device {Name} ({Guid}) axes {AxisCount} buttons {ButtonCount} hats {HatCount} virtual {IsVirtual}",
+                "Detected device {Name} ({Guid}) axes {AxisCount} buttons {ButtonCount} hats {HatCount}",
                 device.Name,
                 device.Guid,
                 device.AxisCount,
                 device.ButtonCount,
-                device.HatCount,
-                device.IsVirtual);
+                device.HatCount);
         }
     }
 
@@ -142,6 +152,13 @@ public sealed class DillDeviceManager : IDeviceManager
     {
         if (_disposed)
             return;
+
+        var deviceGuid = DillGuidConverter.ToGuid(data.DeviceGuid);
+        if (_virtualDeviceGuids.Contains(deviceGuid))
+        {
+            _logger.LogTrace("Ignoring input event from virtual device {DeviceGuid}", deviceGuid);
+            return;
+        }
 
         InputType? inputType = data.InputType switch
         {
@@ -198,6 +215,15 @@ public sealed class DillDeviceManager : IDeviceManager
 
         var device = new DillDevice(data);
 
+        if (device.IsVirtual)
+        {
+            if (actionType == 1)
+                _virtualDeviceGuids.Add(device.Guid);
+            else if (actionType == 2)
+                _virtualDeviceGuids.Remove(device.Guid);
+            return;
+        }
+
         if (actionType == 1)
         {
             _devices.RemoveAll(d => d.Guid == device.Guid);
@@ -227,5 +253,6 @@ public sealed class DillDeviceManager : IDeviceManager
         _deviceChangeCallback = null;
 
         _devices.Clear();
+        _virtualDeviceGuids.Clear();
     }
 }
