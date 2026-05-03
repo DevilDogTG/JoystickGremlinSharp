@@ -1,22 +1,22 @@
-# Manual release workflow (GitFlow model).
+# Manual release workflow (main-first model).
 #
 # HOW TO TRIGGER A RELEASE:
 #   1. Go to Actions → "Release" → "Run workflow"
-#   2. Select the branch: develop
+#   2. Select the branch: main
 #   3. Choose version_type: major | minor | patch
 #   4. Optionally provide release_notes
 #   5. Click "Run workflow"
 #
 # WHAT IT DOES:
-#   1. Reads the current version from version.json on develop
+#   1. Reads the current version from version.json on main
 #   2. Computes the new version based on version_type
-#   3. Creates a release/vX.Y.Z branch from develop
+#   3. Creates a release/vX.Y.Z branch from main
 #   4. Bumps version.json on that branch and commits
 #   5. Opens a PR:  release/vX.Y.Z  →  main         (title: "Release vX.Y.Z")
 #
 # AFTER THE WORKFLOW:
-#   - Review and merge the PR into main
-#     (triggers publish.yml → installer build + GitHub Release + merge-back PR main → develop)
+#   - Review and merge the PR into main (rebase merge)
+#     (triggers tag.yml → creates vX.Y.Z tag → triggers publish.yml → installer + GitHub Release)
 #
 # REQUIRED SECRET (for PR creation):
 #   RELEASE_TOKEN — a fine-grained PAT with:
@@ -53,10 +53,10 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-      - name: Checkout develop
+      - name: Checkout main
         uses: actions/checkout@v4
         with:
-          ref: develop
+          ref: main
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
@@ -115,7 +115,7 @@ jobs:
           ${NOTES}}
 
           ---
-          Merge this PR into \`main\` to trigger the publish workflow (installer + GitHub Release)."
+          Merge this PR into \`main\` (rebase merge) to trigger tag creation and the publish workflow (installer + GitHub Release)."
 
           gh pr create \
             --base main \
@@ -134,4 +134,4 @@ jobs:
           echo "| Release branch | \`${{ steps.version.outputs.branch }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Next step:**" >> $GITHUB_STEP_SUMMARY
-          echo "Merge the PR into \`main\` to trigger installer build, GitHub Release, and merge-back to \`develop\`." >> $GITHUB_STEP_SUMMARY
+          echo "Merge the PR into \`main\` (rebase merge) to trigger tag creation, installer build, and GitHub Release." >> $GITHUB_STEP_SUMMARY

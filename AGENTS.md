@@ -10,7 +10,7 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 
 > **Phase status**: Phases 4–9 complete. Release pipeline complete and verified. 131 tests passing, 0 build warnings.
 > All PRs merged (#2–#10). Release v10.0.3 published: `JoystickGremlinSharp-10.0.3-Setup.exe` with
-> auto-generated release notes. Merge-back (`main → develop`) automated via publish.yml. ✅
+> auto-generated release notes. Workflow migrated to main-first + tag-based release (no merge-back). ✅
 > GitHub Actions permissions must be set to "Allow all actions and reusable workflows"
 > (Settings → Actions → General) for workflows to run on `main`.
 > Release pipeline requires either `RELEASE_TOKEN` secret (fine-grained PAT: Contents+PRs write)
@@ -445,8 +445,22 @@ public sealed class ProfileRepositoryTests
 
 ## Release Process
 
-This project uses a **GitFlow release model**. Feature branches merge to `develop` freely.
-When ready to ship, trigger a manual release workflow to bump the version and create an installer.
+This project uses a **main-first, tag-based release model**. Feature branches are created from
+`main`, rebased onto `main` before review, and merged using **rebase merge** (linear history, no
+merge commits). When ready to ship, trigger the manual release workflow.
+
+### Branch Strategy
+
+```
+main          ← primary branch; all feature PRs target here
+feature/xyz   ← branch from main; rebase on main before opening PR; rebase-merge into main
+release/vX.Y.Z ← short-lived; created by release.yml; merged into main via rebase-merge PR
+```
+
+- **No `develop` branch** — `develop` is kept as a frozen legacy/archive reference only.
+- **No merge-back** — `main` is the only long-lived branch; there is nothing to sync back to.
+- **Rebase merge enforced** — merge commits and squash merges are disabled at the repo level
+  (Settings → General → Pull Requests).
 
 ### Version Source
 
@@ -466,25 +480,24 @@ When ready to ship, trigger a manual release workflow to bump the version and cr
   enable **"Allow GitHub Actions to create and approve pull requests"**
 
 1. Go to **GitHub → Actions → Release → Run workflow**
-2. Select branch: **`develop`**
+2. Select branch: **`main`**
 3. Choose **version_type**: `major` | `minor` | `patch`
 4. Optionally add **release_notes** (supports markdown)
 5. Click **Run workflow**
 
 The workflow:
 - Computes the new semver from `version.json`
-- Creates `release/vX.Y.Z` branch from `develop`
+- Creates `release/vX.Y.Z` branch from `main`
 - Bumps `version.json` and commits it
 - Opens **PR → `main`** (title: *"Release vX.Y.Z"*)
 
 ### Completing the Release
 
-1. **Review + merge the PR into `main`** — this triggers `publish.yml` automatically
-2. `publish.yml` builds a self-contained `win-x64` binary, runs `vpk pack`, renames the
-   installer to `JoystickGremlinSharp-{version}-Setup.exe`, and creates a GitHub Release
-   with auto-generated release notes and the versioned installer as the only asset
-3. After publishing, `publish.yml` automatically opens a **merge-back PR `main → develop`**
-   to keep `version.json` in sync — review and merge it
+1. **Review + rebase-merge the PR into `main`** — this triggers `tag.yml` automatically
+2. `tag.yml` reads `version.json` from `main` and creates + pushes the `vX.Y.Z` git tag
+3. `publish.yml` triggers on the tag, builds a self-contained `win-x64` binary, runs `vpk pack`,
+   renames the installer to `JoystickGremlinSharp-{version}-Setup.exe`, and creates a GitHub
+   Release with auto-generated release notes and the versioned installer as the only asset
 
 ### Building Locally
 
@@ -498,9 +511,10 @@ The workflow:
 
 | Workflow | File | Trigger | Purpose |
 |---|---|---|---|
-| .NET CI | `dotnet-ci.yml` | Push/PR → develop, main | Build + test gate |
-| Release | `release.yml` | Manual dispatch on develop | Bump version, open PRs |
-| Publish | `publish.yml` | Push to main | Build installer, create GitHub Release |
+| .NET CI | `dotnet-ci.yml` | Push/PR → main | Build + test gate |
+| Release | `release.yml` | Manual dispatch on main | Bump version, open PR |
+| Tag Release | `tag.yml` | Release PR merged → main | Create vX.Y.Z git tag |
+| Publish | `publish.yml` | Push tag `v*` | Build installer, create GitHub Release |
 
 
 ## Pre-commit Checks
@@ -525,8 +539,8 @@ For PR creation and GitHub API operations, authenticate `gh` CLI:
 gh auth login --with-token   # paste a fine-grained PAT when prompted
 gh repo set-default DevilDogTG/JoystickGremlinSharp
 
-# Create PR
-gh pr create --base develop --head <branch> --title "..." --body "..."
+# Create PR (always targeting main)
+gh pr create --base main --head <branch> --title "..." --body "..."
 ```
 
 **Fine-grained PAT minimum permissions** (repository: `JoystickGremlinSharp` only):
