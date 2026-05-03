@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
 using JoystickGremlin.Core.Configuration;
+using JoystickGremlin.Core.ForceFeedback;
 using JoystickGremlin.Core.Startup;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -21,6 +22,7 @@ public sealed class SettingsPageViewModel : ViewModelBase
     private readonly ISettingsService _settingsService;
     private readonly IStartupService _startupService;
     private readonly IFilePickerService _filePicker;
+    private readonly IForceFeedbackBridge _ffbBridge;
     private readonly ILogger<SettingsPageViewModel> _logger;
     private string _lastProfilePath = string.Empty;
     private decimal _vJoyDeviceId = 1;
@@ -29,6 +31,11 @@ public sealed class SettingsPageViewModel : ViewModelBase
     private bool _startWithWindows;
     private bool _closeToTray = true;
     private bool _enableAutoLoading;
+    private bool _enableFfbBridge;
+    private decimal _ffbVJoyDeviceId = 1;
+    private int _ffbGainPercent = 100;
+    private string _ffbWheelInstanceGuid = string.Empty;
+    private string _ffbBridgeStatus = "Disabled";
     private bool _loading;
 
     /// <summary>
@@ -38,11 +45,13 @@ public sealed class SettingsPageViewModel : ViewModelBase
         ISettingsService settingsService,
         IStartupService startupService,
         IFilePickerService filePicker,
+        IForceFeedbackBridge ffbBridge,
         ILogger<SettingsPageViewModel> logger)
     {
         _settingsService = settingsService;
         _startupService  = startupService;
         _filePicker      = filePicker;
+        _ffbBridge       = ffbBridge;
         _logger          = logger;
 
         ProcessMappings = [];
@@ -50,6 +59,9 @@ public sealed class SettingsPageViewModel : ViewModelBase
         RemoveMappingCommand = ReactiveCommand.Create<ProcessMappingViewModel>(RemoveMapping);
         MoveUpCommand        = ReactiveCommand.Create<ProcessMappingViewModel>(MoveUp);
         MoveDownCommand      = ReactiveCommand.Create<ProcessMappingViewModel>(MoveDown);
+
+        _ffbBridge.StateChanged += OnBridgeStateChanged;
+        _ffbBridgeStatus = _ffbBridge.State.ToString();
 
         this.WhenAnyValue(
                 x => x.LastProfilePath,
@@ -60,6 +72,16 @@ public sealed class SettingsPageViewModel : ViewModelBase
                 x => x.CloseToTray,
                 x => x.EnableAutoLoading,
                 (_, _, _, _, _, _, _) => Unit.Default)
+            .Skip(1)
+            .Throttle(TimeSpan.FromMilliseconds(800), AvaloniaScheduler.Instance)
+            .Subscribe(unit => { if (!_loading) _ = SaveAsync(); });
+
+        this.WhenAnyValue(
+                x => x.EnableFfbBridge,
+                x => x.FfbVJoyDeviceId,
+                x => x.FfbGainPercent,
+                x => x.FfbWheelInstanceGuid,
+                (_, _, _, _) => Unit.Default)
             .Skip(1)
             .Throttle(TimeSpan.FromMilliseconds(800), AvaloniaScheduler.Instance)
             .Subscribe(unit => { if (!_loading) _ = SaveAsync(); });
@@ -114,6 +136,44 @@ public sealed class SettingsPageViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _enableAutoLoading, value);
     }
 
+    /// <summary>Gets or sets whether the force feedback bridge is enabled.</summary>
+    public bool EnableFfbBridge
+    {
+        get => _enableFfbBridge;
+        set => this.RaiseAndSetIfChanged(ref _enableFfbBridge, value);
+    }
+
+    /// <summary>Gets or sets the vJoy device ID that the FFB bridge listens to (1–16).</summary>
+    public decimal FfbVJoyDeviceId
+    {
+        get => _ffbVJoyDeviceId;
+        set => this.RaiseAndSetIfChanged(ref _ffbVJoyDeviceId, value);
+    }
+
+    /// <summary>Gets or sets the FFB output gain percentage (0–200, where 100 = pass-through).</summary>
+    public int FfbGainPercent
+    {
+        get => _ffbGainPercent;
+        set => this.RaiseAndSetIfChanged(ref _ffbGainPercent, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the DirectInput instance GUID of the target wheel device.
+    /// Leave empty to auto-detect the first MOZA device found.
+    /// </summary>
+    public string FfbWheelInstanceGuid
+    {
+        get => _ffbWheelInstanceGuid;
+        set => this.RaiseAndSetIfChanged(ref _ffbWheelInstanceGuid, value);
+    }
+
+    /// <summary>Gets the current operational state of the force feedback bridge (read-only, live).</summary>
+    public string FfbBridgeStatus
+    {
+        get => _ffbBridgeStatus;
+        private set => this.RaiseAndSetIfChanged(ref _ffbBridgeStatus, value);
+    }
+
     /// <summary>Gets the ordered list of process-to-profile mapping ViewModels.</summary>
     public ObservableCollection<ProcessMappingViewModel> ProcessMappings { get; }
 
@@ -139,13 +199,17 @@ public sealed class SettingsPageViewModel : ViewModelBase
         try
         {
             var s = _settingsService.Settings;
-            LastProfilePath   = s.LastProfilePath ?? string.Empty;
-            VJoyDeviceId      = s.VJoyDeviceId;
-            DefaultModeName   = s.DefaultModeName ?? string.Empty;
-            StartMinimized    = s.StartMinimized;
-            StartWithWindows  = _startupService.IsEnabled;
-            CloseToTray       = s.CloseToTray;
-            EnableAutoLoading = s.EnableAutoLoading;
+            LastProfilePath      = s.LastProfilePath ?? string.Empty;
+            VJoyDeviceId         = s.VJoyDeviceId;
+            DefaultModeName      = s.DefaultModeName ?? string.Empty;
+            StartMinimized       = s.StartMinimized;
+            StartWithWindows     = _startupService.IsEnabled;
+            CloseToTray          = s.CloseToTray;
+            EnableAutoLoading    = s.EnableAutoLoading;
+            EnableFfbBridge      = s.EnableFfbBridge;
+            FfbVJoyDeviceId      = s.FfbVJoyDeviceId;
+            FfbGainPercent       = s.FfbGainPercent;
+            FfbWheelInstanceGuid = s.FfbWheelInstanceGuid ?? string.Empty;
 
             ProcessMappings.Clear();
             foreach (var m in s.ProcessMappings)
@@ -155,6 +219,11 @@ public sealed class SettingsPageViewModel : ViewModelBase
         {
             _loading = false;
         }
+    }
+
+    private void OnBridgeStateChanged(object? sender, ForceFeedbackBridgeState state)
+    {
+        FfbBridgeStatus = state.ToString();
     }
 
     private void AddMapping()
@@ -205,6 +274,10 @@ public sealed class SettingsPageViewModel : ViewModelBase
         s.StartMinimized     = StartMinimized;
         s.CloseToTray        = CloseToTray;
         s.EnableAutoLoading  = EnableAutoLoading;
+        s.EnableFfbBridge    = EnableFfbBridge;
+        s.FfbVJoyDeviceId    = (uint)FfbVJoyDeviceId;
+        s.FfbGainPercent     = FfbGainPercent;
+        s.FfbWheelInstanceGuid = string.IsNullOrWhiteSpace(FfbWheelInstanceGuid) ? null : FfbWheelInstanceGuid;
 
         // Sync the startup registry entry with the toggle value.
         if (StartWithWindows && !_startupService.IsEnabled)
