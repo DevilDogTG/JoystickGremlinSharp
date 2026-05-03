@@ -740,7 +740,7 @@ public sealed class MozaFfbSink : IForceFeedbackSink
                 dwFlags                  = DirectInputNative.DIEFF_CARTESIAN | DirectInputNative.DIEFF_OBJECTOFFSETS,
                 dwDuration               = durationUs,
                 dwSamplePeriod           = 0,
-                dwGain                   = gain == 0 ? DirectInputNative.DI_FFNOMINALMAX : (uint)gain * 100u / 255u * 100u,
+                dwGain                   = gain == 0 ? DirectInputNative.DI_FFNOMINALMAX : (uint)gain * 10000u / 255u,
                 dwTriggerButton          = DirectInputNative.DIEB_NOTRIGGER,
                 dwTriggerRepeatInterval  = TriggerRepeatUs,
                 cAxes                    = 1,

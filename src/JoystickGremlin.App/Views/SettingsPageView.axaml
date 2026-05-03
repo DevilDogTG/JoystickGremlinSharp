@@ -173,35 +173,41 @@
                     </TextBlock>
 
                     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto"
-                          RowSpacing="8" ColumnSpacing="12"
-                          IsEnabled="{Binding EnableFfbBridge}">
+                          RowSpacing="8" ColumnSpacing="12">
 
                         <TextBlock Grid.Row="0" Grid.Column="0"
                                    Text="FFB vJoy Device ID"
-                                   VerticalAlignment="Center"/>
+                                   VerticalAlignment="Center"
+                                   IsEnabled="{Binding EnableFfbBridge}"/>
                         <NumericUpDown Grid.Row="0" Grid.Column="1"
                                        Value="{Binding FfbVJoyDeviceId}"
                                        Minimum="1" Maximum="16" Increment="1"
                                        FormatString="0"
+                                       IsEnabled="{Binding EnableFfbBridge}"
                                        ToolTip.Tip="vJoy device ID that the game writes FFB commands to (must match your vJoy configuration)."/>
 
                         <TextBlock Grid.Row="1" Grid.Column="0"
                                    Text="Gain %"
-                                   VerticalAlignment="Center"/>
+                                   VerticalAlignment="Center"
+                                   IsEnabled="{Binding EnableFfbBridge}"/>
                         <NumericUpDown Grid.Row="1" Grid.Column="1"
                                        Value="{Binding FfbGainPercent}"
                                        Minimum="0" Maximum="200" Increment="5"
                                        FormatString="0"
+                                       IsEnabled="{Binding EnableFfbBridge}"
                                        ToolTip.Tip="Output gain applied to all force effects. 100 = pass-through, 0 = no force, 200 = double."/>
 
                         <TextBlock Grid.Row="2" Grid.Column="0"
                                    Text="Wheel GUID"
-                                   VerticalAlignment="Center"/>
+                                   VerticalAlignment="Center"
+                                   IsEnabled="{Binding EnableFfbBridge}"/>
                         <TextBox Grid.Row="2" Grid.Column="1"
                                  Text="{Binding FfbWheelInstanceGuid}"
                                  PlaceholderText="(auto-detect first MOZA device)"
+                                 IsEnabled="{Binding EnableFfbBridge}"
                                  ToolTip.Tip="DirectInput instance GUID of the target wheel. Leave empty to auto-detect the first MOZA device found."/>
 
+                        <!-- Status is always visible regardless of enabled state -->
                         <TextBlock Grid.Row="3" Grid.Column="0"
                                    Text="Bridge Status"
                                    VerticalAlignment="Center"/>
