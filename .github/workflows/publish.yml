@@ -1,11 +1,10 @@
-# Triggered when a release branch is merged into main.
+# Triggered when a vX.Y.Z tag is pushed to main (by tag.yml after a release PR merge).
 # Builds a self-contained Windows installer with Velopack and creates a GitHub Release.
-# After publishing, automatically opens a merge-back PR: main → develop.
 name: Publish
 
 on:
   push:
-    branches: [main]
+    tags: ['v*']
 
 jobs:
   publish:
@@ -13,7 +12,6 @@ jobs:
     runs-on: windows-2022
     permissions:
       contents: write
-      pull-requests: write
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -89,14 +87,3 @@ jobs:
           files: installer/out/*-Setup.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Open merge-back PR main → develop
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          gh pr create \
-            --base develop \
-            --head main \
-            --title "chore: merge-back ${{ steps.version.outputs.tag }} to develop" \
-            --body "Automated merge-back from \`main\` to \`develop\` after publishing release ${{ steps.version.outputs.tag }}."

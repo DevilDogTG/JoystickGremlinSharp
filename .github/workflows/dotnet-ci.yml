@@ -1,12 +1,12 @@
-# Validates every push and pull request targeting develop or main.
+# Validates every push and pull request targeting main.
 # Runs: dotnet build (0 warnings) + dotnet test (all must pass).
 name: .NET CI
 
 on:
   push:
-    branches: [develop, main]
+    branches: [main]
   pull_request:
-    branches: [develop, main]
+    branches: [main]
 
 jobs:
   build-and-test:

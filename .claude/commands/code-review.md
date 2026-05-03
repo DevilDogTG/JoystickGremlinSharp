@@ -8,7 +8,7 @@ description: >
   binding loops, and style issues — not just surface syntax errors.
 ---
 
-Review the changes on this branch compared to `develop` using the instructions below.
+Review the changes on this branch compared to `main` using the instructions below.
 
 
 # QML & Python Qt Code Review Skill
