@@ -71,20 +71,12 @@ public sealed class VJoyDeviceManager : IVirtualDeviceManager
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        // Fast path: device already acquired — no lock required for a read that trades
-        // correctness for performance; the lock below handles the write side.
-        if (_acquiredDevices.TryGetValue(vjoyId, out var existing))
-        {
-            _logger.LogDebug("vJoy device {VJoyId} is already acquired by this process", vjoyId);
-            return existing;
-        }
-
         lock (_deviceLock)
         {
-            // Double-check inside the lock — another thread may have acquired while we waited.
-            if (_acquiredDevices.TryGetValue(vjoyId, out existing))
+            // Idempotent: return the existing device if already acquired by this process.
+            if (_acquiredDevices.TryGetValue(vjoyId, out var existing))
             {
-                _logger.LogDebug("vJoy device {VJoyId} is already acquired by this process (post-lock check)", vjoyId);
+                _logger.LogDebug("vJoy device {VJoyId} is already acquired by this process", vjoyId);
                 return existing;
             }
 
@@ -179,10 +171,13 @@ public sealed class VJoyDeviceManager : IVirtualDeviceManager
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        if (_acquiredDevices.TryGetValue(vjoyId, out var device))
+        lock (_deviceLock)
         {
-            _logger.LogDebug("Using previously acquired vJoy device {VJoyId}", vjoyId);
-            return device;
+            if (_acquiredDevices.TryGetValue(vjoyId, out var device))
+            {
+                _logger.LogDebug("Using previously acquired vJoy device {VJoyId}", vjoyId);
+                return device;
+            }
         }
 
         _logger.LogDebug("vJoy device {VJoyId} has not been acquired yet", vjoyId);
