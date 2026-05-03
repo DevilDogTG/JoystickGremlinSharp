@@ -64,6 +64,61 @@ public sealed class VJoyActionTests
         device.Verify(d => d.SetButton(5, false), Times.Once);
     }
 
+    [Fact]
+    public async Task ButtonFunctor_NullConfig_UsesDefaultThreshold()
+    {
+        var device = new Mock<IVirtualDevice>();
+        var manager = MockManagerWith(device, vjoyId: 1u);
+
+        var descriptor = new VJoyButtonDescriptor(manager.Object, NullLogger<VJoyButtonDescriptor>.Instance);
+        var functor = descriptor.CreateFunctor(null);
+
+        // Exactly at default threshold (0.5) → pressed
+        await functor.ExecuteAsync(MakeEvent(0.5));
+        // Below default threshold → released
+        await functor.ExecuteAsync(MakeEvent(0.49));
+
+        device.Verify(d => d.SetButton(1, true), Times.Once);
+        device.Verify(d => d.SetButton(1, false), Times.Once);
+    }
+
+    [Fact]
+    public async Task ButtonFunctor_CustomThreshold_FiresAtConfiguredLevel()
+    {
+        var device = new Mock<IVirtualDevice>();
+        var manager = MockManagerWith(device, vjoyId: 1u);
+
+        // Hair-trigger: fires at 10% travel
+        var config = new JsonObject { ["vjoyId"] = 1, ["buttonIndex"] = 2, ["threshold"] = 0.1 };
+        var descriptor = new VJoyButtonDescriptor(manager.Object, NullLogger<VJoyButtonDescriptor>.Instance);
+        var functor = descriptor.CreateFunctor(config);
+
+        // 0.1 → pressed (at threshold)
+        await functor.ExecuteAsync(MakeEvent(0.1));
+        // 0.05 → released (below threshold)
+        await functor.ExecuteAsync(MakeEvent(0.05));
+
+        device.Verify(d => d.SetButton(2, true), Times.Once);
+        device.Verify(d => d.SetButton(2, false), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(-0.5, 0.0)]   // out-of-range low → clamped to 0.0
+    [InlineData(1.5, 1.0)]    // out-of-range high → clamped to 1.0
+    public async Task ButtonFunctor_ThresholdClamped_NeverThrows(double rawThreshold, double expectedClamped)
+    {
+        var device = new Mock<IVirtualDevice>();
+        var manager = MockManagerWith(device, vjoyId: 1u);
+
+        var config = new JsonObject { ["vjoyId"] = 1, ["buttonIndex"] = 1, ["threshold"] = rawThreshold };
+        var descriptor = new VJoyButtonDescriptor(manager.Object, NullLogger<VJoyButtonDescriptor>.Instance);
+        var functor = descriptor.CreateFunctor(config);
+
+        // Value at clamped threshold → pressed; one tick below → released
+        await functor.ExecuteAsync(MakeEvent(expectedClamped));
+        device.Verify(d => d.SetButton(1, true), Times.Once);
+    }
+
     // ── VJoyHatDescriptor ──────────────────────────────────────────────────
 
     [Fact]
