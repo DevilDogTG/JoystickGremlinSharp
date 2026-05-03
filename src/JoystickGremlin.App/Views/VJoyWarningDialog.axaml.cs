@@ -12,12 +12,14 @@ namespace JoystickGremlin.App.Views;
 /// </summary>
 public partial class VJoyWarningDialog : Window
 {
+    /// <summary>Required by the Avalonia XAML runtime loader.</summary>
+    public VJoyWarningDialog() => InitializeComponent();
+
     /// <summary>
     /// Initializes the dialog with the prerequisite check result.
     /// </summary>
-    public VJoyWarningDialog(VJoyPrerequisiteResult result)
+    public VJoyWarningDialog(VJoyPrerequisiteResult result) : this()
     {
-        InitializeComponent();
         ReasonText.Text = result.FailureReason ?? "Unknown vJoy issue detected.";
     }
 
