@@ -90,16 +90,16 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             .Select(active => active ? "⏹  Stop" : "▶  Start")
             .ToProperty(this, x => x.ToggleButtonLabel, initialValue: "▶  Start");
 
-        this.WhenAnyValue(x => x.SelectedNavItem)
-            .WhereNotNull()
-            .Subscribe(item => CurrentPage = item.Page)
-            .DisposeWith(_subscriptions);
+        _subscriptions.Add(
+            this.WhenAnyValue(x => x.SelectedNavItem)
+                .WhereNotNull()
+                .Subscribe(item => CurrentPage = item.Page));
 
-        this.WhenAnyValue(x => x.SelectedProfileEntry)
-            .WhereNotNull()
-            .SelectMany(entry => Observable.FromAsync(() => LoadProfileEntryAsync(entry)))
-            .Subscribe()
-            .DisposeWith(_subscriptions);
+        _subscriptions.Add(
+            this.WhenAnyValue(x => x.SelectedProfileEntry)
+                .WhereNotNull()
+                .SelectMany(entry => Observable.FromAsync(() => LoadProfileEntryAsync(entry)))
+                .Subscribe());
 
         ToggleActiveCommand    = ReactiveCommand.CreateFromTask(ToggleActiveAsync);
         CheckForUpdatesCommand = ReactiveCommand.CreateFromTask(CheckForUpdatesAsync);
