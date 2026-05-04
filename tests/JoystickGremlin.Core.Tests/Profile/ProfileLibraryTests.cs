@@ -30,7 +30,11 @@ public sealed class ProfileLibraryTests : IDisposable
             NullLogger<ProfileLibrary>.Instance);
     }
 
-    public void Dispose() => Directory.Delete(_tempDir, recursive: true);
+    public void Dispose()
+    {
+        _sut.Dispose();
+        Directory.Delete(_tempDir, recursive: true);
+    }
 
     // ── ScanAsync ──────────────────────────────────────────────────────────
 
