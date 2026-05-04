@@ -19,6 +19,7 @@ public sealed class VirtualDevicesPageViewModel : ViewModelBase, IDisposable
 {
     private readonly IVirtualDeviceManager _virtualDeviceManager;
     private readonly ILogger<VirtualDevicesPageViewModel> _logger;
+    private readonly ILogger<VirtualDeviceViewModel> _deviceLogger;
     private readonly CompositeDisposable _subscriptions = [];
     private VirtualDeviceViewModel? _selectedDevice;
 
@@ -44,8 +45,6 @@ public sealed class VirtualDevicesPageViewModel : ViewModelBase, IDisposable
                 .ObserveOn(AvaloniaScheduler.Instance)
                 .Subscribe(_ => SelectedDevice?.Refresh()));
     }
-
-    private readonly ILogger<VirtualDeviceViewModel> _deviceLogger;
 
     /// <summary>Gets the configured virtual devices.</summary>
     public ObservableCollection<VirtualDeviceViewModel> Devices { get; }
