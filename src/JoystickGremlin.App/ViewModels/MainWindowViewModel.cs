@@ -2,6 +2,7 @@
 
 using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Threading;
 using JoystickGremlin.App.ViewModels.InputViewer;
@@ -21,7 +22,7 @@ namespace JoystickGremlin.App.ViewModels;
 /// ViewModel for the main application window. Owns the top toolbar state
 /// (profile quick-switch, start/stop) and drives sidebar navigation.
 /// </summary>
-public sealed class MainWindowViewModel : ViewModelBase
+public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 {
     private readonly IEventPipeline _eventPipeline;
     private readonly IProfileRepository _profileRepository;
@@ -34,6 +35,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     private readonly SettingsPageViewModel _settingsPage;
     private readonly InputViewerPageViewModel _inputViewerPage;
     private readonly ILogger<MainWindowViewModel> _logger;
+    private readonly CompositeDisposable _subscriptions = [];
 
     private readonly ObservableAsPropertyHelper<string> _toggleButtonLabel;
     private ViewModelBase _currentPage;
@@ -88,14 +90,16 @@ public sealed class MainWindowViewModel : ViewModelBase
             .Select(active => active ? "⏹  Stop" : "▶  Start")
             .ToProperty(this, x => x.ToggleButtonLabel, initialValue: "▶  Start");
 
-        _ = this.WhenAnyValue(x => x.SelectedNavItem)
+        this.WhenAnyValue(x => x.SelectedNavItem)
             .WhereNotNull()
-            .Subscribe(item => CurrentPage = item.Page);
+            .Subscribe(item => CurrentPage = item.Page)
+            .DisposeWith(_subscriptions);
 
-        // When user picks a different profile in the dropdown, load it.
-        _ = this.WhenAnyValue(x => x.SelectedProfileEntry)
+        this.WhenAnyValue(x => x.SelectedProfileEntry)
             .WhereNotNull()
-            .Subscribe(entry => _ = LoadProfileEntryAsync(entry));
+            .SelectMany(entry => Observable.FromAsync(() => LoadProfileEntryAsync(entry)))
+            .Subscribe()
+            .DisposeWith(_subscriptions);
 
         ToggleActiveCommand    = ReactiveCommand.CreateFromTask(ToggleActiveAsync);
         CheckForUpdatesCommand = ReactiveCommand.CreateFromTask(CheckForUpdatesAsync);
@@ -269,5 +273,14 @@ public sealed class MainWindowViewModel : ViewModelBase
                 }
             }
         });
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        _profileLibrary.LibraryChanged -= OnLibraryChanged;
+        _profileState.ProfileChanged -= OnProfileChanged;
+        _toggleButtonLabel.Dispose();
+        _subscriptions.Dispose();
     }
 }
