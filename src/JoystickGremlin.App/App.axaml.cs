@@ -169,6 +169,7 @@ public partial class App : Application
         services.AddSingleton<SettingsPageViewModel>();
         services.AddSingleton<BindingsPageViewModel>();
         services.AddSingleton<VirtualDevicesPageViewModel>();
+        services.AddSingleton<AboutPageViewModel>();
 
         // Main window ViewModel — transient; resolved once in OnFrameworkInitializationCompleted.
         services.AddTransient<MainWindowViewModel>();

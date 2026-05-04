@@ -49,6 +49,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         ProfilePageViewModel profilePage,
         SettingsPageViewModel settingsPage,
         VirtualDevicesPageViewModel virtualDevicesPage,
+        AboutPageViewModel aboutPage,
         IEventPipeline eventPipeline,
         IProfileRepository profileRepository,
         IProfileState profileState,
@@ -74,6 +75,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             new NavItemViewModel { Title = "Virtual Devices",  Icon = "🕹️", Page = virtualDevicesPage },
             new NavItemViewModel { Title = "Profile",          Icon = "📋", Page = profilePage         },
             new NavItemViewModel { Title = "Settings",         Icon = "⚙️", Page = settingsPage        },
+            new NavItemViewModel { Title = "About",            Icon = "ℹ️", Page = aboutPage           },
         };
 
         NavItems = new ObservableCollection<NavItemViewModel>(navItems);
