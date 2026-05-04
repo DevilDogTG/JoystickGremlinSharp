@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using System.Text.Json.Nodes;
-using JoystickGremlin.Core.Actions.ChangeMode;
 using JoystickGremlin.Core.Actions.Macro;
 using JoystickGremlin.Core.Actions.VJoy;
 using JoystickGremlin.Core.Devices;
@@ -37,8 +36,7 @@ public sealed class BoundActionSerializationTests : IDisposable
             Identifier = 1,
             Actions    = [action],
         };
-        var mode = new Mode { Name = "Default", Bindings = [binding] };
-        return new JoystickGremlin.Core.Profile.Profile { Name = "SerTest", Modes = [mode] };
+        return new JoystickGremlin.Core.Profile.Profile { Name = "SerTest", Bindings = [binding] };
     }
 
     private async Task<BoundAction> RoundTrip(BoundAction action)
@@ -49,7 +47,7 @@ public sealed class BoundActionSerializationTests : IDisposable
         await _sut.SaveAsync(profile, path);
         var loaded = await _sut.LoadAsync(path);
 
-        return loaded.Modes[0].Bindings[0].Actions[0];
+        return loaded.Bindings[0].Actions[0];
     }
 
     // ── vJoy Axis ───────────────────────────────────────────────────────────
@@ -106,23 +104,6 @@ public sealed class BoundActionSerializationTests : IDisposable
         loaded.Configuration["hatIndex"]!.GetValue<int>().Should().Be(2);
     }
 
-    // ── Change Mode ─────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task ChangeMode_Config_RoundTrips()
-    {
-        var action = new BoundAction
-        {
-            ActionTag     = ChangeModeActionDescriptor.ActionTag,
-            Configuration = new JsonObject { ["targetMode"] = "Combat" },
-        };
-
-        var loaded = await RoundTrip(action);
-
-        loaded.ActionTag.Should().Be(ChangeModeActionDescriptor.ActionTag);
-        loaded.Configuration!["targetMode"]!.GetValue<string>().Should().Be("Combat");
-    }
-
     // ── Macro ───────────────────────────────────────────────────────────────
 
     [Fact]
@@ -158,3 +139,4 @@ public sealed class BoundActionSerializationTests : IDisposable
         loaded.Configuration.Should().BeNull();
     }
 }
+

@@ -11,8 +11,8 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > **Status**: Phase complete. All core features implemented and released.
 > - Release v10.0.3 published with auto-generated release notes
 > - Workflow: main-first + tag-based release (no merge-back)
-> - 225 tests passing, 0 build warnings
-> - Latest: Force Feedback bridge (PR #25), configurable vjoy-button threshold (PR #27), vJoy virtual device filtering (PR #26)
+> - 218 tests passing, 0 build warnings
+> - Latest: Modes removed — profiles are now flat (direct `List<InputBinding>`); folder-based profile library with category support via subfolders; legacy mode-based profiles auto-migrated on load
 > - GitHub Actions permissions must be set to "Allow all actions and reusable workflows"
 >   (Settings → Actions → General) for workflows to run on `main`
 > - Release pipeline requires either `RELEASE_TOKEN` secret (fine-grained PAT: Contents+PRs write)
@@ -25,7 +25,7 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 
 JoystickGremlinSharp is a **C# (.NET 10) rewrite** of JoystickGremlin — a Windows application
 for configuring joystick/gamepad devices. It maps physical device inputs to virtual outputs via
-vJoy, supporting macros, modes, response curves, and condition-based action pipelines.
+vJoy, supporting macros, response curves, and condition-based action pipelines.
 
 - **Platform**: Windows (vJoy/DILL are Windows-only drivers); Avalonia UI enables future portability
 - **UI Framework**: [Avalonia](https://avaloniaui.net/) 11.x with ReactiveUI MVVM
@@ -75,7 +75,7 @@ dotnet restore
 JoystickGremlinSharp.sln
 src/
   JoystickGremlin.Interop/          net10.0-windows   P/Invoke wrappers for vJoy and DILL native DLLs
-  JoystickGremlin.Core/             net10.0           Domain logic — devices, events, profile, modes, actions
+  JoystickGremlin.Core/             net10.0           Domain logic — devices, events, profile, actions
   JoystickGremlin.App/              net10.0-windows   Avalonia MVVM app entry point + all UI
 tests/
   JoystickGremlin.Core.Tests/       net10.0           xUnit tests for Core domain logic
@@ -103,11 +103,10 @@ src/JoystickGremlin.Core/
   Actions/          IActionDescriptor, IActionFunctor, ActionRegistry, built-in descriptors:
                       VJoy/   VJoyAxisActionDescriptor, VJoyButtonActionDescriptor, VJoyHatActionDescriptor
                       Macro/  MacroActionDescriptor (tag: "macro"; fires key sequence on press/release)
-                      ChangeMode/ ChangeModeActionDescriptor (tag: "change-mode"; switches active mode)
                       Keyboard/   IKeyboardSimulator, NullKeyboardSimulator (overridable by Interop)
   Configuration/    AppSettings, ISettingsService, JSON-backed settings store
   Devices/          IPhysicalDevice, IVirtualDevice, DeviceManager, device-info types
-  Events/           InputEvent, EventPipeline, IEventProcessor, mode-aware routing
+  Events/           InputEvent, EventPipeline, IEventProcessor, flat binding lookup
   Exceptions/       GremlinException and domain-specific exception types
   ForceFeedback/    FFB domain model and bridge:
                       IForceFeedbackBridge — orchestrator interface (Start/Stop/State/events)
@@ -118,9 +117,11 @@ src/JoystickGremlin.Core/
                       FfbCommand / FfbEffectType / FfbOperation / FfbDeviceCommand — domain types
                       FfbWheelInfo — connected wheel metadata
                       ForceFeedbackBridgeState — enum (Disabled/Starting/Running/NoSink/NoSource/Degraded/Stopped/Error)
-  Modes/            ModeManager, Mode, mode-stack logic
   Profile/          Profile, InputBinding, ProfileRepository (JSON serialization)
                       IProfileState — singleton holding current Profile + FilePath, raises events
+                      IProfileLibrary / ProfileLibrary — scans profiles folder; category = subfolder name
+                      ProfileEntry — record(Name, Category, FilePath)
+                      LegacyProfileMigrator — migrates old modes-based JSON on load; drops change-mode actions
   Startup/          IStartupService, NullStartupService (overridable by Interop for real registry use)
   Common/           Extensions, utilities
 ```
@@ -133,19 +134,16 @@ src/JoystickGremlin.App/
   Controls/         Custom Avalonia controls (reusable across views)
   ViewModels/       ReactiveObject-based ViewModels, one per View:
                       MainWindowViewModel  — nav bar, profile load/save, pipeline start/stop,
-                                            CheckForUpdatesCommand (Velopack);
-                                            AvailableModeEntries + SelectedModeEntry for mode ComboBox
+                                            CheckForUpdatesCommand (Velopack)
                       DevicesPageViewModel — lists physical devices from IDeviceManager
-                      ProfilePageViewModel — mode list (DFS tree order), add/remove/edit mode,
-                                            parent-mode selection (AvailableParentNames rebuilt before EditParentName is set)
-                      SettingsPageViewModel — app settings via ISettingsService + IStartupService
-                      BindingsPageViewModel — mode selector (independent of runtime mode), inherited bindings,
-                                             auto-apply config (debounced 300ms)
-                      BoundActionViewModel  — wraps BoundAction; computes ConfigSummary; tracks InheritedFromMode
+                      ProfilePageViewModel — profile library browser; New Profile form; Open Folder;
+                                            categories via subfolder names; calls IProfileLibrary.ScanAsync()
+                      SettingsPageViewModel — app settings via ISettingsService + IStartupService,
+                                             ProfilesFolderPath setting
+                      BindingsPageViewModel — flat binding editor on profile.Bindings; auto-apply
+                                             config (debounced 300ms)
+                      BoundActionViewModel  — wraps BoundAction; computes ConfigSummary
                       InputDescriptorViewModel — represents single axis/button/hat slot
-                      ModeViewModel         — wraps Mode for Profile page; Depth + TreePadding (left-indent only)
-                      ModeTreeEntry         — record(Name, IndentedLabel) for toolbar ComboBox tree display
-                      ModeTreeHelper        — static: Flatten() DFS traversal + BuildEntries() for both ViewModels
   Views/            *.axaml Views, code-behind minimal
   FilePickerService.cs  — wraps Avalonia IStorageProvider; call SetTopLevel(mainWindow) before use
   App.axaml         Application definition — includes TrayIcon (Show / Exit context menu)
@@ -369,7 +367,6 @@ Actions are **statically registered** (no runtime plugin discovery).
 | `"buttons-to-hat"` | `ButtonsToHatDescriptor` | `vjoyId` (uint, default 1), `hatIndex` (int, default 1), `upButtonId`, `downButtonId`, `leftButtonId`, `rightButtonId` (int) |
 | `"buttons-to-axes"` | `ButtonsToAxesDescriptor` | `vjoyId` (uint, default 1), `xAxisIndex` (int, default 1), `yAxisIndex` (int, default 2), `upButtonId`, `downButtonId`, `leftButtonId`, `rightButtonId` (int) |
 | `"macro"` | `MacroActionDescriptor` | `keys` (comma-separated), `onPress` (bool, default true) |
-| `"change-mode"` | `ChangeModeActionDescriptor` | `targetMode` (string) |
 | `"map-to-keyboard"` | `MapToKeyboardActionDescriptor` | `keys` (comma-separated key names), `behavior` ("Hold"/"Toggle"/"PressOnly"/"ReleaseOnly", default "Hold") |
 
 ### Multi-Button to Virtual Output Mapping
@@ -465,13 +462,13 @@ Register all built-in actions in `ActionRegistry` during DI setup:
 services.AddSingleton<IActionRegistry, ActionRegistry>();
 services.AddTransient<IAction, MapToVJoyAction>();
 services.AddTransient<IAction, MacroAction>();
-services.AddTransient<IAction, ChangeModeAction>();
 ```
 
 
 ## Profile System
 
-Profiles are stored as **JSON** via `System.Text.Json`:
+Profiles are stored as **JSON** via `System.Text.Json`. Each profile is a flat list of input bindings
+— there are no modes or hierarchy.
 
 ```csharp
 // Core/Profile/Profile.cs
@@ -479,7 +476,7 @@ public sealed class Profile
 {
     public Guid Id { get; init; } = Guid.NewGuid();
     public string Name { get; set; } = string.Empty;
-    public List<Mode> Modes { get; init; } = [];
+    public List<InputBinding> Bindings { get; init; } = [];
 }
 
 // Core/Profile/IProfileRepository.cs
@@ -487,47 +484,50 @@ public interface IProfileRepository
 {
     Task<Profile> LoadAsync(string path, CancellationToken cancellationToken = default);
     Task SaveAsync(Profile profile, string path, CancellationToken cancellationToken = default);
+    Task<Profile> LoadOrCreateAsync(string path, CancellationToken cancellationToken = default);
 }
 ```
 
-Use `JsonSerializerOptions` with `WriteIndented = true` for human-readable profile files.
+`JsonSerializerOptions` uses `WriteIndented = true` and `PropertyNameCaseInsensitive = true` for
+human-readable files and resilient deserialization of legacy JSON.
+
+### Legacy Migration
+
+On load, `ProfileRepository` runs `LegacyProfileMigrator.Migrate()` before deserialization.
+This transparently upgrades old profiles that stored bindings inside a `modes[]` array:
+- All bindings from all modes are merged into a flat `bindings[]` list (first-mode-wins on conflict)
+- `change-mode` actions are silently dropped
 
 
-## Profile Hierarchy & Inheritance
+## Profile Library
 
-Modes form a **tree hierarchy** within a profile, enabling inheritance of bindings to reduce duplication.
+`IProfileLibrary` / `ProfileLibrary` provides a folder-based profile store with category support:
 
-### Hierarchy Model
+- **Root**: `AppSettings.ProfilesFolderPath` (default: `%AppData%\JoystickGremlinSharp\profiles`)
+- **Root-level `.json` files**: `Category = null`
+- **One subfolder level**: `Category = subfolder name`  (deeper nesting is ignored)
+- **`ProfileEntry`**: `record(string Name, string? Category, string FilePath)`
 
-- Each `Mode` has an optional `ParentModeName` (string?, null = root mode)
-- Multiple root modes are allowed (forest, not strict tree)
-- Circular references are prevented at validation time
-- At runtime, modes form an **active mode stack** via `IModeManager`
+Key operations:
+| Method | Description |
+|---|---|
+| `ScanAsync()` | Rescans the folder and updates `Entries` |
+| `CreateProfileAsync(name, category)` | Creates a new blank profile file, fires `LibraryChanged` |
+| `DeleteProfileAsync(filePath)` | Deletes the file, fires `LibraryChanged` |
+| `RenameProfileAsync(filePath, newName)` | Renames the file, fires `LibraryChanged` |
 
-### Binding Resolution
-
-When resolving input bindings for an active mode:
-
-1. Check current mode for matching binding (device + input match)
-2. If not found, walk up the inheritance chain via `GetInheritanceChain(modeName, profile)`
-3. Stop at **first matching binding** — inherits the action from ancestor
-4. If no ancestor has it, the input fires no action (silent pass-through)
-
-**Key semantics**:
-- No merge; single binding per input slot per mode lineage
-- First-match-wins (child always shadows parent, even if child binding is intentionally "empty")
-- Parent rename orphans children (no automatic name tracking); deletion orphans children (no cascade)
+`ProfilePageViewModel` calls `InitializeAsync()` (which calls `ScanAsync()`) and subscribes to
+`IProfileLibrary.LibraryChanged` to rebuild `ProfileEntries` automatically.
 
 ### Bindings Page UX
 
-The Bindings page (App/Views/BindingsPageView.axaml) includes three UX enhancements for hierarchy editing:
+The Bindings page (`App/Views/BindingsPageView.axaml`) edits the flat `profile.Bindings` list directly:
 
 | Feature | Description |
 |---|---|
-| **Mode Selector** | Independent `ComboBox` (AvailableEditModeEntries) lets users edit any mode without changing the runtime active mode. Decoupled from IModeManager.ActiveModeName. |
-| **Inherited Bindings Display** | RebuildBoundActions walks the inheritance chain and marks actions with `InheritedFromMode` (string?). Child actions shown as read-only "(↑ From: ParentName)" entries, muted opacity. |
-| **Override Button** | When an inherited action is selected, "Override in this mode" button copies the action into the current edit mode, removing inheritance. |
-| **Auto-Apply Config** | Config changes auto-save via Observable.Merge throttled at 300ms (no manual Apply button). |
+| **Device + Input Selector** | Choose device and input slot; corresponding binding is found or created |
+| **Action List** | `ObservableCollection<BoundActionViewModel>` driven by the selected binding's `Actions` list |
+| **Auto-Apply Config** | Config changes auto-save via Observable.Merge throttled at 300ms (no manual Apply button) |
 
 
 ## Testing Conventions
@@ -714,7 +714,7 @@ dotnet build --configuration Release -warnaserror
 dotnet test
 ```
 
-> Current baseline: **225 tests, 0 failures, 0 build warnings**.
+> Current baseline: **218 tests, 0 failures, 0 build warnings**.
 
 
 

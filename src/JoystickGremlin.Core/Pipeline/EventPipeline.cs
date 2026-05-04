@@ -4,7 +4,6 @@ using System.Collections.Concurrent;
 using JoystickGremlin.Core.Actions;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.Events;
-using JoystickGremlin.Core.Modes;
 using JoystickGremlin.Core.Profile;
 using Microsoft.Extensions.Logging;
 using ProfileModel = JoystickGremlin.Core.Profile.Profile;
@@ -12,13 +11,12 @@ using ProfileModel = JoystickGremlin.Core.Profile.Profile;
 namespace JoystickGremlin.Core.Pipeline;
 
 /// <summary>
-/// Routes physical <see cref="InputEvent"/> instances through the active mode's binding table
-/// to the registered action functors, applying mode inheritance lookup.
+/// Routes physical <see cref="InputEvent"/> instances through the active profile's binding table
+/// to the registered action functors.
 /// </summary>
 public sealed class EventPipeline : IEventPipeline
 {
     private readonly IDeviceManager _deviceManager;
-    private readonly IModeManager _modeManager;
     private readonly IActionRegistry _actionRegistry;
     private readonly IProfileState _profileState;
     private readonly ILogger<EventPipeline> _logger;
@@ -35,16 +33,14 @@ public sealed class EventPipeline : IEventPipeline
     /// </summary>
     public EventPipeline(
         IDeviceManager deviceManager,
-        IModeManager modeManager,
         IActionRegistry actionRegistry,
         IProfileState profileState,
         ILogger<EventPipeline> logger)
     {
-        _deviceManager = deviceManager;
-        _modeManager = modeManager;
-        _actionRegistry = actionRegistry;
-        _profileState = profileState;
-        _logger = logger;
+        _deviceManager   = deviceManager;
+        _actionRegistry  = actionRegistry;
+        _profileState    = profileState;
+        _logger          = logger;
 
         _profileState.ProfileChanged += OnProfileChanged;
     }
@@ -103,69 +99,41 @@ public sealed class EventPipeline : IEventPipeline
             profile?.Name ?? "(null)");
     }
 
-    private void OnInputReceived(object? sender, InputEvent rawEvent)
+    private void OnInputReceived(object? sender, InputEvent inputEvent)
     {
         if (_profile is null)
             return;
 
-        // Enrich the event with the current mode name.
-        var enriched = rawEvent with { Mode = _modeManager.ActiveModeName };
         _logger.LogDebug(
-            "Pipeline received input: device {DeviceGuid}, type {InputType}, identifier {Identifier}, value {Value}, mode {Mode}",
-            enriched.DeviceGuid,
-            enriched.InputType,
-            enriched.Identifier,
-            enriched.Value,
-            enriched.Mode);
+            "Pipeline received input: device {DeviceGuid}, type {InputType}, identifier {Identifier}, value {Value}",
+            inputEvent.DeviceGuid,
+            inputEvent.InputType,
+            inputEvent.Identifier,
+            inputEvent.Value);
 
-        // Resolve the inheritance chain for the active mode.
-        var chain = _modeManager.GetInheritanceChain(enriched.Mode, _profile);
-        var chainText = string.Join(" -> ", chain);
+        var binding = _profile.Bindings.FirstOrDefault(b =>
+            b.DeviceGuid == inputEvent.DeviceGuid &&
+            b.InputType  == inputEvent.InputType  &&
+            b.Identifier == inputEvent.Identifier);
 
-        // Find matching bindings from most-specific to least-specific mode.
-        List<BoundAction>? actions = null;
-        string? matchedModeName = null;
-        foreach (var modeName in chain)
-        {
-            var mode = _profile.Modes.FirstOrDefault(
-                m => string.Equals(m.Name, modeName, StringComparison.Ordinal));
-
-            if (mode is null)
-                continue;
-
-            var binding = mode.Bindings.FirstOrDefault(b =>
-                b.DeviceGuid == enriched.DeviceGuid &&
-                b.InputType == enriched.InputType &&
-                b.Identifier == enriched.Identifier);
-
-            if (binding is not null)
-            {
-                actions = binding.Actions;
-                matchedModeName = modeName;
-                break;
-            }
-        }
-
-        if (actions is null || actions.Count == 0)
+        if (binding is null || binding.Actions.Count == 0)
         {
             _logger.LogDebug(
-                "No binding matched input: device {DeviceGuid}, type {InputType}, identifier {Identifier}, mode chain {ModeChain}",
-                enriched.DeviceGuid,
-                enriched.InputType,
-                enriched.Identifier,
-                chainText);
+                "No binding matched input: device {DeviceGuid}, type {InputType}, identifier {Identifier}",
+                inputEvent.DeviceGuid,
+                inputEvent.InputType,
+                inputEvent.Identifier);
             return;
         }
 
         _logger.LogDebug(
-            "Matched binding in mode {MatchedMode} for input {InputType} {Identifier}; dispatching {ActionCount} actions",
-            matchedModeName,
-            enriched.InputType,
-            enriched.Identifier,
-            actions.Count);
+            "Matched binding for input {InputType} {Identifier}; dispatching {ActionCount} actions",
+            inputEvent.InputType,
+            inputEvent.Identifier,
+            binding.Actions.Count);
 
         // Dispatch each bound action's functor asynchronously, fire-and-forget with logging.
-        foreach (var boundAction in actions)
+        foreach (var boundAction in binding.Actions)
         {
             var descriptor = _actionRegistry.Resolve(boundAction.ActionTag);
             if (descriptor is null)
@@ -185,7 +153,7 @@ public sealed class EventPipeline : IEventPipeline
             {
                 try
                 {
-                    await functor.ExecuteAsync(enriched);
+                    await functor.ExecuteAsync(inputEvent);
                 }
                 catch (Exception ex)
                 {

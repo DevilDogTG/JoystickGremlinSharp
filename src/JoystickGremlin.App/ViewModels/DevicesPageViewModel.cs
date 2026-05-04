@@ -94,8 +94,7 @@ public sealed class DevicesPageViewModel : ViewModelBase, IDisposable
         var entry = new InputEntryViewModel(inputType, index);
         if (profile is not null)
         {
-            var tags = profile.Modes
-                .SelectMany(m => m.Bindings)
+            var tags = profile.Bindings
                 .Where(b => b.DeviceGuid == deviceGuid && b.InputType == inputType && b.Identifier == index)
                 .SelectMany(b => b.Actions)
                 .Select(a => a.ActionTag)

@@ -7,7 +7,6 @@ using Avalonia.Threading;
 using JoystickGremlin.App.ViewModels.InputViewer;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Devices;
-using JoystickGremlin.Core.Modes;
 using JoystickGremlin.Core.Pipeline;
 using JoystickGremlin.Core.Profile;
 using Microsoft.Extensions.Logging;
@@ -20,16 +19,15 @@ namespace JoystickGremlin.App.ViewModels;
 
 /// <summary>
 /// ViewModel for the main application window. Owns the top toolbar state
-/// (profile path, active mode, start/stop) and drives sidebar navigation.
+/// (profile quick-switch, start/stop) and drives sidebar navigation.
 /// </summary>
 public sealed class MainWindowViewModel : ViewModelBase
 {
     private readonly IEventPipeline _eventPipeline;
-    private readonly IModeManager _modeManager;
     private readonly IProfileRepository _profileRepository;
     private readonly IProfileState _profileState;
+    private readonly IProfileLibrary _profileLibrary;
     private readonly ISettingsService _settingsService;
-    private readonly IFilePickerService _filePicker;
     private readonly IDeviceManager _deviceManager;
     private readonly DevicesPageViewModel _devicesPage;
     private readonly BindingsPageViewModel _bindingsPage;
@@ -41,10 +39,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     private ViewModelBase _currentPage;
     private NavItemViewModel? _selectedNavItem;
     private bool _isGremlinActive;
-    private string _profilePath = "(no profile)";
-    private bool _hasProfile;
-    private bool _suppressModeUpdate;
-    private ModeTreeEntry? _selectedModeEntry;
+    private ProfileEntry? _selectedProfileEntry;
 
     /// <summary>
     /// Initializes a new instance of <see cref="MainWindowViewModel"/>.
@@ -56,20 +51,18 @@ public sealed class MainWindowViewModel : ViewModelBase
         SettingsPageViewModel settingsPage,
         InputViewerPageViewModel inputViewerPage,
         IEventPipeline eventPipeline,
-        IModeManager modeManager,
         IProfileRepository profileRepository,
         IProfileState profileState,
+        IProfileLibrary profileLibrary,
         ISettingsService settingsService,
-        IFilePickerService filePicker,
         IDeviceManager deviceManager,
         ILogger<MainWindowViewModel> logger)
     {
         _eventPipeline = eventPipeline;
-        _modeManager = modeManager;
         _profileRepository = profileRepository;
         _profileState = profileState;
+        _profileLibrary = profileLibrary;
         _settingsService = settingsService;
-        _filePicker = filePicker;
         _deviceManager = deviceManager;
         _devicesPage = devicesPage;
         _bindingsPage = bindingsPage;
@@ -87,7 +80,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         };
 
         NavItems = new ObservableCollection<NavItemViewModel>(navItems);
-        AvailableModeEntries = new ObservableCollection<ModeTreeEntry>();
+        AvailableProfileEntries = new ObservableCollection<ProfileEntry>();
         _currentPage = devicesPage;
         _selectedNavItem = navItems[0];
 
@@ -99,43 +92,20 @@ public sealed class MainWindowViewModel : ViewModelBase
             .WhereNotNull()
             .Subscribe(item => CurrentPage = item.Page);
 
-        ToggleActiveCommand      = ReactiveCommand.CreateFromTask(ToggleActiveAsync);
-        OpenProfileCommand       = ReactiveCommand.CreateFromTask(OpenProfileAsync);
-        NewProfileCommand        = ReactiveCommand.Create(NewProfile);
-        CheckForUpdatesCommand   = ReactiveCommand.CreateFromTask(CheckForUpdatesAsync);
+        // When user picks a different profile in the dropdown, load it.
+        _ = this.WhenAnyValue(x => x.SelectedProfileEntry)
+            .WhereNotNull()
+            .Subscribe(entry => _ = LoadProfileEntryAsync(entry));
 
-        var hasProfileObs = this.WhenAnyValue(x => x.HasProfile);
-        SaveProfileCommand   = ReactiveCommand.CreateFromTask(SaveProfileAsync,   hasProfileObs);
-        SaveAsProfileCommand = ReactiveCommand.CreateFromTask(SaveAsProfileAsync, hasProfileObs);
+        ToggleActiveCommand    = ReactiveCommand.CreateFromTask(ToggleActiveAsync);
+        CheckForUpdatesCommand = ReactiveCommand.CreateFromTask(CheckForUpdatesAsync);
 
-        _profileState.ProfileChanged += OnProfileChanged;
-        _modeManager.ModeChanged += OnModeChanged;
+        _profileLibrary.LibraryChanged += OnLibraryChanged;
+        _profileState.ProfileChanged   += OnProfileChanged;
     }
 
     /// <summary>Gets the sidebar navigation items.</summary>
     public ObservableCollection<NavItemViewModel> NavItems { get; }
-
-    /// <summary>Gets the list of mode entries with indented display labels for the mode selector ComboBox.</summary>
-    public ObservableCollection<ModeTreeEntry> AvailableModeEntries { get; }
-
-    /// <summary>
-    /// Gets or sets the currently selected mode entry in the toolbar ComboBox.
-    /// Setting this switches the active mode via <see cref="IModeManager"/>.
-    /// </summary>
-    public ModeTreeEntry? SelectedModeEntry
-    {
-        get => _selectedModeEntry;
-        set
-        {
-            if (_suppressModeUpdate || value == _selectedModeEntry) return;
-            this.RaiseAndSetIfChanged(ref _selectedModeEntry, value);
-            if (value is not null && !string.IsNullOrEmpty(value.Name))
-            {
-                try { _modeManager.SwitchTo(value.Name); }
-                catch (Exception ex) { _logger.LogWarning(ex, "Failed to switch mode to {Mode}", value.Name); }
-            }
-        }
-    }
 
     /// <summary>Gets or sets the page ViewModel currently displayed in the content area.</summary>
     public ViewModelBase CurrentPage
@@ -158,18 +128,14 @@ public sealed class MainWindowViewModel : ViewModelBase
         private set => this.RaiseAndSetIfChanged(ref _isGremlinActive, value);
     }
 
-    /// <summary>Gets or sets the display path of the currently loaded profile.</summary>
-    public string ProfilePath
-    {
-        get => _profilePath;
-        private set => this.RaiseAndSetIfChanged(ref _profilePath, value);
-    }
+    /// <summary>Gets the flat list of all available profile entries for the quick-switch dropdown.</summary>
+    public ObservableCollection<ProfileEntry> AvailableProfileEntries { get; }
 
-    /// <summary>Gets a value indicating whether a profile is loaded (enables mode ComboBox and Start).</summary>
-    public bool HasProfile
+    /// <summary>Gets or sets the selected profile entry in the quick-switch dropdown.</summary>
+    public ProfileEntry? SelectedProfileEntry
     {
-        get => _hasProfile;
-        private set => this.RaiseAndSetIfChanged(ref _hasProfile, value);
+        get => _selectedProfileEntry;
+        set => this.RaiseAndSetIfChanged(ref _selectedProfileEntry, value);
     }
 
     /// <summary>Gets the label for the Start/Stop toggle button.</summary>
@@ -178,24 +144,12 @@ public sealed class MainWindowViewModel : ViewModelBase
     /// <summary>Gets the command that toggles the Gremlin event pipeline on or off.</summary>
     public ReactiveCommand<Unit, Unit> ToggleActiveCommand { get; }
 
-    /// <summary>Gets the command that opens a profile file dialog.</summary>
-    public ReactiveCommand<Unit, Unit> OpenProfileCommand { get; }
-
-    /// <summary>Gets the command that creates a new empty profile.</summary>
-    public ReactiveCommand<Unit, Unit> NewProfileCommand { get; }
-
-    /// <summary>Gets the command that saves the current profile to its existing file path, or prompts for one.</summary>
-    public ReactiveCommand<Unit, Unit> SaveProfileCommand { get; }
-
-    /// <summary>Gets the command that always prompts for a file path and saves the current profile there.</summary>
-    public ReactiveCommand<Unit, Unit> SaveAsProfileCommand { get; }
-
     /// <summary>Gets the command that checks for application updates via Velopack.</summary>
     public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
 
     /// <summary>
-    /// Performs async startup: loads settings, initialises device manager, and optionally
-    /// auto-loads the last profile. Call from the main window's <c>Opened</c> event handler.
+    /// Performs async startup: loads settings, initialises device manager, and scans the profile library.
+    /// Call from the main window's <c>Opened</c> event handler.
     /// </summary>
     public async Task InitializeAsync()
     {
@@ -211,97 +165,32 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         _logger.LogInformation("Device manager initialized with {DeviceCount} physical devices", _deviceManager.Devices.Count);
 
-        var lastPath = _settingsService.Settings.LastProfilePath;
-        if (!string.IsNullOrEmpty(lastPath) && File.Exists(lastPath))
+        await _profileLibrary.ScanAsync();
+        RebuildProfileEntries();
+
+        var activeProfilePath = _settingsService.Settings.ActiveProfilePath;
+        if (!string.IsNullOrWhiteSpace(activeProfilePath))
         {
-            try
-            {
-                var profile = await _profileRepository.LoadAsync(lastPath);
-                _modeManager.Reset(profile);
-                _profileState.SetProfile(profile, lastPath);
-                _logger.LogInformation("Auto-loaded last profile from {ProfilePath}", lastPath);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Could not auto-load last profile from {Path}", lastPath);
-            }
+            var matchingEntry = AvailableProfileEntries.FirstOrDefault(entry =>
+                string.Equals(entry.FilePath, activeProfilePath, StringComparison.OrdinalIgnoreCase));
+            if (matchingEntry is not null)
+                SelectedProfileEntry = matchingEntry;
         }
     }
 
-    private async Task OpenProfileAsync()
+    private async Task LoadProfileEntryAsync(ProfileEntry entry)
     {
-        var path = await _filePicker.PickOpenFileAsync(
-            "Open Profile", "Joystick Gremlin Profile", "*.json");
-        if (path is null) return;
-
         try
         {
-            var profile = await _profileRepository.LoadAsync(path);
-            _modeManager.Reset(profile);
-            _profileState.SetProfile(profile, path);
-
-            _settingsService.Settings.LastProfilePath = path;
+            var profile = await _profileRepository.LoadAsync(entry.FilePath);
+            _profileState.SetProfile(profile, entry.FilePath);
+            _settingsService.Settings.ActiveProfilePath = entry.FilePath;
             await _settingsService.SaveAsync();
-            _settingsPage.LoadFromSettings();
+            _logger.LogInformation("Loaded profile {ProfileName} from {Path}", entry.Name, entry.FilePath);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to open profile from {Path}", path);
-        }
-    }
-
-    private void NewProfile()
-    {
-        var profile = new ProfileModel { Name = "New Profile" };
-        profile.Modes.Add(new Mode { Name = "Default" });
-        _modeManager.Reset(profile);
-        _profileState.SetProfile(profile, null);
-    }
-
-    private async Task SaveProfileAsync()
-    {
-        var profile = _profileState.CurrentProfile;
-        if (profile is null) return;
-
-        var path = _profileState.FilePath;
-        if (string.IsNullOrEmpty(path))
-        {
-            await SaveAsProfileAsync();
-            return;
-        }
-
-        try
-        {
-            await _profileRepository.SaveAsync(profile, path);
-            _logger.LogInformation("Profile saved to {Path}", path);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to save profile to {Path}", path);
-        }
-    }
-
-    private async Task SaveAsProfileAsync()
-    {
-        var profile = _profileState.CurrentProfile;
-        if (profile is null) return;
-
-        var path = await _filePicker.PickSaveFileAsync(
-            "Save Profile", "Joystick Gremlin Profile", "*.json", "json");
-        if (path is null) return;
-
-        try
-        {
-            await _profileRepository.SaveAsync(profile, path);
-            _profileState.SetProfile(profile, path);
-
-            _settingsService.Settings.LastProfilePath = path;
-            await _settingsService.SaveAsync();
-            _logger.LogInformation("Profile saved as {Path}", path);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to save profile as {Path}", path);
+            _logger.LogError(ex, "Failed to load profile from {Path}", entry.FilePath);
         }
     }
 
@@ -346,47 +235,39 @@ public sealed class MainWindowViewModel : ViewModelBase
         }
     }
 
+    private void OnLibraryChanged(object? sender, EventArgs e)
+    {
+        Dispatcher.UIThread.Post(RebuildProfileEntries);
+    }
+
+    private void RebuildProfileEntries()
+    {
+        var current = _selectedProfileEntry?.FilePath;
+        AvailableProfileEntries.Clear();
+        foreach (var entry in _profileLibrary.Entries)
+            AvailableProfileEntries.Add(entry);
+
+        // Restore selection by file path so the ComboBox stays in sync.
+        _selectedProfileEntry = current is not null
+            ? AvailableProfileEntries.FirstOrDefault(e => e.FilePath == current)
+            : null;
+        this.RaisePropertyChanged(nameof(SelectedProfileEntry));
+    }
+
     private void OnProfileChanged(object? sender, ProfileModel? profile)
     {
         Dispatcher.UIThread.Post(() =>
         {
-            HasProfile = profile is not null;
-            ProfilePath = _profileState.FilePath is not null
-                ? Path.GetFileName(_profileState.FilePath)
-                : profile is not null ? "(unsaved)" : "(no profile)";
-
-            AvailableModeEntries.Clear();
-            if (profile is not null)
+            var filePath = _profileState.FilePath;
+            if (filePath is not null)
             {
-                foreach (var entry in ModeTreeHelper.BuildEntries(profile.Modes))
-                    AvailableModeEntries.Add(entry);
-
-                var currentMode = _modeManager.ActiveModeName;
-                var initial = AvailableModeEntries.FirstOrDefault(e => e.Name == currentMode)
-                    ?? AvailableModeEntries.FirstOrDefault();
-                _suppressModeUpdate = true;
-                _selectedModeEntry = initial;
-                this.RaisePropertyChanged(nameof(SelectedModeEntry));
-                _suppressModeUpdate = false;
+                var match = AvailableProfileEntries.FirstOrDefault(e => e.FilePath == filePath);
+                if (match is not null && !ReferenceEquals(match, _selectedProfileEntry))
+                {
+                    _selectedProfileEntry = match;
+                    this.RaisePropertyChanged(nameof(SelectedProfileEntry));
+                }
             }
-            else
-            {
-                _suppressModeUpdate = true;
-                _selectedModeEntry = null;
-                this.RaisePropertyChanged(nameof(SelectedModeEntry));
-                _suppressModeUpdate = false;
-            }
-        });
-    }
-
-    private void OnModeChanged(object? sender, string modeName)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            _suppressModeUpdate = true;
-            _selectedModeEntry = AvailableModeEntries.FirstOrDefault(e => e.Name == modeName);
-            this.RaisePropertyChanged(nameof(SelectedModeEntry));
-            _suppressModeUpdate = false;
         });
     }
 }

@@ -3,7 +3,7 @@
 namespace JoystickGremlin.Core.Profile;
 
 /// <summary>
-/// Represents a complete Joystick Gremlin profile containing modes and input bindings.
+/// Represents a complete Joystick Gremlin profile containing input bindings.
 /// </summary>
 public sealed class Profile
 {
@@ -13,27 +13,12 @@ public sealed class Profile
     /// <summary>Gets or sets the display name of the profile.</summary>
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>Gets the list of modes defined in this profile.</summary>
-    public List<Mode> Modes { get; init; } = [];
-}
-
-/// <summary>
-/// Represents a named mode within a profile. Each mode holds a set of input bindings.
-/// </summary>
-public sealed class Mode
-{
-    /// <summary>Gets or sets the mode name.</summary>
-    public string Name { get; set; } = string.Empty;
-
-    /// <summary>Gets or sets the parent mode name, or null for a root mode.</summary>
-    public string? ParentModeName { get; set; }
-
-    /// <summary>Gets the input bindings active in this mode.</summary>
+    /// <summary>Gets the list of input bindings active in this profile.</summary>
     public List<InputBinding> Bindings { get; init; } = [];
 }
 
 /// <summary>
-/// Represents the binding of a physical input to one or more actions within a mode.
+/// Represents the binding of a physical input to one or more actions.
 /// </summary>
 public sealed class InputBinding
 {

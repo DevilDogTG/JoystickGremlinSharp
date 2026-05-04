@@ -52,39 +52,6 @@
         <!-- ─── Bindings Editor ─── -->
         <DockPanel Grid.Column="2">
 
-            <!-- Header: editing mode selector + live active-mode indicator -->
-            <Border DockPanel.Dock="Top"
-                    Padding="8,6"
-                    BorderThickness="0,0,0,1"
-                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                <StackPanel Spacing="4">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="Editing mode:"
-                                   FontWeight="SemiBold"
-                                   FontSize="13"
-                                   VerticalAlignment="Center"/>
-                        <ComboBox ItemsSource="{Binding AvailableEditModeEntries}"
-                                  SelectedItem="{Binding SelectedEditModeEntry}"
-                                  MinWidth="160"
-                                  IsEnabled="{Binding HasProfile}">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate x:DataType="vm:ModeTreeEntry">
-                                    <TextBlock Text="{Binding IndentedLabel}"/>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="Active:"
-                                   FontSize="11"
-                                   Opacity="0.55"/>
-                        <TextBlock Text="{Binding CurrentModeName}"
-                                   FontSize="11"
-                                   Opacity="0.55"/>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-
             <!-- Add-action toolbar -->
             <Border DockPanel.Dock="Top"
                     Padding="8,4"
@@ -135,11 +102,6 @@
                                 <TextBlock Text="{Binding ConfigSummary}"
                                            Opacity="0.6"
                                            FontSize="11"/>
-                                <TextBlock Text="{Binding InheritedFromMode, StringFormat='(↑ From: {0})'}"
-                                           IsVisible="{Binding IsInherited}"
-                                           Opacity="0.55"
-                                           FontSize="10"
-                                           FontStyle="Italic"/>
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
@@ -149,21 +111,7 @@
                 <ScrollViewer Grid.Row="1">
                     <StackPanel Margin="12" Spacing="10">
 
-                        <!-- Inherited action info + override button -->
-                        <StackPanel Spacing="6" IsVisible="{Binding ShowInheritedPanel}">
-                            <TextBlock Text="Inherited Action"
-                                       FontWeight="SemiBold"
-                                       FontSize="14"/>
-                            <TextBlock TextWrapping="Wrap"
-                                       Opacity="0.7"
-                                       FontSize="12"
-                                       Text="This action is inherited from a parent mode. It is read-only here. Click Override to create a local copy in the editing mode."/>
-                            <Button Content="Override in this mode"
-                                    Command="{Binding OverrideInheritedActionCommand}"
-                                    HorizontalAlignment="Left"/>
-                        </StackPanel>
-
-                        <!-- Configure Action form (own actions only) -->
+                        <!-- Configure Action form -->
                         <StackPanel Spacing="10" IsVisible="{Binding ShowConfigPanel}">
 
                         <TextBlock Text="Configure Action"
@@ -323,16 +271,7 @@
                                         Text="This mapping is mirrored onto each referenced source button in the current edit mode so the shared X/Y axis state updates from every configured button."/>
                          </StackPanel>
 
-                         <!-- Change Mode config -->
-                         <StackPanel Spacing="6" IsVisible="{Binding ShowChangeModeConfig}">
-                             <TextBlock Text="Target Mode"/>
-                             <ComboBox ItemsSource="{Binding AvailableModeNames}"
-                                      SelectedItem="{Binding EditTargetModeName}"
-                                      MinWidth="160"
-                                      HorizontalAlignment="Left"/>
-                        </StackPanel>
-
-                        <!-- Macro config -->
+                         <!-- Macro config -->
                         <StackPanel Spacing="6" IsVisible="{Binding ShowMacroConfig}">
                             <TextBlock Text="Keys (comma-separated)"/>
                             <TextBox Text="{Binding EditMacroKeys}"

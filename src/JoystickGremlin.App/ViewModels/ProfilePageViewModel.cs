@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Linq;
 using Avalonia.Threading;
@@ -11,164 +12,266 @@ using ReactiveUI;
 namespace JoystickGremlin.App.ViewModels;
 
 /// <summary>
-/// ViewModel for the Profile page — manages modes (add/remove/rename/parent)
-/// and shows the current profile's input-binding hierarchy.
+/// ViewModel for the Profile page — browses and manages the profile library
+/// (create, delete, rename profiles organised in category subfolders).
 /// </summary>
 public sealed class ProfilePageViewModel : ViewModelBase, IDisposable
 {
-    private const string RootModeOption = "(root mode)";
-
-    private readonly IProfileState _profileState;
+    private readonly IProfileLibrary _profileLibrary;
     private readonly ILogger<ProfilePageViewModel> _logger;
-    private ModeViewModel? _selectedMode;
-    private string _editName = string.Empty;
-    private string _editParentName = RootModeOption;
+
+    private ProfileEntry? _selectedEntry;
+    private ProfileTreeNode? _selectedNode;
+    private string _newProfileName = string.Empty;
+    private string? _selectedCategory;
+    private string? _preferredSelectedCategory;
+    private string? _preferredSelectedName;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ProfilePageViewModel"/>.
     /// </summary>
-    public ProfilePageViewModel(IProfileState profileState, ILogger<ProfilePageViewModel> logger)
+    public ProfilePageViewModel(IProfileLibrary profileLibrary, ILogger<ProfilePageViewModel> logger)
     {
-        _profileState = profileState;
-        _logger = logger;
+        _profileLibrary = profileLibrary;
+        _logger         = logger;
 
-        Modes = new ObservableCollection<ModeViewModel>();
-        AvailableParentNames = new ObservableCollection<string>();
+        ProfileTree = new ObservableCollection<ProfileTreeNode>();
 
-        var hasProfile = this.WhenAnyValue(x => x.HasProfile);
-        var hasSelection = this.WhenAnyValue(x => x.SelectedMode).Select(m => m is not null);
+        var hasSelection = this.WhenAnyValue(x => x.SelectedEntry).Select(e => e is not null);
+        var hasName      = this.WhenAnyValue(x => x.NewProfileName).Select(n => !string.IsNullOrWhiteSpace(n));
 
-        AddModeCommand = ReactiveCommand.Create(AddMode, hasProfile);
-        RemoveModeCommand = ReactiveCommand.Create(RemoveMode, hasSelection);
-        CommitEditCommand = ReactiveCommand.Create(CommitEdit, hasSelection);
+        SubmitProfileCommand     = ReactiveCommand.CreateFromTask(SubmitProfileAsync, hasName);
+        DeleteProfileCommand     = ReactiveCommand.CreateFromTask(DeleteProfileAsync, hasSelection);
+        OpenProfileFolderCommand = ReactiveCommand.Create(OpenProfileFolder);
+        RefreshCommand           = ReactiveCommand.CreateFromTask(() => _profileLibrary.ScanAsync());
 
-        _ = this.WhenAnyValue(x => x.SelectedMode)
-            .Subscribe(OnSelectedModeChanged);
-
-        _profileState.ProfileChanged += OnProfileChanged;
+        _profileLibrary.LibraryChanged += OnLibraryChanged;
     }
 
-    /// <summary>Gets the list of mode ViewModels in the current profile.</summary>
-    public ObservableCollection<ModeViewModel> Modes { get; }
+    /// <summary>Gets the tree of discovered categories and profiles.</summary>
+    public ObservableCollection<ProfileTreeNode> ProfileTree { get; }
 
-    /// <summary>Gets the available parent mode options (includes "(root mode)" sentinel).</summary>
-    public ObservableCollection<string> AvailableParentNames { get; }
-
-    /// <summary>Gets or sets the selected mode in the list.</summary>
-    public ModeViewModel? SelectedMode
+    /// <summary>Gets or sets the currently selected tree node.</summary>
+    public ProfileTreeNode? SelectedNode
     {
-        get => _selectedMode;
-        set => this.RaiseAndSetIfChanged(ref _selectedMode, value);
+        get => _selectedNode;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _selectedNode, value);
+            SelectedEntry = value?.Entry;
+            ApplySelectionToEditor(value);
+        }
     }
 
-    /// <summary>Gets or sets the name text in the edit form.</summary>
-    public string EditName
+    /// <summary>Gets or sets the currently selected profile entry.</summary>
+    public ProfileEntry? SelectedEntry
     {
-        get => _editName;
-        set => this.RaiseAndSetIfChanged(ref _editName, value);
+        get => _selectedEntry;
+        set => this.RaiseAndSetIfChanged(ref _selectedEntry, value);
     }
 
-    /// <summary>Gets or sets the parent name selection in the edit form.</summary>
-    public string EditParentName
+    /// <summary>Gets or sets the name typed into the New Profile text box.</summary>
+    public string NewProfileName
     {
-        get => _editParentName;
-        set => this.RaiseAndSetIfChanged(ref _editParentName, value);
+        get => _newProfileName;
+        set => this.RaiseAndSetIfChanged(ref _newProfileName, value);
     }
 
-    /// <summary>Gets a value indicating whether a profile is currently loaded.</summary>
-    public bool HasProfile => _profileState.CurrentProfile is not null;
+    /// <summary>Gets or sets the optional category (subfolder) for new profiles.</summary>
+    public string? SelectedCategory
+    {
+        get => _selectedCategory;
+        set => this.RaiseAndSetIfChanged(ref _selectedCategory, value);
+    }
 
-    /// <summary>Gets the command that adds a new mode to the profile.</summary>
-    public ReactiveCommand<Unit, Unit> AddModeCommand { get; }
+    /// <summary>Gets a value indicating whether the form is editing an existing profile.</summary>
+    public bool IsEditMode => SelectedEntry is not null;
 
-    /// <summary>Gets the command that removes the selected mode.</summary>
-    public ReactiveCommand<Unit, Unit> RemoveModeCommand { get; }
+    /// <summary>Gets the form heading for the create/edit panel.</summary>
+    public string EditorTitle => IsEditMode ? "Edit Profile" : "Create New Profile";
 
-    /// <summary>Gets the command that commits the edit-form values to the selected mode.</summary>
-    public ReactiveCommand<Unit, Unit> CommitEditCommand { get; }
+    /// <summary>Gets the label for the primary action button.</summary>
+    public string SubmitButtonLabel => IsEditMode ? "Update" : "+ Create";
 
-    private void OnProfileChanged(object? sender, JoystickGremlin.Core.Profile.Profile? profile)
+    /// <summary>Gets the path to the profiles folder currently in use.</summary>
+    public string ProfilesFolderPath => _profileLibrary.ProfilesFolder;
+
+    /// <summary>Gets the command that creates a new profile or updates the selected profile name.</summary>
+    public ReactiveCommand<Unit, Unit> SubmitProfileCommand { get; }
+
+    /// <summary>Gets the command that deletes the selected profile file.</summary>
+    public ReactiveCommand<Unit, Unit> DeleteProfileCommand { get; }
+
+    /// <summary>Gets the command that opens the profiles folder in Windows Explorer.</summary>
+    public ReactiveCommand<Unit, Unit> OpenProfileFolderCommand { get; }
+
+    /// <summary>Gets the command that rescans the profiles folder and refreshes the library.</summary>
+    public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
+
+    /// <summary>
+    /// Scans the profile library and populates <see cref="ProfileEntries"/>.
+    /// Call after initialization.
+    /// </summary>
+    public async Task InitializeAsync()
+    {
+        await _profileLibrary.ScanAsync();
+    }
+
+    private async Task SubmitProfileAsync()
+    {
+        if (IsEditMode)
+        {
+            await UpdateProfileAsync();
+            return;
+        }
+
+        await CreateProfileAsync();
+    }
+
+    private async Task CreateProfileAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NewProfileName)) return;
+        try
+        {
+            await _profileLibrary.CreateProfileAsync(NewProfileName.Trim(), SelectedCategory);
+            NewProfileName = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create profile '{Name}'", NewProfileName);
+        }
+    }
+
+    private async Task UpdateProfileAsync()
+    {
+        if (SelectedEntry is null || string.IsNullOrWhiteSpace(NewProfileName))
+            return;
+
+        try
+        {
+            _preferredSelectedCategory = SelectedEntry.Category;
+            _preferredSelectedName = NewProfileName.Trim();
+            await _profileLibrary.RenameProfileAsync(SelectedEntry.FilePath, _preferredSelectedName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to rename profile '{Path}'", SelectedEntry.FilePath);
+        }
+    }
+
+    private async Task DeleteProfileAsync()
+    {
+        if (SelectedEntry is null) return;
+        try
+        {
+            await _profileLibrary.DeleteProfileAsync(SelectedEntry.FilePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete profile '{Path}'", SelectedEntry?.FilePath);
+        }
+    }
+
+    private void OpenProfileFolder()
+    {
+        try
+        {
+            var folder = _profileLibrary.ProfilesFolder;
+            Directory.CreateDirectory(folder);
+            Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not open profiles folder");
+        }
+    }
+
+    private void OnLibraryChanged(object? sender, EventArgs e)
     {
         Dispatcher.UIThread.Post(() =>
         {
-            this.RaisePropertyChanged(nameof(HasProfile));
-            RebuildModes(profile);
+            var prev = SelectedEntry?.FilePath;
+            RebuildTree(prev);
+            this.RaisePropertyChanged(nameof(ProfilesFolderPath));
         });
     }
 
-    private void RebuildModes(JoystickGremlin.Core.Profile.Profile? profile)
+    private void RebuildTree(string? selectedFilePath)
     {
-        Modes.Clear();
-        if (profile is null) return;
-        foreach (var (mode, depth) in ModeTreeHelper.Flatten(profile.Modes))
+        ProfileTree.Clear();
+
+        foreach (var entry in _profileLibrary.Entries.Where(e => e.Category is null))
+            ProfileTree.Add(new ProfileTreeNode(entry.Name, entry));
+
+        foreach (var categoryGroup in _profileLibrary.Entries
+                     .Where(e => e.Category is not null)
+                     .GroupBy(e => e.Category, StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
         {
-            var vm = new ModeViewModel(mode) { Depth = depth };
-            Modes.Add(vm);
+            var categoryNode = new ProfileTreeNode(categoryGroup.Key!);
+            foreach (var entry in categoryGroup.OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase))
+                categoryNode.Children.Add(new ProfileTreeNode(entry.Name, entry));
+
+            ProfileTree.Add(categoryNode);
         }
-        SelectedMode = Modes.Count > 0 ? Modes[0] : null;
+
+        SelectedNode = FindNodeByEntry(ProfileTree, _preferredSelectedCategory, _preferredSelectedName)
+            ?? FindNodeByPath(ProfileTree, selectedFilePath)
+            ?? ProfileTree.SelectMany(FlattenNodes).FirstOrDefault(node => node.Entry is not null);
+
+        _preferredSelectedCategory = null;
+        _preferredSelectedName = null;
     }
 
-    private void OnSelectedModeChanged(ModeViewModel? mode)
+    private static ProfileTreeNode? FindNodeByPath(IEnumerable<ProfileTreeNode> nodes, string? filePath)
     {
-        // Rebuild parent options FIRST so the ComboBox item list is populated
-        // before we set EditParentName. Without this, AvailableParentNames.Clear()
-        // causes Avalonia TwoWay-binding feedback that resets EditParentName to null.
-        RebuildParentOptions(mode);
+        if (filePath is null)
+            return null;
 
-        if (mode is null)
+        return nodes.SelectMany(FlattenNodes)
+            .FirstOrDefault(node => string.Equals(node.Entry?.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static ProfileTreeNode? FindNodeByEntry(
+        IEnumerable<ProfileTreeNode> nodes,
+        string? category,
+        string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+
+        return nodes.SelectMany(FlattenNodes)
+            .FirstOrDefault(node =>
+                string.Equals(node.Entry?.Category, category, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(node.Entry?.Name, name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void ApplySelectionToEditor(ProfileTreeNode? selectedNode)
+    {
+        if (selectedNode?.Entry is not null)
         {
-            EditName = string.Empty;
-            EditParentName = RootModeOption;
+            NewProfileName = selectedNode.Entry.Name;
+            SelectedCategory = selectedNode.Entry.Category;
         }
-        else
+        else if (selectedNode?.Entry is null && selectedNode is not null && selectedNode.Children.Count > 0)
         {
-            EditName = mode.Name;
-            EditParentName = mode.ParentModeName ?? RootModeOption;
+            NewProfileName = string.Empty;
+            SelectedCategory = selectedNode.Label;
         }
+
+        this.RaisePropertyChanged(nameof(IsEditMode));
+        this.RaisePropertyChanged(nameof(EditorTitle));
+        this.RaisePropertyChanged(nameof(SubmitButtonLabel));
     }
 
-    private void RebuildParentOptions(ModeViewModel? excludeMode = null)
+    private static IEnumerable<ProfileTreeNode> FlattenNodes(ProfileTreeNode node)
     {
-        var toExclude = excludeMode ?? SelectedMode;
-        AvailableParentNames.Clear();
-        AvailableParentNames.Add(RootModeOption);
-        foreach (var m in Modes.Where(m => m != toExclude))
-            AvailableParentNames.Add(m.Name);
-    }
+        yield return node;
 
-    private void AddMode()
-    {
-        var profile = _profileState.CurrentProfile;
-        if (profile is null) return;
-        var newMode = new Mode { Name = "New Mode" };
-        profile.Modes.Add(newMode);
-        var vm = new ModeViewModel(newMode);
-        Modes.Add(vm);
-        SelectedMode = vm;
-        _profileState.NotifyProfileModified();
-    }
-
-    private void RemoveMode()
-    {
-        if (SelectedMode is null) return;
-        var profile = _profileState.CurrentProfile;
-        if (profile is null) return;
-        profile.Modes.Remove(SelectedMode.Model);
-        Modes.Remove(SelectedMode);
-        SelectedMode = Modes.Count > 0 ? Modes[0] : null;
-        _profileState.NotifyProfileModified();
-    }
-
-    private void CommitEdit()
-    {
-        if (SelectedMode is null) return;
-        SelectedMode.Name = EditName;
-        SelectedMode.ParentModeName = EditParentName == RootModeOption ? null : EditParentName;
-        SelectedMode.CommitToModel();
-        _profileState.NotifyProfileModified();
-        RebuildParentOptions();
+        foreach (var child in node.Children.SelectMany(FlattenNodes))
+            yield return child;
     }
 
     /// <inheritdoc/>
-    public void Dispose() => _profileState.ProfileChanged -= OnProfileChanged;
+    public void Dispose() => _profileLibrary.LibraryChanged -= OnLibraryChanged;
 }

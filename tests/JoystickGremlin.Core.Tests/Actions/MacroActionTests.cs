@@ -12,7 +12,7 @@ namespace JoystickGremlin.Core.Tests.Actions;
 public sealed class MacroActionTests
 {
     private static InputEvent Press(double value = 1.0) =>
-        new(InputType.JoystickButton, Guid.Empty, 1, value, "Default");
+        new(InputType.JoystickButton, Guid.Empty, 1, value);
 
     // ── Descriptor metadata ─────────────────────────────────────────────────
 

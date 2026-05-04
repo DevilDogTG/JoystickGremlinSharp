@@ -18,59 +18,31 @@
                 Padding="8,6"
                 BorderThickness="0,0,0,1"
                 BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto"
-                  ColumnSpacing="8">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
 
-                <!-- Profile controls -->
-                <Button Grid.Column="0"
-                        Content="📂  Open"
-                        Command="{Binding OpenProfileCommand}"
-                        ToolTip.Tip="Open a profile file"/>
-                <Button Grid.Column="1"
-                        Content="New"
-                        Command="{Binding NewProfileCommand}"
-                        ToolTip.Tip="Create a new empty profile"/>
-                <Button Grid.Column="2"
-                        Content="💾  Save"
-                        Command="{Binding SaveProfileCommand}"
-                        ToolTip.Tip="Save profile to current file (or prompt if unsaved)"/>
-                <Button Grid.Column="3"
-                        Content="Save As…"
-                        Command="{Binding SaveAsProfileCommand}"
-                        ToolTip.Tip="Save profile to a new file"/>
-
-                <!-- Profile path display -->
-                <TextBlock Grid.Column="4"
-                           Text="{Binding ProfilePath}"
+                <!-- Profile label -->
+                <TextBlock Grid.Column="0"
+                           Text="Profile:"
                            VerticalAlignment="Center"
-                           TextTrimming="CharacterEllipsis"
-                           Opacity="0.6"
-                           FontSize="12"/>
+                           FontWeight="SemiBold"/>
 
-                <!-- Active mode -->
-                <StackPanel Grid.Column="5"
-                            Orientation="Horizontal"
-                            Spacing="4"
-                            VerticalAlignment="Center">
-                    <TextBlock Text="Mode:"
-                               VerticalAlignment="Center"
-                               Opacity="0.6"
-                               FontSize="12"/>
-                    <ComboBox ItemsSource="{Binding AvailableModeEntries}"
-                              SelectedItem="{Binding SelectedModeEntry}"
-                              IsEnabled="{Binding HasProfile}"
-                              MinWidth="120"
-                              FontSize="12">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate x:DataType="vm:ModeTreeEntry">
-                                <TextBlock Text="{Binding IndentedLabel}" FontFamily="Consolas,Courier New"/>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                </StackPanel>
+                <!-- Profile quick-switch dropdown -->
+                <ComboBox Grid.Column="1"
+                          ItemsSource="{Binding AvailableProfileEntries}"
+                          SelectedItem="{Binding SelectedProfileEntry}"
+                          PlaceholderText="(no profiles — use Profile page to create one)"
+                          VerticalAlignment="Center"
+                          HorizontalAlignment="Stretch"
+                          ToolTip.Tip="Select active profile">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DisplayLabel}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
 
                 <!-- Start / Stop toggle -->
-                <Button Grid.Column="6"
+                <Button Grid.Column="2"
                         Content="{Binding ToggleButtonLabel}"
                         Command="{Binding ToggleActiveCommand}"
                         MinWidth="90"

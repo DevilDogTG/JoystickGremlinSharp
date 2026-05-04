@@ -10,11 +10,6 @@
             <TextBlock Text="Settings" FontWeight="SemiBold" FontSize="18"/>
 
             <StackPanel Spacing="4">
-                <TextBlock Text="Last Profile Path"/>
-                <TextBox Text="{Binding LastProfilePath}" PlaceholderText="(none)"/>
-            </StackPanel>
-
-            <StackPanel Spacing="4">
                 <TextBlock Text="vJoy Device ID (1–16)"/>
                 <NumericUpDown Value="{Binding VJoyDeviceId}"
                                Minimum="1" Maximum="16" Increment="1"
@@ -22,8 +17,8 @@
             </StackPanel>
 
             <StackPanel Spacing="4">
-                <TextBlock Text="Default Mode Name"/>
-                <TextBox Text="{Binding DefaultModeName}" PlaceholderText="(none)"/>
+                <TextBlock Text="Profiles Folder Path"/>
+                <TextBox Text="{Binding ProfilesFolderPath}" PlaceholderText="(default: %AppData%\JoystickGremlinSharp\profiles)"/>
             </StackPanel>
 
             <CheckBox Content="Start minimized to tray" IsChecked="{Binding StartMinimized}"/>

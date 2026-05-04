@@ -10,8 +10,8 @@ namespace JoystickGremlin.Core.Tests.Actions;
 
 public sealed class MapToKeyboardActionTests
 {
-    private static InputEvent ButtonPress()   => new(InputType.JoystickButton, Guid.Empty, 1, 1.0, "Default");
-    private static InputEvent ButtonRelease() => new(InputType.JoystickButton, Guid.Empty, 1, 0.0, "Default");
+    private static InputEvent ButtonPress()   => new(InputType.JoystickButton, Guid.Empty, 1, 1.0);
+    private static InputEvent ButtonRelease() => new(InputType.JoystickButton, Guid.Empty, 1, 0.0);
 
     // ── Descriptor metadata ─────────────────────────────────────────────────
 

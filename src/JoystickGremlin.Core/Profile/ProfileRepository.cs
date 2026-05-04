@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using JoystickGremlin.Core.Exceptions;
 
@@ -8,12 +9,14 @@ namespace JoystickGremlin.Core.Profile;
 
 /// <summary>
 /// Persists and loads <see cref="Profile"/> instances as indented JSON files.
+/// Automatically migrates legacy mode-based profiles on load.
 /// </summary>
 public sealed class ProfileRepository : IProfileRepository
 {
     private static readonly JsonSerializerOptions _options = new()
     {
         WriteIndented = true,
+        PropertyNameCaseInsensitive = true,
         Converters = { new JsonStringEnumConverter() },
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
@@ -25,8 +28,10 @@ public sealed class ProfileRepository : IProfileRepository
 
         try
         {
-            await using var stream = File.OpenRead(filePath);
-            var profile = await JsonSerializer.DeserializeAsync<Profile>(stream, _options, cancellationToken)
+            var json = await File.ReadAllTextAsync(filePath, cancellationToken);
+            var node = JsonNode.Parse(json);
+            node = LegacyProfileMigrator.Migrate(node);
+            var profile = node.Deserialize<Profile>(_options)
                           ?? throw new ProfileException($"Deserialization returned null for '{filePath}'.");
             return profile;
         }

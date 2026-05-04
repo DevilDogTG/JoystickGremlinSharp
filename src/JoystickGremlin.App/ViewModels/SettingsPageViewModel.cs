@@ -24,9 +24,8 @@ public sealed class SettingsPageViewModel : ViewModelBase
     private readonly IFilePickerService _filePicker;
     private readonly IForceFeedbackBridge _ffbBridge;
     private readonly ILogger<SettingsPageViewModel> _logger;
-    private string _lastProfilePath = string.Empty;
     private decimal _vJoyDeviceId = 1;
-    private string _defaultModeName = string.Empty;
+    private string _profilesFolderPath = string.Empty;
     private bool _startMinimized;
     private bool _startWithWindows;
     private bool _closeToTray = true;
@@ -64,14 +63,13 @@ public sealed class SettingsPageViewModel : ViewModelBase
         _ffbBridgeStatus = _ffbBridge.State.ToString();
 
         this.WhenAnyValue(
-                x => x.LastProfilePath,
                 x => x.VJoyDeviceId,
-                x => x.DefaultModeName,
+                x => x.ProfilesFolderPath,
                 x => x.StartMinimized,
                 x => x.StartWithWindows,
                 x => x.CloseToTray,
                 x => x.EnableAutoLoading,
-                (_, _, _, _, _, _, _) => Unit.Default)
+                (_, _, _, _, _, _) => Unit.Default)
             .Skip(1)
             .Throttle(TimeSpan.FromMilliseconds(800), AvaloniaScheduler.Instance)
             .Subscribe(unit => { if (!_loading) _ = SaveAsync(); });
@@ -87,13 +85,6 @@ public sealed class SettingsPageViewModel : ViewModelBase
             .Subscribe(unit => { if (!_loading) _ = SaveAsync(); });
     }
 
-    /// <summary>Gets or sets the path to the last opened profile file.</summary>
-    public string LastProfilePath
-    {
-        get => _lastProfilePath;
-        set => this.RaiseAndSetIfChanged(ref _lastProfilePath, value);
-    }
-
     /// <summary>Gets or sets the vJoy device ID (1–16).</summary>
     public decimal VJoyDeviceId
     {
@@ -101,11 +92,11 @@ public sealed class SettingsPageViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _vJoyDeviceId, value);
     }
 
-    /// <summary>Gets or sets the name of the default mode activated on startup.</summary>
-    public string DefaultModeName
+    /// <summary>Gets or sets the folder path where profiles are stored.</summary>
+    public string ProfilesFolderPath
     {
-        get => _defaultModeName;
-        set => this.RaiseAndSetIfChanged(ref _defaultModeName, value);
+        get => _profilesFolderPath;
+        set => this.RaiseAndSetIfChanged(ref _profilesFolderPath, value);
     }
 
     /// <summary>Gets or sets whether the application should start minimized to the system tray.</summary>
@@ -199,9 +190,8 @@ public sealed class SettingsPageViewModel : ViewModelBase
         try
         {
             var s = _settingsService.Settings;
-            LastProfilePath      = s.LastProfilePath ?? string.Empty;
             VJoyDeviceId         = s.VJoyDeviceId;
-            DefaultModeName      = s.DefaultModeName ?? string.Empty;
+            ProfilesFolderPath   = s.ProfilesFolderPath ?? string.Empty;
             StartMinimized       = s.StartMinimized;
             StartWithWindows     = _startupService.IsEnabled;
             CloseToTray          = s.CloseToTray;
@@ -270,9 +260,8 @@ public sealed class SettingsPageViewModel : ViewModelBase
             vm.ApplyToModel();
 
         var s = _settingsService.Settings;
-        s.LastProfilePath    = string.IsNullOrWhiteSpace(LastProfilePath) ? null : LastProfilePath;
         s.VJoyDeviceId       = (uint)VJoyDeviceId;
-        s.DefaultModeName    = string.IsNullOrWhiteSpace(DefaultModeName) ? null : DefaultModeName;
+        s.ProfilesFolderPath = string.IsNullOrWhiteSpace(ProfilesFolderPath) ? null : ProfilesFolderPath;
         s.StartMinimized     = StartMinimized;
         s.CloseToTray        = CloseToTray;
         s.EnableAutoLoading  = EnableAutoLoading;

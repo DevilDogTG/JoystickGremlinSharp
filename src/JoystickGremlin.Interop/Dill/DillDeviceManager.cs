@@ -188,8 +188,7 @@ public sealed class DillDeviceManager : IDeviceManager
             inputType.Value,
             DillGuidConverter.ToGuid(data.DeviceGuid),
             identifier,
-            value,
-            string.Empty);
+            value);
 
         _logger.LogDebug(
             "DILL input event: device {DeviceGuid}, type {InputType}, identifier {Identifier}, raw value {RawValue}, normalized value {Value}",

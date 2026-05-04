@@ -1,70 +1,103 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:JoystickGremlin.App.ViewModels"
+             xmlns:profile="using:JoystickGremlin.Core.Profile"
              x:Class="JoystickGremlin.App.Views.ProfilePageView"
              x:DataType="vm:ProfilePageViewModel">
 
-    <Grid ColumnDefinitions="260,*">
+    <Grid ColumnDefinitions="280,4,*">
 
-        <!-- ─── Mode List Panel ─── -->
+        <!-- ─── Profile Library List ─── -->
         <DockPanel Grid.Column="0">
 
-            <!-- Add / Remove toolbar -->
+            <!-- Toolbar -->
             <Border DockPanel.Dock="Top"
                     Padding="4,4"
                     BorderThickness="0,0,0,1"
                     BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                 <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Button Content="+ Add"
-                            Command="{Binding AddModeCommand}"
+                    <Button Content="− Delete"
+                            Command="{Binding DeleteProfileCommand}"
                             FontSize="12"/>
-                    <Button Content="− Remove"
-                            Command="{Binding RemoveModeCommand}"
-                            FontSize="12"/>
+                    <Button Content="🔄 Refresh"
+                            Command="{Binding RefreshCommand}"
+                            FontSize="12"
+                            ToolTip.Tip="Rescan the profiles folder"/>
                 </StackPanel>
             </Border>
 
-            <ListBox ItemsSource="{Binding Modes}"
-                     SelectedItem="{Binding SelectedMode}"
-                     BorderThickness="0,0,1,0">
-                <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:ModeViewModel">
-                        <StackPanel Margin="{Binding TreePadding}" Spacing="2">
-                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
-                            <TextBlock FontSize="11" Opacity="0.6"
-                                       Text="{Binding ParentModeName,
-                                                      FallbackValue='(root mode)',
-                                                      TargetNullValue='(root mode)'}"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+            <TreeView ItemsSource="{Binding ProfileTree}"
+                      SelectedItem="{Binding SelectedNode}"
+                      BorderThickness="0,0,1,0">
+                <TreeView.Styles>
+                    <Style Selector="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="True"/>
+                    </Style>
+                </TreeView.Styles>
+                <TreeView.ItemTemplate>
+                    <TreeDataTemplate ItemsSource="{Binding Children}">
+                        <TextBlock Margin="2,1"
+                                   Text="{Binding Label}"
+                                   FontWeight="{Binding Entry, Converter={x:Static ObjectConverters.IsNull}, ConverterParameter=SemiBold}"/>
+                    </TreeDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
 
         </DockPanel>
 
-        <!-- ─── Edit Form ─── -->
-        <ScrollViewer Grid.Column="1">
-            <StackPanel Margin="16"
-                        Spacing="16"
-                        IsEnabled="{Binding SelectedMode, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <GridSplitter Grid.Column="1"
+                      Width="4"
+                      Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                      ResizeDirection="Columns"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Stretch"/>
 
-                <TextBlock Text="Edit Mode" FontWeight="SemiBold" FontSize="16"/>
+        <!-- ─── Create New Profile ─── -->
+        <ScrollViewer Grid.Column="2">
+            <StackPanel Margin="16" Spacing="16">
 
-                <StackPanel Spacing="4">
-                    <TextBlock Text="Name"/>
-                    <TextBox Text="{Binding EditName}" PlaceholderText="Mode name"/>
-                </StackPanel>
+                <TextBlock Text="Profile Library" FontWeight="SemiBold" FontSize="16"/>
 
-                <StackPanel Spacing="4">
-                    <TextBlock Text="Parent Mode"/>
-                    <ComboBox ItemsSource="{Binding AvailableParentNames}"
-                              SelectedItem="{Binding EditParentName}"
-                              HorizontalAlignment="Stretch"/>
-                </StackPanel>
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <StackPanel Grid.Column="0" Spacing="4">
+                        <TextBlock Text="Profiles Folder" FontSize="12" Opacity="0.7"/>
+                        <TextBlock Text="{Binding ProfilesFolderPath}"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   Opacity="0.6"/>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Content="Open Folder"
+                            Command="{Binding OpenProfileFolderCommand}"
+                            FontSize="11"
+                            Padding="10,4"
+                            VerticalAlignment="Center"/>
+                </Grid>
 
-                <Button Content="Apply Changes"
-                        Command="{Binding CommitEditCommand}"
-                        HorizontalAlignment="Left"/>
+                <Border Padding="0,8,0,0"
+                        BorderThickness="0,1,0,0"
+                        BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="{Binding EditorTitle}" FontWeight="SemiBold" FontSize="14"/>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Name"/>
+                            <TextBox Text="{Binding NewProfileName}"
+                                      PlaceholderText="My Profile"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Category (subfolder, optional)"/>
+                            <TextBox Text="{Binding SelectedCategory}"
+                                     PlaceholderText="(none)"
+                                     IsEnabled="{Binding IsEditMode, Converter={x:Static BoolConverters.Not}}"/>
+                        </StackPanel>
+
+                        <Button Content="{Binding SubmitButtonLabel}"
+                                Command="{Binding SubmitProfileCommand}"
+                                HorizontalAlignment="Left"/>
+                    </StackPanel>
+                </Border>
 
             </StackPanel>
         </ScrollViewer>
@@ -72,4 +105,3 @@
     </Grid>
 
 </UserControl>
-
