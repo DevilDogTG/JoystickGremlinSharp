@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:JoystickGremlin.App.ViewModels"
+             x:Class="JoystickGremlin.App.Views.AboutPageView"
+             x:DataType="vm:AboutPageViewModel">
+
+    <ScrollViewer>
+        <StackPanel Margin="16" MaxWidth="480" Spacing="20">
+
+            <TextBlock Text="About" FontWeight="SemiBold" FontSize="18"/>
+
+            <!-- App identity -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="{Binding AppName}"
+                           FontSize="22"
+                           FontWeight="Bold"/>
+                <TextBlock Text="{Binding VersionLabel}"
+                           FontSize="14"
+                           Opacity="0.7"/>
+                <TextBlock Text="{Binding Copyright}"
+                           FontSize="12"
+                           Opacity="0.6"/>
+            </StackPanel>
+
+            <!-- Repository link -->
+            <Border Padding="0,8,0,0"
+                    BorderThickness="0,1,0,0"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Source Code" FontWeight="SemiBold" FontSize="15"/>
+                    <SelectableTextBlock Text="{Binding RepositoryDisplayText}"
+                                         Foreground="{DynamicResource SystemAccentColor}"
+                                         FontSize="13"
+                                         Cursor="Hand"
+                                         ToolTip.Tip="{Binding RepositoryUrl}"/>
+                    <TextBlock TextWrapping="Wrap" Opacity="0.6" FontSize="11">
+                        Click and copy the URL above, or visit it directly in your browser.
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <!-- License -->
+            <Border Padding="0,8,0,0"
+                    BorderThickness="0,1,0,0"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="License" FontWeight="SemiBold" FontSize="15"/>
+                    <TextBlock Text="{Binding License}"
+                               FontSize="13"
+                               Opacity="0.85"/>
+                    <TextBlock TextWrapping="Wrap" Opacity="0.6" FontSize="11">
+                        This software is free and open source. See the LICENSE file in the repository for full license text.
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <!-- Attribution -->
+            <Border Padding="0,8,0,0"
+                    BorderThickness="0,1,0,0"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Attribution" FontWeight="SemiBold" FontSize="15"/>
+                    <TextBlock Text="{Binding Attribution}"
+                               TextWrapping="Wrap"
+                               FontSize="12"
+                               Opacity="0.75"/>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>
