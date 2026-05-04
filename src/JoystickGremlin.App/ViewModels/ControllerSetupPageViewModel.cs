@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Disposables;
@@ -27,7 +28,7 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
     private readonly IProfileRepository _profileRepository;
     private readonly IProfileState _profileState;
     private readonly ILogger<ControllerSetupPageViewModel> _logger;
-    private readonly Dictionary<Guid, DeviceLiveInputViewModel> _liveDevices = [];
+    private readonly ConcurrentDictionary<Guid, DeviceLiveInputViewModel> _liveDevices = new();
     private readonly CompositeDisposable _subscriptions = [];
 
     private DeviceViewModel? _selectedDevice;
@@ -372,7 +373,7 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
             if (deviceViewModel is not null)
                 Devices.Remove(deviceViewModel);
 
-            if (_liveDevices.Remove(device.Guid, out var liveDevice))
+            if (_liveDevices.TryRemove(device.Guid, out var liveDevice))
                 liveDevice.Dispose();
 
             BindingEditor.RefreshDevices();
