@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+using Avalonia.Controls;
 using ReactiveUI;
 
 namespace JoystickGremlin.App.ViewModels.InputViewer;
@@ -29,6 +30,9 @@ public sealed class AxisLiveViewModel : ReactiveObject
             this.RaisePropertyChanged(nameof(DisplayPercent));
             this.RaisePropertyChanged(nameof(NegativePercent));
             this.RaisePropertyChanged(nameof(PositivePercent));
+            this.RaisePropertyChanged(nameof(BarLeftWidth));
+            this.RaisePropertyChanged(nameof(BarFillWidth));
+            this.RaisePropertyChanged(nameof(BarRightWidth));
             this.RaisePropertyChanged(nameof(ValueLabel));
         }
     }
@@ -44,6 +48,19 @@ public sealed class AxisLiveViewModel : ReactiveObject
 
     /// <summary>Gets the right-half fill amount in the range [0, 100] for positive values.</summary>
     public double PositivePercent => Math.Clamp(Value, 0.0, 1.0) * 100.0;
+
+    /// <summary>
+    /// Gets the left empty-space column width for the 3-column centered fill indicator.
+    /// Together with <see cref="BarFillWidth"/> and <see cref="BarRightWidth"/> these
+    /// place the fill rectangle at exactly the correct position regardless of direction.
+    /// </summary>
+    public GridLength BarLeftWidth  => new(Value < 0 ? (1.0 + Value) / 2.0 : 0.5, GridUnitType.Star);
+
+    /// <summary>Gets the fill column width for the 3-column centered fill indicator.</summary>
+    public GridLength BarFillWidth  => new(Math.Abs(Value) / 2.0, GridUnitType.Star);
+
+    /// <summary>Gets the right empty-space column width for the 3-column centered fill indicator.</summary>
+    public GridLength BarRightWidth => new(Value > 0 ? (1.0 - Value) / 2.0 : 0.5, GridUnitType.Star);
 
     /// <summary>Gets a formatted string representation of the current value (e.g. "-0.42").</summary>
     public string ValueLabel => Value.ToString("F2");
