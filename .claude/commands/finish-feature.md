@@ -3,16 +3,18 @@ name: finish-feature
 description: >
   Complete a feature: commit, push, raise PR, and perform code review all in one workflow.
   Use this when you're ready to finalize and ship a feature branch. Runs steps up to code
-  review autonomously, then waits for user confirmation before finishing.
+  review autonomously, then stops and waits for the user to choose the next step.
 ---
 
 # Finish Feature Workflow
 
-Automate the feature completion process: commit → push → PR → code review → **wait for user confirmation** → finish.
+Automate the feature completion process: commit → push → PR → code review → **stop and wait for user**.
 
-> **IMPORTANT**: After the code review is posted to the PR, **always stop and ask the user
-> for confirmation** before taking any further action (merging, marking complete, etc.).
-> Do not autonomously complete the workflow end-to-end without user sign-off.
+> **IMPORTANT**: After the code review is posted to the PR, **the workflow ends**.
+> Do NOT autonomously fix findings, merge, or take any further action.
+> Present the review summary and wait — the user decides what to do next
+> (fix issues, request re-review, merge, or leave as-is).
+> Use the **review-fix** skill to verify fixes, or **re-code-review** to run a full re-review.
 
 ## Prerequisites
 
@@ -55,41 +57,32 @@ Automate the feature completion process: commit → push → PR → code review 
 4. Confirm the review appears on the PR with the expected GitHub review status
 5. Output the same review results inline in the terminal summary
 
-### Step 5 — Pause and Confirm
+### Step 5 — Stop and Present Summary
 
-After the review is posted:
-1. **Stop and ask the user** whether to proceed (fix issues, merge, or leave as-is)
-2. Do NOT autonomously fix findings, merge, or mark complete without explicit user instruction
-3. Present a brief summary: PR URL, verdict, finding counts, suggested next action
+After the review is posted, **the workflow is complete**. Output a final summary and stop:
 
-### Step 6 — Fix Follow-up (only if user confirms)
+```
+✅ Finish-feature complete
+──────────────────────────────
+PR:      #<number> — <title>
+URL:     <pr_url>
+Verdict: <Approve | Comment | Request Changes>
+Findings: <N> CRITICAL  <N> WARNING  <N> STYLE
+──────────────────────────────
+Next steps (your call):
+  • Fix issues → run `review-fix` to verify fixes resolved the review
+  • Re-review  → run `re-code-review` for a full review after applying fixes
+  • Merge      → merge the PR if the review approved it
+```
 
-If the user confirms fixes should be applied:
-1. Fix the reported issues, push the fix commit(s)
-2. Update the PR review status appropriately on GitHub
-3. Post a **reply to the original review comment** (not a new top-level PR comment) summarizing
-   what was fixed and the final status — use `gh api` to post a reply to the review thread:
-   ```
-   gh api repos/{owner}/{repo}/pulls/{pr}/reviews/{review_id}/comments
-   ```
-   or use `gh pr comment --reply-to <comment_id>` if the review body has a thread ID
-
-If findings remain unfixed:
-- Leave the blocking review status in place
-- Post a **reply to the original review comment** summarizing outstanding issues and required next action
-
-Print a final summary:
-- PR number and URL
-- Review verdict (Approve / Request Changes / Comment)
-- Top findings (CRITICAL / WARNING count)
-- Next action (merge, make changes, etc.)
+Do NOT take any further autonomous action after printing this summary.
 
 ## Implementation Notes
 
-- Steps 1–4 (commit → push → PR → review) run autonomously; **Step 5 always pauses for user input**
+- Steps 1–4 (commit → push → PR → review) run autonomously; **Step 5 always ends the workflow**
 - If any step fails, report error and stop (don't swallow failures)
 - Use `git` CLI for git operations, `gh` CLI for GitHub
 - Use `gh pr review` to publish the review result to GitHub
-- Fix-summary feedback must be a **reply to the review comment**, not a new standalone PR comment
+- Fix-summary feedback is handled by the **review-fix** skill, not by this workflow
 - Assume SSH-based git URLs (no https auth needed)
 - Log all operations at INFO level for audit trail

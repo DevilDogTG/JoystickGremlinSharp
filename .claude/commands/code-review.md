@@ -11,8 +11,11 @@ description: >
 Review the changes on this branch compared to `main` using the instructions below.
 
 If the review is for an existing PR, do not stop at local analysis: after producing the review,
-publish it to GitHub as a PR review, then after fixes are applied publish a follow-up PR comment
-summarizing what was fixed and the resulting review status.
+publish it to GitHub as a PR review.
+
+> **After this review is published, the workflow stops.**
+> Use `review-fix` to verify fix coverage, or `re-code-review` to run a full re-review
+> after fixes have been applied.
 
 
 # C# & Avalonia Code Review Skill
@@ -152,18 +155,8 @@ When a PR number is available, publish the review result instead of leaving it o
    - **REQUEST_CHANGES**: one or more blocking findings remain
 2. Submit the review to the PR with a concise summary of the findings
 3. Verify the PR now shows the submitted review state
-
-If fixes are made after the initial review:
-
-1. Re-review the updated diff
-2. Post a **reply to the original review comment** (not a new standalone PR comment) with a **fix summary**:
-   - what issues were fixed
-   - what issues, if any, still remain
-   - the resulting final status (approve / comment / request changes)
-   - Use `gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews/{review_id}` to get the review ID,
-     then reply via `gh api repos/{owner}/{repo}/pulls/{pr_number}/comments` with `in_reply_to`
-     set to the review comment ID, or use `gh pr comment --reply-to <comment_id>` if available
-3. Update the PR review status if the verdict changed after the fixes
+4. **Stop here** — do not apply fixes or post follow-up comments; that is handled by
+   `review-fix` (fix verification) or `re-code-review` (full re-review after fixes)
 
 
 ## Tone & Style Rules
