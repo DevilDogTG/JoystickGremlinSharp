@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using JoystickGremlin.Core.Devices;
@@ -15,6 +16,13 @@ namespace JoystickGremlin.App.ViewModels.InputViewer;
 public sealed class DeviceLiveInputViewModel : ReactiveObject, IDisposable
 {
     private readonly IPhysicalDevice _device;
+
+    // Throttle per-input UI updates to ~30 Hz to avoid flooding the UI thread
+    // at high polling rates (e.g. 1000 Hz steering wheels).
+    private readonly ConcurrentDictionary<int, long> _lastAxisUpdateMs   = new();
+    private readonly ConcurrentDictionary<int, long> _lastButtonUpdateMs = new();
+    private readonly ConcurrentDictionary<int, long> _lastHatUpdateMs    = new();
+    private const long UiUpdateIntervalMs = 33; // ~30 Hz
 
     /// <summary>Gets the device display name.</summary>
     public string Name => _device.Name;
@@ -54,17 +62,24 @@ public sealed class DeviceLiveInputViewModel : ReactiveObject, IDisposable
 
     /// <summary>
     /// Applies a raw input event, dispatching any property updates to the UI thread.
-    /// Safe to call from any thread.
+    /// Updates are throttled to ~30 Hz per input to avoid overwhelming the UI thread
+    /// at high polling rates. Safe to call from any thread.
     /// </summary>
     public void ApplyEvent(InputEvent inputEvent)
     {
+        var now = Environment.TickCount64;
+
         switch (inputEvent.InputType)
         {
             case InputType.JoystickAxis:
             {
                 var vm = Axes.FirstOrDefault(a => a.AxisIndex == inputEvent.Identifier);
                 if (vm is null) return;
-                Dispatcher.UIThread.Post(() => vm.Value = inputEvent.Value);
+                var last = _lastAxisUpdateMs.GetOrAdd(inputEvent.Identifier, 0L);
+                if (now - last < UiUpdateIntervalMs) return;
+                _lastAxisUpdateMs[inputEvent.Identifier] = now;
+                var value = inputEvent.Value;
+                Dispatcher.UIThread.Post(() => vm.Value = value);
                 break;
             }
 
@@ -72,7 +87,11 @@ public sealed class DeviceLiveInputViewModel : ReactiveObject, IDisposable
             {
                 var vm = Buttons.FirstOrDefault(b => b.ButtonIndex == inputEvent.Identifier);
                 if (vm is null) return;
-                Dispatcher.UIThread.Post(() => vm.IsPressed = inputEvent.Value >= 0.5);
+                var last = _lastButtonUpdateMs.GetOrAdd(inputEvent.Identifier, 0L);
+                if (now - last < UiUpdateIntervalMs) return;
+                _lastButtonUpdateMs[inputEvent.Identifier] = now;
+                var isPressed = inputEvent.Value >= 0.5;
+                Dispatcher.UIThread.Post(() => vm.IsPressed = isPressed);
                 break;
             }
 
@@ -80,7 +99,9 @@ public sealed class DeviceLiveInputViewModel : ReactiveObject, IDisposable
             {
                 var vm = Hats.FirstOrDefault(h => h.HatIndex == inputEvent.Identifier);
                 if (vm is null) return;
-                // Hat value: degrees * 100 (centidegrees), or -1.0 for center.
+                var last = _lastHatUpdateMs.GetOrAdd(inputEvent.Identifier, 0L);
+                if (now - last < UiUpdateIntervalMs) return;
+                _lastHatUpdateMs[inputEvent.Identifier] = now;
                 var degrees = (int)inputEvent.Value;
                 Dispatcher.UIThread.Post(() => vm.DirectionDegrees = degrees);
                 break;
