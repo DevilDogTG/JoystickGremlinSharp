@@ -1,0 +1,527 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:JoystickGremlin.App.ViewModels"
+             xmlns:actions="using:JoystickGremlin.Core.Actions"
+             x:Class="JoystickGremlin.App.Views.ControllerSetupPageView"
+             x:DataType="vm:ControllerSetupPageViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.btn-pressed">
+            <Setter Property="Background" Value="#22C55E"/>
+        </Style>
+        <Style Selector="Border.btn-released">
+            <Setter Property="Background" Value="#6B7280"/>
+        </Style>
+        <Style Selector="Border.hat-active">
+            <Setter Property="Background" Value="#3B82F6"/>
+        </Style>
+        <Style Selector="Border.hat-center-active">
+            <Setter Property="Background" Value="#64748B"/>
+        </Style>
+        <Style Selector="Border.hat-inactive">
+            <Setter Property="Background" Value="#374151"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="220,320,*">
+
+        <DockPanel Grid.Column="0">
+            <Border DockPanel.Dock="Top"
+                    Padding="8,6"
+                    BorderThickness="0,0,1,1"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <TextBlock Text="Devices"
+                           FontWeight="SemiBold"
+                           FontSize="13"/>
+            </Border>
+
+            <ListBox ItemsSource="{Binding Devices}"
+                     SelectedItem="{Binding SelectedDevice}"
+                     BorderThickness="0,0,1,0">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:DeviceViewModel">
+                        <StackPanel Margin="6,4" Spacing="2">
+                            <TextBlock Text="{Binding Name}"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding InputSummary}"
+                                       FontSize="11"
+                                       Opacity="0.65"/>
+                            <TextBlock Text="{Binding LastInputLabel}"
+                                       FontSize="10"
+                                       Opacity="0.55"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
+        <DockPanel Grid.Column="1">
+            <Border DockPanel.Dock="Top"
+                    Padding="8,6"
+                    BorderThickness="0,0,1,1"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <StackPanel Spacing="2">
+                    <TextBlock Text="Inputs"
+                               FontWeight="SemiBold"
+                               FontSize="13"/>
+                    <TextBlock Text="{Binding SelectedDevice.InputSummary, FallbackValue='Select a device'}"
+                               FontSize="11"
+                               Opacity="0.6"/>
+                </StackPanel>
+            </Border>
+
+            <ListBox ItemsSource="{Binding InputRows}"
+                     SelectedItem="{Binding SelectedInputRow}"
+                     BorderThickness="0,0,1,0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:UnifiedInputRowViewModel">
+                        <Grid ColumnDefinitions="16,70,90,*"
+                              ColumnSpacing="8"
+                              Margin="6,3">
+                            <TextBlock Grid.Column="0"
+                                       Text="●"
+                                       VerticalAlignment="Center"
+                                       Foreground="LimeGreen"
+                                       IsVisible="{Binding IsActive}"/>
+
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding Label}"
+                                       VerticalAlignment="Center"/>
+
+                            <Grid Grid.Column="2">
+                                <StackPanel Orientation="Horizontal"
+                                            Spacing="6"
+                                            IsVisible="{Binding IsAxis}">
+                                    <ProgressBar Width="58"
+                                                 Height="10"
+                                                 Minimum="0"
+                                                 Maximum="100"
+                                                 Value="{Binding Axis.DisplayPercent, FallbackValue=50}"/>
+                                    <TextBlock Text="{Binding Axis.ValueLabel, FallbackValue='0.00'}"
+                                               FontSize="10"
+                                               FontFamily="Consolas,Monospace"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+
+                                <TextBlock Text="{Binding Button.IsPressed, StringFormat='{}{0:Pressed;Pressed;Released}'}"
+                                           FontSize="10"
+                                           VerticalAlignment="Center"
+                                           IsVisible="{Binding IsButton}"/>
+
+                                <TextBlock Text="{Binding Hat.DirectionLabel, FallbackValue='Center'}"
+                                           FontSize="10"
+                                           VerticalAlignment="Center"
+                                           IsVisible="{Binding IsHat}"/>
+                            </Grid>
+
+                            <TextBlock Grid.Column="3"
+                                       Text="{Binding BoundActions}"
+                                       Opacity="0.7"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
+        <DockPanel Grid.Column="2">
+            <Border DockPanel.Dock="Top"
+                    Padding="12,8"
+                    BorderThickness="0,0,0,1"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <StackPanel Spacing="3">
+                    <TextBlock Text="{Binding SelectedDevice.Name, FallbackValue='Controller Setup'}"
+                               FontWeight="SemiBold"
+                               FontSize="14"/>
+                    <TextBlock Text="{Binding SelectedInputRow.Label, FallbackValue='Select an input row to inspect it live'}"
+                               FontSize="12"
+                               Opacity="0.75"/>
+                    <TextBlock Text="{Binding SelectedInputRow.BoundActions, FallbackValue='(none)'}"
+                               FontSize="11"
+                               Opacity="0.6"/>
+                </StackPanel>
+            </Border>
+
+            <Border DockPanel.Dock="Bottom"
+                    Padding="12,8"
+                    BorderThickness="0,1,0,0"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <Button Content="Edit Binding"
+                        Command="{Binding OpenBindingEditorCommand}"
+                        IsEnabled="{Binding CanEditBinding}"
+                        HorizontalAlignment="Left"/>
+            </Border>
+
+            <ScrollViewer>
+                <StackPanel Margin="12"
+                            Spacing="16">
+                    <TextBlock Text="Select a device and input to view live detail."
+                               Opacity="0.5"
+                               IsVisible="{Binding !HasSelectedInput}"/>
+
+                    <StackPanel Spacing="8"
+                                IsVisible="{Binding ShowAxisDetail}">
+                        <TextBlock Text="Axis Detail"
+                                   FontWeight="SemiBold"
+                                   FontSize="14"/>
+                        <ProgressBar Minimum="0"
+                                     Maximum="100"
+                                     Height="20"
+                                     Value="{Binding SelectedInputRow.Axis.DisplayPercent, FallbackValue=50}"/>
+                        <TextBlock Text="{Binding SelectedInputRow.Axis.ValueLabel, FallbackValue='0.00'}"
+                                   FontSize="13"
+                                   FontFamily="Consolas,Monospace"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="8"
+                                IsVisible="{Binding ShowButtonDetail}">
+                        <TextBlock Text="Button Detail"
+                                   FontWeight="SemiBold"
+                                   FontSize="14"/>
+                        <Border Width="82"
+                                Height="82"
+                                CornerRadius="41"
+                                Classes.btn-pressed="{Binding SelectedInputRow.Button.IsPressed, FallbackValue=False}"
+                                Classes.btn-released="{Binding !SelectedInputRow.Button.IsPressed}">
+                            <TextBlock Text="{Binding SelectedInputRow.Label, FallbackValue='Button'}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Foreground="White"
+                                       FontWeight="SemiBold"/>
+                        </Border>
+                        <TextBlock Text="{Binding SelectedInputRow.Button.IsPressed, StringFormat='State: {0}'}"/>
+                    </StackPanel>
+
+                    <StackPanel Spacing="8"
+                                IsVisible="{Binding ShowHatDetail}">
+                        <TextBlock Text="Hat Detail"
+                                   FontWeight="SemiBold"
+                                   FontSize="14"/>
+                        <Grid RowDefinitions="36,36,36"
+                              ColumnDefinitions="36,36,36"
+                              HorizontalAlignment="Left">
+                            <Border Grid.Row="0" Grid.Column="0"
+                                    CornerRadius="4"
+                                    Margin="2"
+                                    Classes.hat-active="{Binding SelectedInputRow.Hat.IsNorthWest}"
+                                    Classes.hat-inactive="{Binding !SelectedInputRow.Hat.IsNorthWest}"/>
+                            <Border Grid.Row="0" Grid.Column="1"
+                                    CornerRadius="4"
+                                    Margin="2"
+                                    Classes.hat-active="{Binding SelectedInputRow.Hat.IsNorth}"
+                                    Classes.hat-inactive="{Binding !SelectedInputRow.Hat.IsNorth}"/>
+                            <Border Grid.Row="0" Grid.Column="2"
+                                    CornerRadius="4"
+                                    Margin="2"
+                                    Classes.hat-active="{Binding SelectedInputRow.Hat.IsNorthEast}"
+                                    Classes.hat-inactive="{Binding !SelectedInputRow.Hat.IsNorthEast}"/>
+                            <Border Grid.Row="1" Grid.Column="0"
+                                    CornerRadius="4"
+                                    Margin="2"
+                                    Classes.hat-active="{Binding SelectedInputRow.Hat.IsWest}"
+                                    Classes.hat-inactive="{Binding !SelectedInputRow.Hat.IsWest}"/>
+                            <Border Grid.Row="1" Grid.Column="1"
+                                    CornerRadius="4"
+                                    Margin="2"
+                                    Classes.hat-center-active="{Binding SelectedInputRow.Hat.IsCenter}"
+                                    Classes.hat-inactive="{Binding !SelectedInputRow.Hat.IsCenter}">
+                                <TextBlock Text="●"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="White"/>
+                            </Border>
+                            <Border Grid.Row="1" Grid.Column="2"
+                                    CornerRadius="4"
+                                    Margin="2"
+                                    Classes.hat-active="{Binding SelectedInputRow.Hat.IsEast}"
+                                    Classes.hat-inactive="{Binding !SelectedInputRow.Hat.IsEast}"/>
+                            <Border Grid.Row="2" Grid.Column="0"
+                                    CornerRadius="4"
+                                    Margin="2"
+                                    Classes.hat-active="{Binding SelectedInputRow.Hat.IsSouthWest}"
+                                    Classes.hat-inactive="{Binding !SelectedInputRow.Hat.IsSouthWest}"/>
+                            <Border Grid.Row="2" Grid.Column="1"
+                                    CornerRadius="4"
+                                    Margin="2"
+                                    Classes.hat-active="{Binding SelectedInputRow.Hat.IsSouth}"
+                                    Classes.hat-inactive="{Binding !SelectedInputRow.Hat.IsSouth}"/>
+                            <Border Grid.Row="2" Grid.Column="2"
+                                    CornerRadius="4"
+                                    Margin="2"
+                                    Classes.hat-active="{Binding SelectedInputRow.Hat.IsSouthEast}"
+                                    Classes.hat-inactive="{Binding !SelectedInputRow.Hat.IsSouthEast}"/>
+                        </Grid>
+                        <TextBlock Text="{Binding SelectedInputRow.Hat.DirectionLabel, FallbackValue='Center'}"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+
+        <Border Grid.Column="2"
+                Background="#F0202020"
+                IsVisible="{Binding IsBindingEditorOpen}">
+            <DockPanel LastChildFill="True">
+                <Border DockPanel.Dock="Top"
+                        Padding="12,10"
+                        BorderThickness="0,0,0,1"
+                        BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="Edit Binding"
+                                       FontWeight="SemiBold"
+                                       FontSize="14"/>
+                            <TextBlock Text="{Binding SelectedInputRow.Label, FallbackValue='Input'}"
+                                       FontSize="11"
+                                       Opacity="0.7"/>
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Content="✕ Close"
+                                Command="{Binding CloseBindingEditorCommand}"/>
+                    </Grid>
+                </Border>
+
+                <Border DockPanel.Dock="Top"
+                        Padding="8,4"
+                        BorderThickness="0,0,0,1"
+                        BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <ComboBox ItemsSource="{Binding BindingEditor.AvailableActionTypes}"
+                                  SelectedItem="{Binding BindingEditor.SelectedNewActionType}"
+                                  MinWidth="140"
+                                  IsEnabled="{Binding BindingEditor.HasProfile}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="actions:IActionDescriptor">
+                                    <TextBlock Text="{Binding Name}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <Button Content="+ Add"
+                                Command="{Binding BindingEditor.AddActionCommand}"
+                                FontSize="12"/>
+                        <Button Content="− Remove"
+                                Command="{Binding BindingEditor.RemoveActionCommand}"
+                                FontSize="12"/>
+                        <Button Content="▲"
+                                Command="{Binding BindingEditor.MoveUpCommand}"
+                                FontSize="12"
+                                ToolTip.Tip="Move action up"/>
+                        <Button Content="▼"
+                                Command="{Binding BindingEditor.MoveDownCommand}"
+                                FontSize="12"
+                                ToolTip.Tip="Move action down"/>
+                        <Button Content="Save Changes"
+                                Command="{Binding BindingEditor.SaveActionConfigCommand}"
+                                FontSize="12"/>
+                    </StackPanel>
+                </Border>
+
+                <Grid RowDefinitions="180,*">
+                    <ListBox Grid.Row="0"
+                             ItemsSource="{Binding BindingEditor.BoundActions}"
+                             SelectedItem="{Binding BindingEditor.SelectedBoundAction}"
+                             BorderThickness="0,0,0,1">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:BoundActionViewModel">
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="4,3">
+                                    <TextBlock Text="{Binding ActionName}"
+                                               FontWeight="SemiBold"
+                                               MinWidth="120"/>
+                                    <TextBlock Text="{Binding ConfigSummary}"
+                                               Opacity="0.6"
+                                               FontSize="11"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <ScrollViewer Grid.Row="1">
+                        <StackPanel Margin="12" Spacing="10">
+                            <StackPanel Spacing="10" IsVisible="{Binding BindingEditor.ShowConfigPanel}">
+                                <TextBlock Text="Configure Action"
+                                           FontWeight="SemiBold"
+                                           FontSize="14"/>
+
+                                <StackPanel Spacing="6" IsVisible="{Binding BindingEditor.ShowVJoyAxisConfig}">
+                                    <TextBlock Text="vJoy Device ID"/>
+                                    <NumericUpDown Value="{Binding BindingEditor.EditVJoyDeviceId}"
+                                                  Minimum="1" Maximum="16"
+                                                  FormatString="0"
+                                                  Width="100" HorizontalAlignment="Left"/>
+                                    <TextBlock Text="Axis Index"/>
+                                    <NumericUpDown Value="{Binding BindingEditor.EditVJoyAxisIndex}"
+                                                  Minimum="1" Maximum="8"
+                                                  FormatString="0"
+                                                  Width="100" HorizontalAlignment="Left"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6" IsVisible="{Binding BindingEditor.ShowVJoyButtonConfig}">
+                                    <TextBlock Text="vJoy Device ID"/>
+                                    <NumericUpDown Value="{Binding BindingEditor.EditVJoyDeviceId}"
+                                                  Minimum="1" Maximum="16"
+                                                  FormatString="0"
+                                                  Width="100" HorizontalAlignment="Left"/>
+                                    <TextBlock Text="Button Index"/>
+                                    <NumericUpDown Value="{Binding BindingEditor.EditVJoyButtonIndex}"
+                                                  Minimum="1" Maximum="128"
+                                                  FormatString="0"
+                                                  Width="100" HorizontalAlignment="Left"/>
+                                    <TextBlock Text="Press Threshold (0 – 1)"/>
+                                    <NumericUpDown Value="{Binding BindingEditor.EditVJoyButtonThreshold}"
+                                                   Minimum="0" Maximum="1"
+                                                   Increment="0.01"
+                                                   FormatString="0.00"
+                                                   Width="124" HorizontalAlignment="Left"/>
+                                    <TextBlock Text="0.5 = half-travel (default) · 0.05 = hair-trigger · 0.9 = full-press"
+                                               FontSize="10"
+                                               Opacity="0.6"
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock Text="Changes are staged until you click Save Changes."
+                                               FontSize="10"
+                                               Opacity="0.6"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6" IsVisible="{Binding BindingEditor.ShowVJoyHatConfig}">
+                                    <TextBlock Text="vJoy Device ID"/>
+                                    <NumericUpDown Value="{Binding BindingEditor.EditVJoyDeviceId}"
+                                                  Minimum="1" Maximum="16"
+                                                  FormatString="0"
+                                                  Width="100" HorizontalAlignment="Left"/>
+                                    <TextBlock Text="Hat Index"/>
+                                    <NumericUpDown Value="{Binding BindingEditor.EditVJoyHatIndex}"
+                                                  Minimum="1" Maximum="4"
+                                                  FormatString="0"
+                                                  Width="100" HorizontalAlignment="Left"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6" IsVisible="{Binding BindingEditor.ShowButtonsToHatConfig}">
+                                    <TextBlock Text="Target vJoy Device ID"/>
+                                    <NumericUpDown Value="{Binding BindingEditor.EditVJoyDeviceId}"
+                                                  Minimum="1" Maximum="16"
+                                                  FormatString="0"
+                                                  Width="100" HorizontalAlignment="Left"/>
+                                    <TextBlock Text="Target Hat Index"/>
+                                    <NumericUpDown Value="{Binding BindingEditor.EditVJoyHatIndex}"
+                                                  Minimum="1" Maximum="4"
+                                                  FormatString="0"
+                                                  Width="100" HorizontalAlignment="Left"/>
+                                    <TextBlock Text="Directional source buttons"/>
+                                    <Grid ColumnDefinitions="Auto,Auto"
+                                          RowDefinitions="Auto,Auto,Auto,Auto"
+                                          ColumnSpacing="12"
+                                          RowSpacing="6">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Up"/>
+                                        <NumericUpDown Grid.Row="0" Grid.Column="1"
+                                                       Value="{Binding BindingEditor.EditDirectionalUpButtonId}"
+                                                       Minimum="1" Maximum="128"
+                                                       FormatString="0"
+                                                       Width="100" HorizontalAlignment="Left"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Down"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1"
+                                                       Value="{Binding BindingEditor.EditDirectionalDownButtonId}"
+                                                       Minimum="1" Maximum="128"
+                                                       FormatString="0"
+                                                       Width="100" HorizontalAlignment="Left"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Left"/>
+                                        <NumericUpDown Grid.Row="2" Grid.Column="1"
+                                                       Value="{Binding BindingEditor.EditDirectionalLeftButtonId}"
+                                                       Minimum="1" Maximum="128"
+                                                       FormatString="0"
+                                                       Width="100" HorizontalAlignment="Left"/>
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Right"/>
+                                        <NumericUpDown Grid.Row="3" Grid.Column="1"
+                                                       Value="{Binding BindingEditor.EditDirectionalRightButtonId}"
+                                                       Minimum="1" Maximum="128"
+                                                       FormatString="0"
+                                                       Width="100" HorizontalAlignment="Left"/>
+                                    </Grid>
+                                    <TextBlock TextWrapping="Wrap"
+                                               FontSize="11"
+                                               Opacity="0.65"
+                                               Text="This mapping is mirrored onto each referenced source button in the current edit mode so all four buttons participate in the shared hat state."/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6" IsVisible="{Binding BindingEditor.ShowButtonsToAxesConfig}">
+                                    <TextBlock Text="Target vJoy Device ID"/>
+                                    <NumericUpDown Value="{Binding BindingEditor.EditVJoyDeviceId}"
+                                                  Minimum="1" Maximum="16"
+                                                  FormatString="0"
+                                                  Width="100" HorizontalAlignment="Left"/>
+                                    <TextBlock Text="Target X Axis Index"/>
+                                    <NumericUpDown Value="{Binding BindingEditor.EditButtonsToAxesXAxisIndex}"
+                                                  Minimum="1" Maximum="8"
+                                                  FormatString="0"
+                                                  Width="100" HorizontalAlignment="Left"/>
+                                    <TextBlock Text="Target Y Axis Index"/>
+                                    <NumericUpDown Value="{Binding BindingEditor.EditButtonsToAxesYAxisIndex}"
+                                                  Minimum="1" Maximum="8"
+                                                  FormatString="0"
+                                                  Width="100" HorizontalAlignment="Left"/>
+                                    <TextBlock Text="Directional source buttons"/>
+                                    <Grid ColumnDefinitions="Auto,Auto"
+                                          RowDefinitions="Auto,Auto,Auto,Auto"
+                                          ColumnSpacing="12"
+                                          RowSpacing="6">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Up"/>
+                                        <NumericUpDown Grid.Row="0" Grid.Column="1"
+                                                       Value="{Binding BindingEditor.EditDirectionalUpButtonId}"
+                                                       Minimum="1" Maximum="128"
+                                                       FormatString="0"
+                                                       Width="100" HorizontalAlignment="Left"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Down"/>
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1"
+                                                       Value="{Binding BindingEditor.EditDirectionalDownButtonId}"
+                                                       Minimum="1" Maximum="128"
+                                                       FormatString="0"
+                                                       Width="100" HorizontalAlignment="Left"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Left"/>
+                                        <NumericUpDown Grid.Row="2" Grid.Column="1"
+                                                       Value="{Binding BindingEditor.EditDirectionalLeftButtonId}"
+                                                       Minimum="1" Maximum="128"
+                                                       FormatString="0"
+                                                       Width="100" HorizontalAlignment="Left"/>
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Right"/>
+                                        <NumericUpDown Grid.Row="3" Grid.Column="1"
+                                                       Value="{Binding BindingEditor.EditDirectionalRightButtonId}"
+                                                       Minimum="1" Maximum="128"
+                                                       FormatString="0"
+                                                       Width="100" HorizontalAlignment="Left"/>
+                                    </Grid>
+                                    <TextBlock TextWrapping="Wrap"
+                                               FontSize="11"
+                                               Opacity="0.65"
+                                               Text="This mapping is mirrored onto each referenced source button in the current edit mode so the shared X/Y axis state updates from every configured button."/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6" IsVisible="{Binding BindingEditor.ShowMacroConfig}">
+                                    <TextBlock Text="Keys (comma-separated)"/>
+                                    <TextBox Text="{Binding BindingEditor.EditMacroKeys}"
+                                             PlaceholderText="e.g. LControl,C"
+                                             Width="220"
+                                             HorizontalAlignment="Left"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6" IsVisible="{Binding BindingEditor.ShowMapToKeyboardConfig}">
+                                    <TextBlock Text="Keys (comma-separated, modifiers first)"/>
+                                    <TextBox Text="{Binding BindingEditor.EditMapToKeyboardKeys}"
+                                             PlaceholderText="e.g. LShift,A"
+                                             Width="220"
+                                             HorizontalAlignment="Left"/>
+                                    <TextBlock Text="Behavior"/>
+                                    <ComboBox ItemsSource="{Binding MapToKeyboardBehaviors}"
+                                              SelectedItem="{Binding BindingEditor.EditMapToKeyboardBehavior}"
+                                              MinWidth="140"
+                                              HorizontalAlignment="Left"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

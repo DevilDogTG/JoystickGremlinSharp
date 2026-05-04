@@ -135,13 +135,19 @@ src/JoystickGremlin.App/
   ViewModels/       ReactiveObject-based ViewModels, one per View:
                       MainWindowViewModel  — nav bar, profile load/save, pipeline start/stop,
                                             CheckForUpdatesCommand (Velopack)
-                      DevicesPageViewModel — lists physical devices from IDeviceManager
+                      ControllerSetupPageViewModel — merged device setup page:
+                                            physical device list, compact live input rows,
+                                            selected-input live detail, binding editor overlay
                       ProfilePageViewModel — profile library browser; New Profile form; Open Folder;
                                             categories via subfolder names; calls IProfileLibrary.ScanAsync()
                       SettingsPageViewModel — app settings via ISettingsService + IStartupService,
                                              ProfilesFolderPath setting
-                      BindingsPageViewModel — flat binding editor on profile.Bindings; auto-apply
-                                             config (debounced 300ms)
+                      BindingsPageViewModel — internal binding-editor state engine used by
+                                             ControllerSetupPageViewModel; edits profile.Bindings
+                                             with auto-apply config (debounced 300ms)
+                      VirtualDevicesPageViewModel — vJoy status/capabilities page; acquire,
+                                             release, reset, open vJoy control panel, show live
+                                             output tracked by this app
                       BoundActionViewModel  — wraps BoundAction; computes ConfigSummary
                       InputDescriptorViewModel — represents single axis/button/hat slot
   Views/            *.axaml Views, code-behind minimal
@@ -519,13 +525,15 @@ Key operations:
 `ProfilePageViewModel` calls `InitializeAsync()` (which calls `ScanAsync()`) and subscribes to
 `IProfileLibrary.LibraryChanged` to rebuild `ProfileEntries` automatically.
 
-### Bindings Page UX
+### Controller Setup Binding UX
 
-The Bindings page (`App/Views/BindingsPageView.axaml`) edits the flat `profile.Bindings` list directly:
+The Controller Setup page (`App/Views/ControllerSetupPageView.axaml`) edits the flat
+`profile.Bindings` list directly through a binding-editor overlay:
 
 | Feature | Description |
 |---|---|
-| **Device + Input Selector** | Choose device and input slot; corresponding binding is found or created |
+| **Device + Input Selector** | Choose device and input row; right panel shows live detail, and the overlay opens the binding editor for that slot |
+| **Compact + Detailed Live State** | Middle column shows compact per-row indicators; right panel shows full axis/button/hat live state for the selected input |
 | **Action List** | `ObservableCollection<BoundActionViewModel>` driven by the selected binding's `Actions` list |
 | **Auto-Apply Config** | Config changes auto-save via Observable.Merge throttled at 300ms (no manual Apply button) |
 

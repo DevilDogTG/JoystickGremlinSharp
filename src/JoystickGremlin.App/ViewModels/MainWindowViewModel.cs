@@ -5,7 +5,6 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Threading;
-using JoystickGremlin.App.ViewModels.InputViewer;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.Pipeline;
@@ -30,10 +29,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly IProfileLibrary _profileLibrary;
     private readonly ISettingsService _settingsService;
     private readonly IDeviceManager _deviceManager;
-    private readonly DevicesPageViewModel _devicesPage;
-    private readonly BindingsPageViewModel _bindingsPage;
+    private readonly ControllerSetupPageViewModel _controllerSetupPage;
     private readonly SettingsPageViewModel _settingsPage;
-    private readonly InputViewerPageViewModel _inputViewerPage;
+    private readonly VirtualDevicesPageViewModel _virtualDevicesPage;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly CompositeDisposable _subscriptions = [];
 
@@ -47,11 +45,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// Initializes a new instance of <see cref="MainWindowViewModel"/>.
     /// </summary>
     public MainWindowViewModel(
-        DevicesPageViewModel devicesPage,
+        ControllerSetupPageViewModel controllerSetupPage,
         ProfilePageViewModel profilePage,
-        BindingsPageViewModel bindingsPage,
         SettingsPageViewModel settingsPage,
-        InputViewerPageViewModel inputViewerPage,
+        VirtualDevicesPageViewModel virtualDevicesPage,
         IEventPipeline eventPipeline,
         IProfileRepository profileRepository,
         IProfileState profileState,
@@ -66,24 +63,22 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _profileLibrary = profileLibrary;
         _settingsService = settingsService;
         _deviceManager = deviceManager;
-        _devicesPage = devicesPage;
-        _bindingsPage = bindingsPage;
+        _controllerSetupPage = controllerSetupPage;
         _settingsPage = settingsPage;
-        _inputViewerPage = inputViewerPage;
+        _virtualDevicesPage = virtualDevicesPage;
         _logger = logger;
 
         var navItems = new[]
         {
-            new NavItemViewModel { Title = "Devices",      Icon = "🎮", Page = devicesPage      },
-            new NavItemViewModel { Title = "Input Viewer", Icon = "👁", Page = inputViewerPage  },
-            new NavItemViewModel { Title = "Bindings",     Icon = "🔗", Page = bindingsPage     },
-            new NavItemViewModel { Title = "Profile",      Icon = "📋", Page = profilePage      },
-            new NavItemViewModel { Title = "Settings",     Icon = "⚙️", Page = settingsPage     },
+            new NavItemViewModel { Title = "Controller Setup", Icon = "🎮", Page = controllerSetupPage },
+            new NavItemViewModel { Title = "Virtual Devices",  Icon = "🕹️", Page = virtualDevicesPage },
+            new NavItemViewModel { Title = "Profile",          Icon = "📋", Page = profilePage         },
+            new NavItemViewModel { Title = "Settings",         Icon = "⚙️", Page = settingsPage        },
         };
 
         NavItems = new ObservableCollection<NavItemViewModel>(navItems);
         AvailableProfileEntries = new ObservableCollection<ProfileEntry>();
-        _currentPage = devicesPage;
+        _currentPage = controllerSetupPage;
         _selectedNavItem = navItems[0];
 
         _toggleButtonLabel = this.WhenAnyValue(x => x.IsGremlinActive)
@@ -163,9 +158,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _settingsPage.LoadFromSettings();
 
         _deviceManager.Initialize();
-        _devicesPage.RefreshDevices();
-        _bindingsPage.RefreshDevices();
-        _inputViewerPage.RefreshDevices();
+        _controllerSetupPage.RefreshDevices();
+        _virtualDevicesPage.RefreshDevices();
 
         _logger.LogInformation("Device manager initialized with {DeviceCount} physical devices", _deviceManager.Devices.Count);
 

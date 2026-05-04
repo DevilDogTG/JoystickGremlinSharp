@@ -28,6 +28,25 @@ internal static class VJoyRegistryHelper
                 @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"));
     }
 
+    /// <summary>
+    /// Returns the vJoy configuration tool path when available.
+    /// </summary>
+    internal static string? GetConfigurationToolPath()
+    {
+        var installDir = GetInstallDir();
+        if (string.IsNullOrWhiteSpace(installDir))
+            return null;
+
+        string[] candidates =
+        [
+            Path.Combine(installDir, "vJoyConf.exe"),
+            Path.Combine(installDir, "x64", "vJoyConf.exe"),
+            Path.Combine(installDir, "x86", "vJoyConf.exe"),
+        ];
+
+        return candidates.FirstOrDefault(File.Exists);
+    }
+
     private static string? SearchUninstallKey(RegistryKey? root)
     {
         if (root is null)

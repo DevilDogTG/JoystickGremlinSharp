@@ -7,7 +7,6 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using JoystickGremlin.App.Services;
 using JoystickGremlin.App.ViewModels;
-using JoystickGremlin.App.ViewModels.InputViewer;
 using JoystickGremlin.App.Views;
 using JoystickGremlin.Core;
 using JoystickGremlin.Core.Actions;
@@ -165,11 +164,11 @@ public partial class App : Application
         });
 
         // Page ViewModels — singletons so state persists when navigating between pages.
-        services.AddSingleton<DevicesPageViewModel>();
+        services.AddSingleton<ControllerSetupPageViewModel>();
         services.AddSingleton<ProfilePageViewModel>();
         services.AddSingleton<SettingsPageViewModel>();
         services.AddSingleton<BindingsPageViewModel>();
-        services.AddSingleton<InputViewerPageViewModel>();
+        services.AddSingleton<VirtualDevicesPageViewModel>();
 
         // Main window ViewModel — transient; resolved once in OnFrameworkInitializationCompleted.
         services.AddTransient<MainWindowViewModel>();
