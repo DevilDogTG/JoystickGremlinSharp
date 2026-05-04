@@ -12,9 +12,6 @@ public sealed class AppSettings
     /// </summary>
     public string? ActiveProfilePath { get; set; }
 
-    /// <summary>Gets or sets the vJoy device ID used for output. Defaults to 1.</summary>
-    public uint VJoyDeviceId { get; set; } = 1;
-
     /// <summary>
     /// Gets or sets the path to the profiles folder.
     /// When empty or null, defaults to <c>%AppData%\JoystickGremlinSharp\profiles</c>.
@@ -56,4 +53,11 @@ public sealed class AppSettings
 
     /// <summary>Gets or sets the FFB gain multiplier as a percentage (0–100). Defaults to 100.</summary>
     public int FfbGainPercent { get; set; } = 100;
+
+    /// <summary>
+    /// Gets or sets the live-input UI update interval in milliseconds.
+    /// Lower values increase refresh frequency (Hz) but consume more CPU.
+    /// Defaults to 10 ms (~100 Hz). Valid range: 1–1000 ms.
+    /// </summary>
+    public int UiUpdateIntervalMs { get; set; } = 10;
 }
