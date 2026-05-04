@@ -14,6 +14,7 @@ public sealed class ProfileLibrary : IProfileLibrary
     private readonly ISettingsService _settingsService;
     private readonly IProfileRepository _profileRepository;
     private readonly ILogger<ProfileLibrary> _logger;
+    private readonly SemaphoreSlim _gate = new(1, 1);
     private List<ProfileEntry> _entries = [];
 
     private static readonly string DefaultFolderPath =
@@ -50,7 +51,106 @@ public sealed class ProfileLibrary : IProfileLibrary
     public event EventHandler? LibraryChanged;
 
     /// <inheritdoc/>
-    public Task ScanAsync(CancellationToken cancellationToken = default)
+    public async Task ScanAsync(CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            ScanCore();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<string> CreateProfileAsync(string name, string? category = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var folder = category is not null
+                ? Path.Combine(ProfilesFolder, SanitizeName(category))
+                : ProfilesFolder;
+
+            Directory.CreateDirectory(folder);
+
+            var fileName = SanitizeName(name) + ".json";
+            var filePath = Path.Combine(folder, fileName);
+
+            if (File.Exists(filePath))
+                throw new ProfileException($"Profile '{fileName}' already exists in '{folder}'.");
+
+            var profile = new Profile { Name = name };
+            await _profileRepository.SaveAsync(profile, filePath, cancellationToken);
+
+            ScanCore();
+            return filePath;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task DeleteProfileAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            if (!File.Exists(filePath))
+            {
+                _logger.LogWarning("Delete requested for non-existent profile: {Path}", filePath);
+                ScanCore();
+                return;
+            }
+
+            File.Delete(filePath);
+            _logger.LogInformation("Deleted profile: {Path}", filePath);
+            ScanCore();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task RenameProfileAsync(string filePath, string newName, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(newName);
+
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            if (!File.Exists(filePath))
+                throw new ProfileException($"Profile file not found: '{filePath}'.");
+
+            var dir = Path.GetDirectoryName(filePath) ?? ProfilesFolder;
+            var newFileName = SanitizeName(newName) + ".json";
+            var newPath = Path.Combine(dir, newFileName);
+
+            if (File.Exists(newPath) && !string.Equals(filePath, newPath, StringComparison.OrdinalIgnoreCase))
+                throw new ProfileException($"A profile named '{newName}' already exists in this category.");
+
+            File.Move(filePath, newPath);
+            _logger.LogInformation("Renamed profile: {OldPath} → {NewPath}", filePath, newPath);
+            ScanCore();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    private void ScanCore()
     {
         var folder = ProfilesFolder;
         _logger.LogTrace("Scanning profiles folder: {Folder}", folder);
@@ -59,12 +159,11 @@ public sealed class ProfileLibrary : IProfileLibrary
         {
             _entries = [];
             LibraryChanged?.Invoke(this, EventArgs.Empty);
-            return Task.CompletedTask;
+            return;
         }
 
         var found = new List<ProfileEntry>();
 
-        // Root-level profiles
         foreach (var file in Directory.GetFiles(folder, "*.json", SearchOption.TopDirectoryOnly)
                                       .OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
         {
@@ -72,7 +171,6 @@ public sealed class ProfileLibrary : IProfileLibrary
             found.Add(new ProfileEntry(name, null, file));
         }
 
-        // One level of subfolders = categories
         foreach (var subdir in Directory.GetDirectories(folder)
                                         .OrderBy(d => d, StringComparer.OrdinalIgnoreCase))
         {
@@ -88,69 +186,6 @@ public sealed class ProfileLibrary : IProfileLibrary
         _entries = found;
         _logger.LogTrace("Found {Count} profiles", _entries.Count);
         LibraryChanged?.Invoke(this, EventArgs.Empty);
-        return Task.CompletedTask;
-    }
-
-    /// <inheritdoc/>
-    public async Task<string> CreateProfileAsync(string name, string? category = null, CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-
-        var folder = category is not null
-            ? Path.Combine(ProfilesFolder, SanitizeName(category))
-            : ProfilesFolder;
-
-        Directory.CreateDirectory(folder);
-
-        var fileName = SanitizeName(name) + ".json";
-        var filePath = Path.Combine(folder, fileName);
-
-        if (File.Exists(filePath))
-            throw new ProfileException($"Profile '{fileName}' already exists in '{folder}'.");
-
-        var profile = new Profile { Name = name };
-        await _profileRepository.SaveAsync(profile, filePath, cancellationToken);
-
-        await ScanAsync(cancellationToken);
-        return filePath;
-    }
-
-    /// <inheritdoc/>
-    public async Task DeleteProfileAsync(string filePath, CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
-
-        if (!File.Exists(filePath))
-        {
-            _logger.LogWarning("Delete requested for non-existent profile: {Path}", filePath);
-            await ScanAsync(cancellationToken);
-            return;
-        }
-
-        File.Delete(filePath);
-        _logger.LogInformation("Deleted profile: {Path}", filePath);
-        await ScanAsync(cancellationToken);
-    }
-
-    /// <inheritdoc/>
-    public async Task RenameProfileAsync(string filePath, string newName, CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
-        ArgumentException.ThrowIfNullOrWhiteSpace(newName);
-
-        if (!File.Exists(filePath))
-            throw new ProfileException($"Profile file not found: '{filePath}'.");
-
-        var dir = Path.GetDirectoryName(filePath) ?? ProfilesFolder;
-        var newFileName = SanitizeName(newName) + ".json";
-        var newPath = Path.Combine(dir, newFileName);
-
-        if (File.Exists(newPath) && !string.Equals(filePath, newPath, StringComparison.OrdinalIgnoreCase))
-            throw new ProfileException($"A profile named '{newName}' already exists in this category.");
-
-        File.Move(filePath, newPath);
-        _logger.LogInformation("Renamed profile: {OldPath} → {NewPath}", filePath, newPath);
-        await ScanAsync(cancellationToken);
     }
 
     private static string SanitizeName(string name)
