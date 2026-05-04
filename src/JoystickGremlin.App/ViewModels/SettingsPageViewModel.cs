@@ -34,7 +34,7 @@ public sealed class SettingsPageViewModel : ViewModelBase
     private int _ffbGainPercent = 100;
     private string _ffbWheelInstanceGuid = string.Empty;
     private string _ffbBridgeStatus = "Disabled";
-    private int _uiUpdateIntervalMs = 10;
+    private decimal _uiUpdateIntervalMs = 10m;
     private bool _loading;
 
     /// <summary>
@@ -124,7 +124,7 @@ public sealed class SettingsPageViewModel : ViewModelBase
     /// Gets or sets the live-input UI update interval in milliseconds (1–1000).
     /// Lower values increase refresh frequency but consume more CPU.
     /// </summary>
-    public int UiUpdateIntervalMs
+    public decimal UiUpdateIntervalMs
     {
         get => _uiUpdateIntervalMs;
         set
@@ -137,7 +137,7 @@ public sealed class SettingsPageViewModel : ViewModelBase
 
     /// <summary>Gets the computed refresh rate in Hz based on <see cref="UiUpdateIntervalMs"/>.</summary>
     public string UiUpdateHz => _uiUpdateIntervalMs > 0
-        ? $"{1000.0 / _uiUpdateIntervalMs:F0} Hz"
+        ? $"{1000m / _uiUpdateIntervalMs:F0} Hz"
         : "∞";
 
     /// <summary>Gets a value indicating whether the current interval is high-frequency (≤ 5 ms).</summary>
@@ -211,7 +211,7 @@ public sealed class SettingsPageViewModel : ViewModelBase
             StartWithWindows     = _startupService.IsEnabled;
             CloseToTray          = s.CloseToTray;
             EnableAutoLoading    = s.EnableAutoLoading;
-            UiUpdateIntervalMs   = s.UiUpdateIntervalMs > 0 ? s.UiUpdateIntervalMs : 10;
+            UiUpdateIntervalMs   = s.UiUpdateIntervalMs > 0 ? (decimal)s.UiUpdateIntervalMs : 10m;
             EnableFfbBridge      = s.EnableFfbBridge;
             FfbVJoyDeviceId      = s.FfbVJoyDeviceId;
             FfbGainPercent       = s.FfbGainPercent;
@@ -280,7 +280,7 @@ public sealed class SettingsPageViewModel : ViewModelBase
         s.StartMinimized     = StartMinimized;
         s.CloseToTray        = CloseToTray;
         s.EnableAutoLoading  = EnableAutoLoading;
-        s.UiUpdateIntervalMs = UiUpdateIntervalMs;
+        s.UiUpdateIntervalMs = (int)UiUpdateIntervalMs;
         s.EnableFfbBridge    = EnableFfbBridge;
         s.FfbVJoyDeviceId    = (uint)FfbVJoyDeviceId;
         s.FfbGainPercent     = FfbGainPercent;

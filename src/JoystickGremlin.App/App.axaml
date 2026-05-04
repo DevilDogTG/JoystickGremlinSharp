@@ -28,4 +28,9 @@
     <Application.Styles>
         <FluentTheme />
     </Application.Styles>
+
+    <Application.Resources>
+        <SolidColorBrush x:Key="WarningBackgroundBrush" Color="#40FF6600"/>
+        <SolidColorBrush x:Key="WarningForegroundBrush" Color="Orange"/>
+    </Application.Resources>
 </Application>

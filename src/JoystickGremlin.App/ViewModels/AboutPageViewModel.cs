@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+using System.Diagnostics;
+using System.Reactive;
 using System.Reflection;
+using ReactiveUI;
 
 namespace JoystickGremlin.App.ViewModels;
 
@@ -10,6 +13,18 @@ namespace JoystickGremlin.App.ViewModels;
 /// </summary>
 public sealed class AboutPageViewModel : ViewModelBase
 {
+    /// <summary>
+    /// Initializes a new instance of <see cref="AboutPageViewModel"/>.
+    /// </summary>
+    public AboutPageViewModel()
+    {
+        OpenRepositoryCommand = ReactiveCommand.Create(() =>
+            Process.Start(new ProcessStartInfo(RepositoryUrl) { UseShellExecute = true }));
+    }
+
+    /// <summary>Gets the command that opens the GitHub repository in the default browser.</summary>
+    public ReactiveCommand<Unit, Process?> OpenRepositoryCommand { get; }
+
     /// <summary>Gets the application display name.</summary>
     public string AppName => "Joystick Gremlin Sharp";
 
