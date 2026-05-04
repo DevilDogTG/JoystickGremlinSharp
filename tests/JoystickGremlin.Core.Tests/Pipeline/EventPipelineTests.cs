@@ -2,7 +2,9 @@
 
 using System.Text.Json.Nodes;
 using JoystickGremlin.Core.Actions;
+using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Devices;
+using JoystickGremlin.Core.EmuWheel;
 using JoystickGremlin.Core.Events;
 using JoystickGremlin.Core.Pipeline;
 using JoystickGremlin.Core.Profile;
@@ -31,14 +33,19 @@ public sealed class EventPipelineTests
     private static (EventPipeline pipeline, FakeDeviceManager deviceMgr, Mock<IActionRegistry> registry, ProfileState profileState)
         CreateSut()
     {
-        var deviceMgr    = new FakeDeviceManager();
-        var profileState = new ProfileState();
-        var registry     = new Mock<IActionRegistry>();
+        var deviceMgr      = new FakeDeviceManager();
+        var profileState   = new ProfileState();
+        var registry       = new Mock<IActionRegistry>();
+        var settingsSvc    = new Mock<ISettingsService>();
+        settingsSvc.SetupGet(s => s.Settings).Returns(new AppSettings());
+        var emuWheelMgr    = new NullEmuWheelDeviceManager();
 
         var pipeline = new EventPipeline(
             deviceMgr,
             registry.Object,
             profileState,
+            settingsSvc.Object,
+            emuWheelMgr,
             NullLogger<EventPipeline>.Instance);
 
         return (pipeline, deviceMgr, registry, profileState);

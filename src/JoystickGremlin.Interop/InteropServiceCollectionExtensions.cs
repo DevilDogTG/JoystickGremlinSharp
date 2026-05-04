@@ -3,10 +3,12 @@
 using JoystickGremlin.Core.Actions.Keyboard;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Devices;
+using JoystickGremlin.Core.EmuWheel;
 using JoystickGremlin.Core.ForceFeedback;
 using JoystickGremlin.Core.ProcessMonitor;
 using JoystickGremlin.Core.Startup;
 using JoystickGremlin.Interop.Dill;
+using JoystickGremlin.Interop.EmuWheel;
 using JoystickGremlin.Interop.Keyboard;
 using JoystickGremlin.Interop.Moza;
 using JoystickGremlin.Interop.ProcessMonitor;
@@ -38,6 +40,9 @@ public static class InteropServiceCollectionExtensions
 
         services.AddSingleton<IDeviceManager, DillDeviceManager>();
         services.AddSingleton<IVirtualDeviceManager, VJoyDeviceManager>();
+
+        // Override Core's no-op EmuWheel default with the real Interop implementation.
+        services.TryAddSingleton<IEmuWheelDeviceManager, EmuWheelDeviceManager>();
 
         // Override Core's no-op defaults with real Windows implementations.
         services.AddSingleton<SendInputKeyboardSimulator>();

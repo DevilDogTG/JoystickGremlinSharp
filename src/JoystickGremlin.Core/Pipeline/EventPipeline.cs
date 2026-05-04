@@ -2,7 +2,9 @@
 
 using System.Collections.Concurrent;
 using JoystickGremlin.Core.Actions;
+using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Devices;
+using JoystickGremlin.Core.EmuWheel;
 using JoystickGremlin.Core.Events;
 using JoystickGremlin.Core.Profile;
 using Microsoft.Extensions.Logging;
@@ -19,6 +21,8 @@ public sealed class EventPipeline : IEventPipeline
     private readonly IDeviceManager _deviceManager;
     private readonly IActionRegistry _actionRegistry;
     private readonly IProfileState _profileState;
+    private readonly ISettingsService _settingsService;
+    private readonly IEmuWheelDeviceManager _emuWheelManager;
     private readonly ILogger<EventPipeline> _logger;
 
     // Functor cache keyed by BoundAction reference. Ensures stateful functors (e.g. Toggle)
@@ -35,12 +39,16 @@ public sealed class EventPipeline : IEventPipeline
         IDeviceManager deviceManager,
         IActionRegistry actionRegistry,
         IProfileState profileState,
+        ISettingsService settingsService,
+        IEmuWheelDeviceManager emuWheelManager,
         ILogger<EventPipeline> logger)
     {
-        _deviceManager   = deviceManager;
-        _actionRegistry  = actionRegistry;
-        _profileState    = profileState;
-        _logger          = logger;
+        _deviceManager    = deviceManager;
+        _actionRegistry   = actionRegistry;
+        _profileState     = profileState;
+        _settingsService  = settingsService;
+        _emuWheelManager  = emuWheelManager;
+        _logger           = logger;
 
         _profileState.ProfileChanged += OnProfileChanged;
     }
@@ -61,6 +69,21 @@ public sealed class EventPipeline : IEventPipeline
         IsRunning = true;
 
         _logger.LogTrace("Event pipeline started for profile '{Profile}'", profile.Name);
+
+        var settings = _settingsService.Settings;
+        if (profile.RequiresEmuWheel && settings.EnableEmuWheel)
+        {
+            _logger.LogInformation(
+                "Profile '{Profile}' requires EmuWheel; applying spoof for model={Model} vjoyId={VJoyId}",
+                profile.Name, settings.EmuWheelModel, settings.EmuWheelVJoyDeviceId);
+
+            _ = _emuWheelManager.ApplySpoofAsync(settings.EmuWheelModel, settings.EmuWheelVJoyDeviceId)
+                .ContinueWith(
+                    t => _logger.LogError(t.Exception, "EmuWheel spoof failed to apply"),
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+        }
     }
 
     /// <inheritdoc/>
@@ -75,6 +98,17 @@ public sealed class EventPipeline : IEventPipeline
         _functorCache.Clear();
 
         _logger.LogTrace("Event pipeline stopped");
+
+        if (_emuWheelManager.IsSpoofActive)
+        {
+            _logger.LogInformation("Restoring EmuWheel spoof on pipeline stop");
+            _ = _emuWheelManager.RestoreAsync()
+                .ContinueWith(
+                    t => _logger.LogError(t.Exception, "EmuWheel restore failed"),
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+        }
     }
 
     /// <inheritdoc/>
@@ -86,6 +120,21 @@ public sealed class EventPipeline : IEventPipeline
         Stop();
         _profileState.ProfileChanged -= OnProfileChanged;
         _disposed = true;
+
+        // Safety net: if app exits without explicit Stop(), ensure spoof is restored.
+        if (_emuWheelManager.IsSpoofActive)
+        {
+            try
+            {
+                _emuWheelManager.RestoreAsync().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "EmuWheel restore failed during pipeline disposal");
+            }
+        }
+
+        _emuWheelManager.Dispose();
     }
 
     private void OnProfileChanged(object? sender, ProfileModel? profile)
