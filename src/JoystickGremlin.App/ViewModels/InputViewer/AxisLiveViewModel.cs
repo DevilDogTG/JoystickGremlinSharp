@@ -27,6 +27,8 @@ public sealed class AxisLiveViewModel : ReactiveObject
         {
             this.RaiseAndSetIfChanged(ref _value, value);
             this.RaisePropertyChanged(nameof(DisplayPercent));
+            this.RaisePropertyChanged(nameof(NegativePercent));
+            this.RaisePropertyChanged(nameof(PositivePercent));
             this.RaisePropertyChanged(nameof(ValueLabel));
         }
     }
@@ -36,6 +38,12 @@ public sealed class AxisLiveViewModel : ReactiveObject
     /// Used by a bidirectional ProgressBar to fill left or right from center.
     /// </summary>
     public double DisplayPercent => (Value + 1.0) * 50.0;
+
+    /// <summary>Gets the left-half fill amount in the range [0, 100] for negative values.</summary>
+    public double NegativePercent => Math.Clamp(-Value, 0.0, 1.0) * 100.0;
+
+    /// <summary>Gets the right-half fill amount in the range [0, 100] for positive values.</summary>
+    public double PositivePercent => Math.Clamp(Value, 0.0, 1.0) * 100.0;
 
     /// <summary>Gets a formatted string representation of the current value (e.g. "-0.42").</summary>
     public string ValueLabel => Value.ToString("F2");
