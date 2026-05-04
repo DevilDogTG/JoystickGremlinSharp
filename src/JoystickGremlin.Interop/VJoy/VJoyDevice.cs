@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+using System.Collections.Concurrent;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.Exceptions;
 
@@ -32,9 +33,9 @@ public sealed class VJoyDevice : IVirtualDevice
 
     // Keyed by AxisCode value; stores half the full axis range for normalisation.
     private readonly Dictionary<uint, double> _axisHalfRanges;
-    private readonly Dictionary<int, double> _axisValues;
-    private readonly Dictionary<int, bool> _buttonStates;
-    private readonly Dictionary<int, int> _hatStates;
+    private readonly ConcurrentDictionary<int, double> _axisValues;
+    private readonly ConcurrentDictionary<int, bool> _buttonStates;
+    private readonly ConcurrentDictionary<int, int> _hatStates;
 
     private readonly bool _useContHat;
 
@@ -56,9 +57,9 @@ public sealed class VJoyDevice : IVirtualDevice
         DeviceId = vjoyId;
 
         _axisHalfRanges = [];
-        _axisValues = [];
-        _buttonStates = [];
-        _hatStates = [];
+        _axisValues = new();
+        _buttonStates = new();
+        _hatStates = new();
         int axisCount = 0;
         foreach (AxisCode code in Enum.GetValues<AxisCode>())
         {
