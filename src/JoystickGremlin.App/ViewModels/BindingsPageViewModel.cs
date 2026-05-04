@@ -296,6 +296,11 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     // ─── Public Methods ─────────────────────────────────────────────────────────
 
     /// <summary>
+    /// Saves the current edit-form values into the selected bound action.
+    /// </summary>
+    public void SaveCurrentActionConfig() => SaveActionConfig();
+
+    /// <summary>
     /// Refreshes the device list from <see cref="IDeviceManager.Devices"/> and repopulates
     /// the action-type registry. Call after devices are initialized.
     /// </summary>
