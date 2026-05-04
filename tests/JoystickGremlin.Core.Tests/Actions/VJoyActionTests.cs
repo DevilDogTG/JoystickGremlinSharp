@@ -14,6 +14,9 @@ public sealed class VJoyActionTests
     private static InputEvent MakeEvent(double value = 0.0) =>
         new(InputType.JoystickButton, Guid.Empty, 1, value);
 
+    private static InputEvent MakeEvent(InputType inputType, double value) =>
+        new(inputType, Guid.Empty, 1, value);
+
     // ── VJoyAxisDescriptor ─────────────────────────────────────────────────
 
     [Fact]
@@ -94,9 +97,26 @@ public sealed class VJoyActionTests
         var functor = descriptor.CreateFunctor(config);
 
         // 0.1 → pressed (at threshold)
-        await functor.ExecuteAsync(MakeEvent(0.1));
+        await functor.ExecuteAsync(MakeEvent(InputType.JoystickAxis, 0.1));
         // 0.05 → released (below threshold)
-        await functor.ExecuteAsync(MakeEvent(0.05));
+        await functor.ExecuteAsync(MakeEvent(InputType.JoystickAxis, 0.05));
+
+        device.Verify(d => d.SetButton(2, true), Times.Once);
+        device.Verify(d => d.SetButton(2, false), Times.Once);
+    }
+
+    [Fact]
+    public async Task ButtonFunctor_CustomThreshold_DoesNotAffectDirectButtonMappings()
+    {
+        var device = new Mock<IVirtualDevice>();
+        var manager = MockManagerWith(device, vjoyId: 1u);
+
+        var config = new JsonObject { ["vjoyId"] = 1, ["buttonIndex"] = 2, ["threshold"] = 0.9 };
+        var descriptor = new VJoyButtonDescriptor(manager.Object, NullLogger<VJoyButtonDescriptor>.Instance);
+        var functor = descriptor.CreateFunctor(config);
+
+        await functor.ExecuteAsync(MakeEvent(InputType.JoystickButton, 1.0));
+        await functor.ExecuteAsync(MakeEvent(InputType.JoystickButton, 0.0));
 
         device.Verify(d => d.SetButton(2, true), Times.Once);
         device.Verify(d => d.SetButton(2, false), Times.Once);
@@ -115,7 +135,7 @@ public sealed class VJoyActionTests
         var functor = descriptor.CreateFunctor(config);
 
         // Value at clamped threshold → pressed; one tick below → released
-        await functor.ExecuteAsync(MakeEvent(expectedClamped));
+        await functor.ExecuteAsync(MakeEvent(InputType.JoystickAxis, expectedClamped));
         device.Verify(d => d.SetButton(1, true), Times.Once);
     }
 

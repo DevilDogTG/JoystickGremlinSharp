@@ -13,6 +13,7 @@ namespace JoystickGremlin.Core.Actions.VJoy;
 /// Configuration keys: <c>vjoyId</c> (uint, default 1), <c>buttonIndex</c> (int, default 1),
 /// <c>threshold</c> (double 0–1, default 0.5 — axis value above which the virtual button is pressed).
 /// Lower values create a hair-trigger (e.g. 0.05); higher values require deeper travel (e.g. 0.9).
+/// The threshold is only applied for analog axis source inputs; direct button mappings remain direct.
 /// </summary>
 public sealed class VJoyButtonDescriptor : IActionDescriptor
 {
@@ -76,7 +77,7 @@ public sealed class VJoyButtonDescriptor : IActionDescriptor
                     _vjoyId,
                     _buttonIndex);
                 var device = _manager.GetOrAcquireDevice(_vjoyId);
-                bool pressed = inputEvent.Value >= _threshold;
+                bool pressed = GetPressedState(inputEvent);
                 try
                 {
                     device.SetButton(_buttonIndex, pressed);
@@ -111,5 +112,13 @@ public sealed class VJoyButtonDescriptor : IActionDescriptor
 
             return Task.CompletedTask;
         }
+
+        private bool GetPressedState(InputEvent inputEvent) => inputEvent.InputType switch
+        {
+            InputType.JoystickAxis => inputEvent.Value >= _threshold,
+            InputType.MouseAxis => inputEvent.Value >= _threshold,
+            InputType.JoystickHat => inputEvent.Value >= 0.0,
+            _ => inputEvent.Value >= 0.5,
+        };
     }
 }
