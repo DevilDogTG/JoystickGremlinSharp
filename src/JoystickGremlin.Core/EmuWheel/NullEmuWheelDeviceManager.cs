@@ -43,5 +43,9 @@ public sealed class NullEmuWheelDeviceManager : IEmuWheelDeviceManager
         => throw new EmuWheelException("EmuWheel backend is not available in this environment.");
 
     /// <inheritdoc/>
+    public Task RecoverIfNeededAsync(CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
+    /// <inheritdoc/>
     public void Dispose() { }
 }

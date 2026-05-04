@@ -72,4 +72,13 @@ public interface IEmuWheelDeviceManager : IDisposable
     /// <returns>The acquired <see cref="IEmuWheelDevice"/>.</returns>
     /// <exception cref="Exceptions.EmuWheelException">Thrown if the device has not been acquired.</exception>
     IEmuWheelDevice GetDevice(uint vjoyId);
+
+    /// <summary>
+    /// Checks whether a sentinel file exists from a previous session that may have
+    /// exited without restoring the vJoy registry. If found, attempts to restore the
+    /// original identity before the UI loads.
+    /// Call once on application startup before <see cref="ApplySpoofAsync"/>.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task RecoverIfNeededAsync(CancellationToken cancellationToken = default);
 }

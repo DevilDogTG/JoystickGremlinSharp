@@ -170,6 +170,10 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
     }
 
     /// <inheritdoc/>
+    public Task RecoverIfNeededAsync(CancellationToken cancellationToken = default) =>
+        _spoof.RecoverIfNeededAsync(cancellationToken);
+
+    /// <inheritdoc/>
     public void Dispose()
     {
         if (_disposed)

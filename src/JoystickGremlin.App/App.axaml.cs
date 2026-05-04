@@ -11,6 +11,7 @@ using JoystickGremlin.App.Views;
 using JoystickGremlin.Core;
 using JoystickGremlin.Core.Actions;
 using JoystickGremlin.Core.Configuration;
+using JoystickGremlin.Core.EmuWheel;
 using JoystickGremlin.Core.Profile;
 using JoystickGremlin.Core.Startup;
 using JoystickGremlin.Interop;
@@ -63,6 +64,11 @@ public partial class App : Application
                 if (Interlocked.CompareExchange(ref _isInitialized, 1, 0) == 1) return;
 
                 filePickerService.SetTopLevel(_mainWindow);
+
+                // Recover any EmuWheel spoof left active by a previous crashed session
+                // before any UI or pipeline starts, so vJoy identity is clean.
+                var emuWheel = _services.GetRequiredService<IEmuWheelDeviceManager>();
+                await emuWheel.RecoverIfNeededAsync();
 
                 // Check vJoy prerequisite before initialising — show a warning dialog if not met.
                 var vjoyCheck = VJoyPrerequisiteChecker.Check();
