@@ -113,7 +113,9 @@
                                    Converter={x:Static ObjectConverters.IsNull}}"/>
 
                     <Grid ColumnDefinitions="Auto,Auto"
-                          ColumnSpacing="12">
+                          RowDefinitions="Auto,Auto,Auto"
+                          ColumnSpacing="12"
+                          RowSpacing="2">
                         <TextBlock Text="Axes:" FontWeight="SemiBold"/>
                         <TextBlock Grid.Column="1"
                                    Text="{Binding SelectedDevice.AxisCount, FallbackValue=0}"/>
