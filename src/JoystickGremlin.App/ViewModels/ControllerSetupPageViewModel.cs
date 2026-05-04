@@ -256,6 +256,9 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
             for (var i = 1; i <= device.ButtonCount; i++)
                 InputRows.Add(CreateRow(device.Guid, InputType.JoystickButton, i, liveDevice));
 
+            for (var i = 1; i <= device.HatCount; i++)
+                InputRows.Add(CreateRow(device.Guid, InputType.JoystickHat, i, liveDevice));
+
             SelectedInputRow = previousSelection is { } selection
                 ? InputRows.FirstOrDefault(row =>
                     row.InputType == selection.inputType &&

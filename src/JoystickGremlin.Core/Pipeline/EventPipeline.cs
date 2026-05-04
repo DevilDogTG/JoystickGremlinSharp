@@ -132,7 +132,9 @@ public sealed class EventPipeline : IEventPipeline
             inputEvent.Identifier,
             binding.Actions.Count);
 
-        // Dispatch each bound action's functor asynchronously, fire-and-forget with logging.
+        // Dispatch each bound action's functor. Synchronous functors (the common case, e.g. axis/button)
+        // execute inline on the callback thread to avoid Task.Run overhead at high polling rates.
+        // Truly async functors are backgrounded with error logging via a continuation.
         foreach (var boundAction in binding.Actions)
         {
             var descriptor = _actionRegistry.Resolve(boundAction.ActionTag);
@@ -149,17 +151,24 @@ public sealed class EventPipeline : IEventPipeline
                 "Dispatching action {ActionTag} with configuration {Configuration}",
                 boundAction.ActionTag,
                 boundAction.Configuration?.ToJsonString() ?? "(null)");
-            _ = Task.Run(async () =>
+
+            try
             {
-                try
+                var task = functor.ExecuteAsync(inputEvent);
+                if (!task.IsCompletedSuccessfully)
                 {
-                    await functor.ExecuteAsync(inputEvent);
+                    var tag = boundAction.ActionTag;
+                    _ = task.ContinueWith(
+                        t => _logger.LogError(t.Exception, "Functor for action '{Tag}' threw an exception", tag),
+                        CancellationToken.None,
+                        TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                        TaskScheduler.Default);
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Functor for action '{Tag}' threw an exception", boundAction.ActionTag);
-                }
-            });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Functor for action '{Tag}' threw an exception", boundAction.ActionTag);
+            }
         }
     }
 }
