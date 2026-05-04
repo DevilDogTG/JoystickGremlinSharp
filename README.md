@@ -108,12 +108,11 @@ License texts for all third-party dependencies are in the [`licenses/`](licenses
 
 ## Credits
 
-JoystickGremlinSharp is a C# rewrite derived from **JoystickGremlin** by
-[WhiteMagic](https://github.com/WhiteMagic/JoystickGremlin). The original Python
-implementation and the DILL input library are the work of the original author and
-contributors. This project would not exist without their foundational work.
+JoystickGremlinSharp is a C# rewrite derived from **[JoystickGremlin](https://github.com/WhiteMagic/JoystickGremlin)** by
+[WhiteMagic](https://github.com/WhiteMagic). The original Python implementation and the DILL input library are the work
+of the original author and contributors. This project would not exist without their foundational work.
 
-See [`licenses/joystick-gremlin.txt`](licenses/joystick-gremlin.txt) for full attribution details.
+See [licenses/joystick-gremlin.txt](licenses/joystick-gremlin.txt) for full attribution details.
 
 ---
 

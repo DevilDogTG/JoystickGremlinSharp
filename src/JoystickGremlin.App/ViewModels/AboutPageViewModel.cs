@@ -20,6 +20,8 @@ public sealed class AboutPageViewModel : ViewModelBase
     {
         OpenRepositoryCommand = ReactiveCommand.Create(() =>
             Process.Start(new ProcessStartInfo(RepositoryUrl) { UseShellExecute = true }));
+        OpenOriginalRepoCommand = ReactiveCommand.Create(() =>
+            Process.Start(new ProcessStartInfo(OriginalRepoUrl) { UseShellExecute = true }));
     }
 
     /// <summary>Gets the command that opens the GitHub repository in the default browser.</summary>
@@ -47,6 +49,12 @@ public sealed class AboutPageViewModel : ViewModelBase
     /// <summary>Gets the display text for the repository link.</summary>
     public string RepositoryDisplayText => "github.com/DevilDogTG/JoystickGremlinSharp";
 
+    /// <summary>Gets the URL of the original JoystickGremlin project by WhiteMagic.</summary>
+    public string OriginalRepoUrl => "https://github.com/WhiteMagic/JoystickGremlin";
+
+    /// <summary>Gets the command that opens the original JoystickGremlin repository in the default browser.</summary>
+    public ReactiveCommand<Unit, Process?> OpenOriginalRepoCommand { get; }
+
     /// <summary>Gets the license identifier.</summary>
     public string License => "GPL-3.0-only";
 
@@ -56,5 +64,6 @@ public sealed class AboutPageViewModel : ViewModelBase
     /// <summary>Gets the attribution text for the original JoystickGremlin project.</summary>
     public string Attribution =>
         "Based on JoystickGremlin by WhiteMagic. " +
-        "The original Python implementation and DILL input library are the work of the original author and contributors.";
+        "The original Python implementation and DILL input library are the work of the original author and contributors. " +
+        "This project would not exist without their foundational work.";
 }
