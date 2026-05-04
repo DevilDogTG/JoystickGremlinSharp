@@ -104,33 +104,13 @@ public sealed class EventPipeline : IEventPipeline
         if (_profile is null)
             return;
 
-        _logger.LogDebug(
-            "Pipeline received input: device {DeviceGuid}, type {InputType}, identifier {Identifier}, value {Value}",
-            inputEvent.DeviceGuid,
-            inputEvent.InputType,
-            inputEvent.Identifier,
-            inputEvent.Value);
-
         var binding = _profile.Bindings.FirstOrDefault(b =>
             b.DeviceGuid == inputEvent.DeviceGuid &&
             b.InputType  == inputEvent.InputType  &&
             b.Identifier == inputEvent.Identifier);
 
         if (binding is null || binding.Actions.Count == 0)
-        {
-            _logger.LogDebug(
-                "No binding matched input: device {DeviceGuid}, type {InputType}, identifier {Identifier}",
-                inputEvent.DeviceGuid,
-                inputEvent.InputType,
-                inputEvent.Identifier);
             return;
-        }
-
-        _logger.LogDebug(
-            "Matched binding for input {InputType} {Identifier}; dispatching {ActionCount} actions",
-            inputEvent.InputType,
-            inputEvent.Identifier,
-            binding.Actions.Count);
 
         // Dispatch each bound action's functor. Synchronous functors (the common case, e.g. axis/button)
         // execute inline on the callback thread to avoid Task.Run overhead at high polling rates.
@@ -147,10 +127,6 @@ public sealed class EventPipeline : IEventPipeline
             var functor = _functorCache.GetOrAdd(
                 boundAction,
                 ba => descriptor.CreateFunctor(ba.Configuration));
-            _logger.LogDebug(
-                "Dispatching action {ActionTag} with configuration {Configuration}",
-                boundAction.ActionTag,
-                boundAction.Configuration?.ToJsonString() ?? "(null)");
 
             try
             {
