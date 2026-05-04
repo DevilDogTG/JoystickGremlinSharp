@@ -4,7 +4,6 @@ using System.Text.Json.Nodes;
 using JoystickGremlin.Core.Actions;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.Events;
-using JoystickGremlin.Core.Modes;
 using JoystickGremlin.Core.Pipeline;
 using JoystickGremlin.Core.Profile;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -16,47 +15,33 @@ public sealed class EventPipelineTests
 {
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    private static ProfileModel MakeProfile(Guid deviceGuid, string modeName, string actionTag)
+    private static ProfileModel MakeProfile(Guid deviceGuid, string actionTag)
     {
         var profile = new ProfileModel { Name = "Test" };
-        profile.Modes.Add(new Mode
+        profile.Bindings.Add(new InputBinding
         {
-            Name = modeName,
-            Bindings =
-            [
-                new InputBinding
-                {
-                    DeviceGuid = deviceGuid,
-                    InputType = InputType.JoystickButton,
-                    Identifier = 1,
-                    Actions = [new BoundAction { ActionTag = actionTag }],
-                },
-            ],
+            DeviceGuid = deviceGuid,
+            InputType  = InputType.JoystickButton,
+            Identifier = 1,
+            Actions    = [new BoundAction { ActionTag = actionTag }],
         });
         return profile;
     }
 
-    private static (EventPipeline pipeline, FakeDeviceManager deviceMgr, Mock<IModeManager> modeMgr, Mock<IActionRegistry> registry, ProfileState profileState)
-        CreateSut(string activeMode = "Default")
+    private static (EventPipeline pipeline, FakeDeviceManager deviceMgr, Mock<IActionRegistry> registry, ProfileState profileState)
+        CreateSut()
     {
-        var deviceMgr = new FakeDeviceManager();
+        var deviceMgr    = new FakeDeviceManager();
         var profileState = new ProfileState();
-
-        var modeMgr = new Mock<IModeManager>();
-        modeMgr.SetupGet(m => m.ActiveModeName).Returns(activeMode);
-        modeMgr.Setup(m => m.GetInheritanceChain(activeMode, It.IsAny<ProfileModel>()))
-               .Returns([activeMode]);
-
-        var registry = new Mock<IActionRegistry>();
+        var registry     = new Mock<IActionRegistry>();
 
         var pipeline = new EventPipeline(
             deviceMgr,
-            modeMgr.Object,
             registry.Object,
             profileState,
             NullLogger<EventPipeline>.Instance);
 
-        return (pipeline, deviceMgr, modeMgr, registry, profileState);
+        return (pipeline, deviceMgr, registry, profileState);
     }
 
     // ── IsRunning ──────────────────────────────────────────────────────────
@@ -64,14 +49,14 @@ public sealed class EventPipelineTests
     [Fact]
     public void IsRunning_BeforeStart_IsFalse()
     {
-        var (pipeline, _, _, _, _) = CreateSut();
+        var (pipeline, _, _, _) = CreateSut();
         pipeline.IsRunning.Should().BeFalse();
     }
 
     [Fact]
     public void IsRunning_AfterStart_IsTrue()
     {
-        var (pipeline, _, modeMgr, _, _) = CreateSut();
+        var (pipeline, _, _, _) = CreateSut();
         pipeline.Start(new ProfileModel());
         pipeline.IsRunning.Should().BeTrue();
         pipeline.Stop();
@@ -80,7 +65,7 @@ public sealed class EventPipelineTests
     [Fact]
     public void IsRunning_AfterStop_IsFalse()
     {
-        var (pipeline, _, _, _, _) = CreateSut();
+        var (pipeline, _, _, _) = CreateSut();
         pipeline.Start(new ProfileModel());
         pipeline.Stop();
         pipeline.IsRunning.Should().BeFalse();
@@ -92,20 +77,19 @@ public sealed class EventPipelineTests
     public async Task InputReceived_MatchingBinding_DispatchesFunctor()
     {
         var deviceGuid = Guid.NewGuid();
-        var (pipeline, deviceMgr, _, registry, _) = CreateSut("Default");
+        var (pipeline, deviceMgr, registry, _) = CreateSut();
 
-        var executed = new TaskCompletionSource<InputEvent>();
+        var executed    = new TaskCompletionSource<InputEvent>();
         var fakeFunctor = new FakeFunctor(ev => executed.SetResult(ev));
-        var descriptor = new FakeDescriptor("my-action", fakeFunctor);
+        var descriptor  = new FakeDescriptor("my-action", fakeFunctor);
         registry.Setup(r => r.Resolve("my-action")).Returns(descriptor);
 
-        var profile = MakeProfile(deviceGuid, "Default", "my-action");
+        var profile = MakeProfile(deviceGuid, "my-action");
         pipeline.Start(profile);
 
-        deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 1, 1.0, string.Empty));
+        deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 1, 1.0));
 
         var received = await executed.Task.WaitAsync(TimeSpan.FromSeconds(2));
-        received.Mode.Should().Be("Default");
         received.Identifier.Should().Be(1);
         pipeline.Stop();
     }
@@ -114,61 +98,21 @@ public sealed class EventPipelineTests
     public async Task InputReceived_NoMatchingBinding_DoesNotDispatch()
     {
         var deviceGuid = Guid.NewGuid();
-        var (pipeline, deviceMgr, _, registry, _) = CreateSut("Default");
+        var (pipeline, deviceMgr, registry, _) = CreateSut();
 
         var dispatched = false;
         registry.Setup(r => r.Resolve(It.IsAny<string>()))
                 .Callback(() => dispatched = true)
                 .Returns((IActionDescriptor?)null);
 
-        var profile = MakeProfile(deviceGuid, "Default", "my-action");
+        var profile = MakeProfile(deviceGuid, "my-action");
         pipeline.Start(profile);
 
         // Wrong button index (2, not 1)
-        deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 2, 1.0, string.Empty));
+        deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 2, 1.0));
 
         await Task.Delay(50);
         dispatched.Should().BeFalse();
-        pipeline.Stop();
-    }
-
-    [Fact]
-    public async Task InputReceived_InheritedBinding_FallsBackToParentMode()
-    {
-        var deviceGuid = Guid.NewGuid();
-
-        // Profile: "Root" has binding; "Child" inherits from Root
-        var profile = new ProfileModel { Name = "Inherit" };
-        profile.Modes.Add(new Mode { Name = "Root" });
-        profile.Modes.Add(new Mode { Name = "Child", ParentModeName = "Root" });
-        profile.Modes[0].Bindings.Add(new InputBinding
-        {
-            DeviceGuid = deviceGuid,
-            InputType = InputType.JoystickButton,
-            Identifier = 1,
-            Actions = [new BoundAction { ActionTag = "inherited-action" }],
-        });
-
-        var deviceMgr = new FakeDeviceManager();
-        var modeMgr = new Mock<IModeManager>();
-        modeMgr.SetupGet(m => m.ActiveModeName).Returns("Child");
-        // Returns inheritance chain: child → root
-        modeMgr.Setup(m => m.GetInheritanceChain("Child", It.IsAny<ProfileModel>()))
-               .Returns(["Child", "Root"]);
-
-        var executed = new TaskCompletionSource<bool>();
-        var functor = new FakeFunctor(_ => executed.SetResult(true));
-        var descriptor = new FakeDescriptor("inherited-action", functor);
-        var registry = new Mock<IActionRegistry>();
-        registry.Setup(r => r.Resolve("inherited-action")).Returns(descriptor);
-
-        var profileState = new ProfileState();
-        var pipeline = new EventPipeline(deviceMgr, modeMgr.Object, registry.Object, profileState, NullLogger<EventPipeline>.Instance);
-        pipeline.Start(profile);
-
-        deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 1, 1.0, string.Empty));
-
-        (await executed.Task.WaitAsync(TimeSpan.FromSeconds(2))).Should().BeTrue();
         pipeline.Stop();
     }
 
@@ -180,10 +124,10 @@ public sealed class EventPipelineTests
         // Verifies that the same functor instance is reused so stateful functors
         // (e.g. Toggle) retain state between events.
         var deviceGuid = Guid.NewGuid();
-        var (pipeline, deviceMgr, _, registry, _) = CreateSut("Default");
+        var (pipeline, deviceMgr, registry, _) = CreateSut();
 
-        int createCount = 0;
-        var executedEvents = new List<InputEvent>();
+        int createCount      = 0;
+        var executedEvents   = new List<InputEvent>();
 
         // Descriptor creates a new stateful functor each time CreateFunctor is called.
         // With caching the pipeline must call it only once for a given BoundAction.
@@ -197,12 +141,12 @@ public sealed class EventPipelineTests
             });
         registry.Setup(r => r.Resolve("counted-action")).Returns(descriptorMock.Object);
 
-        var profile = MakeProfile(deviceGuid, "Default", "counted-action");
+        var profile = MakeProfile(deviceGuid, "counted-action");
         pipeline.Start(profile);
 
         // Fire the same binding three times.
         for (var i = 0; i < 3; i++)
-            deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 1, 1.0, string.Empty));
+            deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 1, 1.0));
 
         await Task.Delay(150);
 
@@ -215,16 +159,16 @@ public sealed class EventPipelineTests
     public void Stop_ClearsFunctorCache_SoRestartCreatesNewFunctors()
     {
         var deviceGuid = Guid.NewGuid();
-        var (pipeline, _, _, registry, _) = CreateSut("Default");
+        var (pipeline, _, registry, _) = CreateSut();
 
-        int createCount = 0;
+        int createCount    = 0;
         var descriptorMock = new Mock<IActionDescriptor>();
         descriptorMock.SetupGet(d => d.Tag).Returns("cached-action");
         descriptorMock.Setup(d => d.CreateFunctor(It.IsAny<JsonObject?>()))
             .Returns(() => { createCount++; return new FakeFunctor(_ => { }); });
         registry.Setup(r => r.Resolve("cached-action")).Returns(descriptorMock.Object);
 
-        var profile = MakeProfile(deviceGuid, "Default", "cached-action");
+        var profile = MakeProfile(deviceGuid, "cached-action");
 
         // First run
         pipeline.Start(profile);
@@ -240,9 +184,9 @@ public sealed class EventPipelineTests
     // ── Dispose ────────────────────────────────────────────────────────────
 
     [Fact]
-    public void Dispose_WhenRunning_StopsAndUnsibscribes()
+    public void Dispose_WhenRunning_StopsAndUnsubscribes()
     {
-        var (pipeline, _, _, _, _) = CreateSut();
+        var (pipeline, _, _, _) = CreateSut();
         pipeline.Start(new ProfileModel());
         pipeline.Dispose();
         pipeline.IsRunning.Should().BeFalse();
@@ -252,9 +196,9 @@ public sealed class EventPipelineTests
     public async Task ProfileModified_WhileRunning_ClearsFunctorCache_AndRecreatesFunctor()
     {
         var deviceGuid = Guid.NewGuid();
-        var (pipeline, deviceMgr, _, registry, profileState) = CreateSut("Default");
+        var (pipeline, deviceMgr, registry, profileState) = CreateSut();
 
-        int createCount = 0;
+        int createCount    = 0;
         var descriptorMock = new Mock<IActionDescriptor>();
         descriptorMock.SetupGet(d => d.Tag).Returns("refresh-action");
         descriptorMock.Setup(d => d.CreateFunctor(It.IsAny<JsonObject?>()))
@@ -265,16 +209,16 @@ public sealed class EventPipelineTests
             });
         registry.Setup(r => r.Resolve("refresh-action")).Returns(descriptorMock.Object);
 
-        var profile = MakeProfile(deviceGuid, "Default", "refresh-action");
+        var profile = MakeProfile(deviceGuid, "refresh-action");
         profileState.SetProfile(profile);
         pipeline.Start(profile);
 
-        deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 1, 1.0, string.Empty));
+        deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 1, 1.0));
         await Task.Delay(50);
 
         profileState.NotifyProfileModified();
 
-        deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 1, 1.0, string.Empty));
+        deviceMgr.RaiseInput(new InputEvent(InputType.JoystickButton, deviceGuid, 1, 1.0));
         await Task.Delay(50);
 
         createCount.Should().Be(2, "profile edits while running must invalidate cached functors");
@@ -315,3 +259,4 @@ public sealed class EventPipelineTests
         }
     }
 }
+

@@ -25,8 +25,8 @@ public sealed class SettingsServiceTests : IDisposable
         var svc = CreateService();
 
         svc.Settings.Should().NotBeNull();
+        svc.Settings.ActiveProfilePath.Should().BeNull();
         svc.Settings.VJoyDeviceId.Should().Be(1u);
-        svc.Settings.LastProfilePath.Should().BeNull();
     }
 
     // ── Save → Load round-trip ─────────────────────────────────────────────
@@ -35,9 +35,9 @@ public sealed class SettingsServiceTests : IDisposable
     public async Task SaveThenLoad_Roundtrips_AllProperties()
     {
         var svc = CreateService();
-        svc.Settings.LastProfilePath = @"C:\Profiles\test.json";
+        svc.Settings.ActiveProfilePath = @"C:\Profiles\test.json";
         svc.Settings.VJoyDeviceId = 3;
-        svc.Settings.DefaultModeName = "Combat";
+        svc.Settings.ProfilesFolderPath = @"C:\Profiles";
         svc.Settings.StartMinimized = true;
 
         await svc.SaveAsync();
@@ -45,9 +45,9 @@ public sealed class SettingsServiceTests : IDisposable
         var svc2 = CreateService();
         await svc2.LoadAsync();
 
-        svc2.Settings.LastProfilePath.Should().Be(@"C:\Profiles\test.json");
+        svc2.Settings.ActiveProfilePath.Should().Be(@"C:\Profiles\test.json");
         svc2.Settings.VJoyDeviceId.Should().Be(3u);
-        svc2.Settings.DefaultModeName.Should().Be("Combat");
+        svc2.Settings.ProfilesFolderPath.Should().Be(@"C:\Profiles");
         svc2.Settings.StartMinimized.Should().BeTrue();
     }
 

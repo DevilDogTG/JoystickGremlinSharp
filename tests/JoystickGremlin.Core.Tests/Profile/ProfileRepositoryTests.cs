@@ -32,33 +32,25 @@ public sealed class ProfileRepositoryTests : IDisposable
 
         profile.Should().NotBeNull();
         profile.Name.Should().Be("MyProfile");
-        profile.Modes.Should().BeEmpty();
+        profile.Bindings.Should().BeEmpty();
     }
 
     // ── Save → Load round-trip ─────────────────────────────────────────────
 
     [Fact]
-    public async Task SaveThenLoad_SimpleProfle_RoundTripsCorrectly()
+    public async Task SaveThenLoad_SimpleProfile_RoundTripsCorrectly()
     {
         var path = Path.Combine(_tempDir, "simple.json");
         var original = new JoystickGremlin.Core.Profile.Profile
         {
             Name = "Test Profile",
-            Modes =
+            Bindings =
             [
-                new Mode
+                new InputBinding
                 {
-                    Name = "Default",
-                    ParentModeName = null,
-                    Bindings =
-                    [
-                        new InputBinding
-                        {
-                            DeviceGuid = Guid.NewGuid(),
-                            InputType = InputType.JoystickButton,
-                            Identifier = 1,
-                        },
-                    ],
+                    DeviceGuid = Guid.NewGuid(),
+                    InputType  = InputType.JoystickButton,
+                    Identifier = 1,
                 },
             ],
         };
@@ -68,36 +60,27 @@ public sealed class ProfileRepositoryTests : IDisposable
 
         loaded.Id.Should().Be(original.Id);
         loaded.Name.Should().Be("Test Profile");
-        loaded.Modes.Should().HaveCount(1);
-        loaded.Modes[0].Name.Should().Be("Default");
-        loaded.Modes[0].Bindings.Should().HaveCount(1);
-        loaded.Modes[0].Bindings[0].InputType.Should().Be(InputType.JoystickButton);
-        loaded.Modes[0].Bindings[0].Identifier.Should().Be(1);
+        loaded.Bindings.Should().HaveCount(1);
+        loaded.Bindings[0].InputType.Should().Be(InputType.JoystickButton);
+        loaded.Bindings[0].Identifier.Should().Be(1);
     }
 
     [Fact]
     public async Task SaveThenLoad_BoundActionWithJsonConfig_RoundTripsConfiguration()
     {
-        var path = Path.Combine(_tempDir, "actions.json");
+        var path   = Path.Combine(_tempDir, "actions.json");
         var config = new JsonObject { ["vjoyId"] = 1, ["axisIndex"] = 2 };
         var original = new JoystickGremlin.Core.Profile.Profile
         {
             Name = "ActionProfile",
-            Modes =
+            Bindings =
             [
-                new Mode
+                new InputBinding
                 {
-                    Name = "Root",
-                    Bindings =
-                    [
-                        new InputBinding
-                        {
-                            DeviceGuid = Guid.Empty,
-                            InputType = InputType.JoystickAxis,
-                            Identifier = 0,
-                            Actions = [new BoundAction { ActionTag = "vjoy-axis", Configuration = config }],
-                        },
-                    ],
+                    DeviceGuid = Guid.Empty,
+                    InputType  = InputType.JoystickAxis,
+                    Identifier = 0,
+                    Actions    = [new BoundAction { ActionTag = "vjoy-axis", Configuration = config }],
                 },
             ],
         };
@@ -105,7 +88,7 @@ public sealed class ProfileRepositoryTests : IDisposable
         await _sut.SaveAsync(original, path);
         var loaded = await _sut.LoadAsync(path);
 
-        var action = loaded.Modes[0].Bindings[0].Actions[0];
+        var action = loaded.Bindings[0].Actions[0];
         action.ActionTag.Should().Be("vjoy-axis");
         action.Configuration.Should().NotBeNull();
         action.Configuration!["vjoyId"]!.GetValue<int>().Should().Be(1);
@@ -115,7 +98,7 @@ public sealed class ProfileRepositoryTests : IDisposable
     [Fact]
     public async Task SaveAsync_CreatesDirectoriesIfMissing()
     {
-        var path = Path.Combine(_tempDir, "sub", "nested", "profile.json");
+        var path    = Path.Combine(_tempDir, "sub", "nested", "profile.json");
         var profile = new JoystickGremlin.Core.Profile.Profile { Name = "Nested" };
 
         await _sut.SaveAsync(profile, path);
@@ -146,24 +129,77 @@ public sealed class ProfileRepositoryTests : IDisposable
         await act.Should().ThrowAsync<ProfileException>();
     }
 
+    // ── Legacy migration ───────────────────────────────────────────────────
+
     [Fact]
-    public async Task SaveThenLoad_ModeInheritance_ParentModeNameRoundTrips()
+    public async Task LoadAsync_LegacyModesFormat_MigratesFirstModesBindings()
     {
-        var path = Path.Combine(_tempDir, "inheritance.json");
-        var original = new JoystickGremlin.Core.Profile.Profile
-        {
-            Name = "InheritTest",
-            Modes =
-            [
-                new Mode { Name = "Root" },
-                new Mode { Name = "Child", ParentModeName = "Root" },
-            ],
-        };
+        var path = Path.Combine(_tempDir, "legacy.json");
+        var deviceGuid = Guid.NewGuid();
+        var legacyJson = $$"""
+            {
+              "id": "00000000-0000-0000-0000-000000000001",
+              "name": "Legacy",
+              "modes": [
+                {
+                  "name": "Default",
+                  "bindings": [
+                    {
+                      "deviceGuid": "{{deviceGuid}}",
+                      "inputType": "JoystickButton",
+                      "identifier": 3,
+                      "actions": [
+                        { "actionTag": "vjoy-button", "configuration": { "vjoyId": 1, "buttonIndex": 5 } }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+            """;
+        await File.WriteAllTextAsync(path, legacyJson);
 
-        await _sut.SaveAsync(original, path);
-        var loaded = await _sut.LoadAsync(path);
+        var profile = await _sut.LoadAsync(path);
 
-        loaded.Modes.Should().HaveCount(2);
-        loaded.Modes[1].ParentModeName.Should().Be("Root");
+        profile.Name.Should().Be("Legacy");
+        profile.Bindings.Should().HaveCount(1);
+        profile.Bindings[0].DeviceGuid.Should().Be(deviceGuid);
+        profile.Bindings[0].Identifier.Should().Be(3);
+        profile.Bindings[0].Actions[0].ActionTag.Should().Be("vjoy-button");
+    }
+
+    [Fact]
+    public async Task LoadAsync_LegacyFormat_ChangeModeActionsAreDropped()
+    {
+        var path = Path.Combine(_tempDir, "legacy_cm.json");
+        var legacyJson = """
+            {
+              "name": "LegacyCM",
+              "modes": [
+                {
+                  "name": "Default",
+                  "bindings": [
+                    {
+                      "deviceGuid": "00000000-0000-0000-0000-000000000000",
+                      "inputType": "JoystickButton",
+                      "identifier": 1,
+                      "actions": [
+                        { "actionTag": "change-mode", "configuration": { "targetMode": "Combat" } },
+                        { "actionTag": "vjoy-button", "configuration": { "vjoyId": 1, "buttonIndex": 1 } }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+            """;
+        await File.WriteAllTextAsync(path, legacyJson);
+
+        var profile = await _sut.LoadAsync(path);
+
+        var actions = profile.Bindings[0].Actions;
+        actions.Should().HaveCount(1);
+        actions[0].ActionTag.Should().Be("vjoy-button");
     }
 }
+

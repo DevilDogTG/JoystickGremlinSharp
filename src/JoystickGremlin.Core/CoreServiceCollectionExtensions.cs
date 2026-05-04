@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using JoystickGremlin.Core.Actions;
-using JoystickGremlin.Core.Actions.ChangeMode;
 using JoystickGremlin.Core.Actions.Keyboard;
 using JoystickGremlin.Core.Actions.Macro;
 using JoystickGremlin.Core.ProcessMonitor;
 using JoystickGremlin.Core.Actions.VJoy;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.ForceFeedback;
-using JoystickGremlin.Core.Modes;
 using JoystickGremlin.Core.Pipeline;
 using JoystickGremlin.Core.Profile;
 using JoystickGremlin.Core.Startup;
@@ -32,9 +30,9 @@ public static class CoreServiceCollectionExtensions
         services.AddTransient<IProfileRepository, ProfileRepository>();
         services.AddSingleton<IActionRegistry, ActionRegistry>();
         services.AddSingleton<ISettingsService, SettingsService>();
-        services.AddSingleton<IModeManager, ModeManager>();
         services.AddSingleton<IEventPipeline, EventPipeline>();
         services.AddSingleton<IProfileState, ProfileState>();
+        services.AddSingleton<IProfileLibrary, ProfileLibrary>();
 
         // Built-in vJoy action descriptors — auto-registered into IActionRegistry at startup
         services.AddSingleton<IActionDescriptor, VJoyAxisDescriptor>();
@@ -43,9 +41,8 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<IActionDescriptor, ButtonsToHatDescriptor>();
         services.AddSingleton<IActionDescriptor, ButtonsToAxesDescriptor>();
 
-        // Built-in macro, mode-change, and keyboard-mapping descriptors
+        // Built-in macro and keyboard-mapping descriptors
         services.AddSingleton<IActionDescriptor, MacroActionDescriptor>();
-        services.AddSingleton<IActionDescriptor, ChangeModeActionDescriptor>();
         services.AddSingleton<IActionDescriptor, MapToKeyboardActionDescriptor>();
 
         // Keyboard simulator — NullKeyboardSimulator by default; override in App or Interop for real input.

@@ -12,7 +12,7 @@ namespace JoystickGremlin.Core.Tests.Actions;
 public sealed class VJoyActionTests
 {
     private static InputEvent MakeEvent(double value = 0.0) =>
-        new(InputType.JoystickButton, Guid.Empty, 1, value, "Default");
+        new(InputType.JoystickButton, Guid.Empty, 1, value);
 
     // ── VJoyAxisDescriptor ─────────────────────────────────────────────────
 

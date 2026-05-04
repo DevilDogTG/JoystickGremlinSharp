@@ -44,14 +44,13 @@ public sealed class ButtonsToAxesFunctorTests
         return config;
     }
 
-    private InputEvent CreateButtonEvent(int buttonId, double value, string mode = "default")
+    private InputEvent CreateButtonEvent(int buttonId, double value)
     {
         return new InputEvent(
             InputType.JoystickButton,
             Guid.NewGuid(),
             buttonId,
-            value,
-            mode);
+            value);
     }
 
     [Fact]
