@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
 using JoystickGremlin.Core.Configuration;
+using JoystickGremlin.Core.EmuWheel;
 using JoystickGremlin.Core.ForceFeedback;
 using JoystickGremlin.Core.Startup;
 using Microsoft.Extensions.Logging;
@@ -34,6 +35,9 @@ public sealed class SettingsPageViewModel : ViewModelBase
     private int _ffbGainPercent = 100;
     private string _ffbWheelInstanceGuid = string.Empty;
     private string _ffbBridgeStatus = "Disabled";
+    private bool _enableEmuWheel;
+    private decimal _emuWheelVJoyDeviceId = 2;
+    private WheelModel _emuWheelModel = WheelModel.LogitechG29;
     private decimal _uiUpdateIntervalMs = 10m;
     private bool _loading;
 
@@ -80,6 +84,15 @@ public sealed class SettingsPageViewModel : ViewModelBase
                 x => x.FfbGainPercent,
                 x => x.FfbWheelInstanceGuid,
                 (_, _, _, _) => Unit.Default)
+            .Skip(1)
+            .Throttle(TimeSpan.FromMilliseconds(800), AvaloniaScheduler.Instance)
+            .Subscribe(unit => { if (!_loading) _ = SaveAsync(); });
+
+        this.WhenAnyValue(
+                x => x.EnableEmuWheel,
+                x => x.EmuWheelVJoyDeviceId,
+                x => x.EmuWheelModel,
+                (_, _, _) => Unit.Default)
             .Skip(1)
             .Throttle(TimeSpan.FromMilliseconds(800), AvaloniaScheduler.Instance)
             .Subscribe(unit => { if (!_loading) _ = SaveAsync(); });
@@ -181,6 +194,48 @@ public sealed class SettingsPageViewModel : ViewModelBase
         private set => this.RaiseAndSetIfChanged(ref _ffbBridgeStatus, value);
     }
 
+    /// <summary>Gets or sets whether the EmuWheel backend is enabled.</summary>
+    public bool EnableEmuWheel
+    {
+        get => _enableEmuWheel;
+        set => this.RaiseAndSetIfChanged(ref _enableEmuWheel, value);
+    }
+
+    /// <summary>Gets or sets the vJoy device ID used for the EmuWheel virtual device (1–16).</summary>
+    public decimal EmuWheelVJoyDeviceId
+    {
+        get => _emuWheelVJoyDeviceId;
+        set => this.RaiseAndSetIfChanged(ref _emuWheelVJoyDeviceId, value);
+    }
+
+    /// <summary>Gets or sets which real wheel identity the EmuWheel device impersonates.</summary>
+    public WheelModel EmuWheelModel
+    {
+        get => _emuWheelModel;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _emuWheelModel, value);
+            this.RaisePropertyChanged(nameof(SelectedWheelModelInfo));
+        }
+    }
+
+    /// <summary>Gets the list of all available wheel models for the EmuWheel dropdown.</summary>
+    public IReadOnlyList<WheelModelInfo> AvailableWheelModels => WheelModelRegistry.AllModels;
+
+    /// <summary>
+    /// Gets or sets the selected wheel model info for the UI ComboBox.
+    /// Syncs with <see cref="EmuWheelModel"/>.
+    /// </summary>
+    public WheelModelInfo? SelectedWheelModelInfo
+    {
+        get => WheelModelRegistry.TryGet(EmuWheelModel, out var info) ? info : null;
+        set
+        {
+            if (value is not null)
+                EmuWheelModel = value.Model;
+        }
+    }
+
     /// <summary>Gets the ordered list of process-to-profile mapping ViewModels.</summary>
     public ObservableCollection<ProcessMappingViewModel> ProcessMappings { get; }
 
@@ -216,6 +271,9 @@ public sealed class SettingsPageViewModel : ViewModelBase
             FfbVJoyDeviceId      = s.FfbVJoyDeviceId;
             FfbGainPercent       = s.FfbGainPercent;
             FfbWheelInstanceGuid = s.FfbWheelInstanceGuid ?? string.Empty;
+            EnableEmuWheel       = s.EnableEmuWheel;
+            EmuWheelVJoyDeviceId = s.EmuWheelVJoyDeviceId;
+            EmuWheelModel        = s.EmuWheelModel;
 
             ProcessMappings.Clear();
             foreach (var m in s.ProcessMappings)
@@ -285,6 +343,9 @@ public sealed class SettingsPageViewModel : ViewModelBase
         s.FfbVJoyDeviceId    = (uint)FfbVJoyDeviceId;
         s.FfbGainPercent     = FfbGainPercent;
         s.FfbWheelInstanceGuid = string.IsNullOrWhiteSpace(FfbWheelInstanceGuid) ? null : FfbWheelInstanceGuid;
+        s.EnableEmuWheel       = EnableEmuWheel;
+        s.EmuWheelVJoyDeviceId = (uint)EmuWheelVJoyDeviceId;
+        s.EmuWheelModel        = EmuWheelModel;
 
         // Sync the startup registry entry with the toggle value.
         if (StartWithWindows && !_startupService.IsEnabled)

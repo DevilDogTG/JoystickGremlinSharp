@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:JoystickGremlin.App.ViewModels"
+             xmlns:ew="using:JoystickGremlin.Core.EmuWheel"
              x:Class="JoystickGremlin.App.Views.SettingsPageView"
              x:DataType="vm:SettingsPageViewModel">
 
@@ -242,6 +243,67 @@
                                    VerticalAlignment="Center"
                                    Opacity="0.7"
                                    FontStyle="Italic"/>
+                    </Grid>
+
+                </StackPanel>
+            </Border>
+
+            <!-- ─── Wheel Emulation (EmuWheel) ─── -->
+            <Border Padding="0,8,0,0"
+                    BorderThickness="0,1,0,0"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <StackPanel Spacing="10">
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="Wheel Emulation"
+                                   FontWeight="SemiBold"
+                                   FontSize="15"
+                                   VerticalAlignment="Center"/>
+                        <CheckBox Content="Enabled"
+                                  IsChecked="{Binding EnableEmuWheel}"
+                                  VerticalAlignment="Center"
+                                  ToolTip.Tip="Enables the EmuWheel backend. When a profile containing emuwheel-* actions is started, the selected vJoy slot is spoofed to appear as the chosen wheel model."/>
+                    </StackPanel>
+
+                    <TextBlock TextWrapping="Wrap" Opacity="0.6" FontSize="11">
+                        Spoofs a vJoy device's USB identity to appear as a real steering wheel.
+                        Requires administrator privileges to write registry entries.
+                        Disable Steam Input per game (Properties → Controller → Disable Steam Input) for The Crew 2 and Forza Horizon 4.
+                    </TextBlock>
+
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto"
+                          RowSpacing="8" ColumnSpacing="12">
+
+                        <TextBlock Grid.Row="0" Grid.Column="0"
+                                   Text="EmuWheel vJoy Device ID"
+                                   VerticalAlignment="Center"
+                                   IsEnabled="{Binding EnableEmuWheel}"
+                                   ToolTip.Tip="The vJoy device slot (1–16) that will be spoofed as a wheel. Use a slot different from your generic vJoy device ID."/>
+                        <NumericUpDown Grid.Row="0" Grid.Column="1"
+                                       Value="{Binding EmuWheelVJoyDeviceId}"
+                                       Minimum="1" Maximum="16" Increment="1"
+                                       FormatString="0"
+                                       IsEnabled="{Binding EnableEmuWheel}"
+                                       ToolTip.Tip="The vJoy device slot (1–16) that will be spoofed as a wheel. Use a slot different from your generic vJoy device ID."/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0"
+                                   Text="Wheel Model"
+                                   VerticalAlignment="Center"
+                                   IsEnabled="{Binding EnableEmuWheel}"
+                                   ToolTip.Tip="The wheel identity to spoof. Choose a model supported by your target game's whitelist."/>
+                        <ComboBox Grid.Row="1" Grid.Column="1"
+                                  ItemsSource="{Binding AvailableWheelModels}"
+                                  SelectedItem="{Binding SelectedWheelModelInfo}"
+                                  IsEnabled="{Binding EnableEmuWheel}"
+                                  HorizontalAlignment="Stretch"
+                                  ToolTip.Tip="The wheel identity to spoof. Choose a model supported by your target game's whitelist.">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="ew:WheelModelInfo">
+                                    <TextBlock Text="{Binding DisplayName}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+
                     </Grid>
 
                 </StackPanel>
