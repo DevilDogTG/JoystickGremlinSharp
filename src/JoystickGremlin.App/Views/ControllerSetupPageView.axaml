@@ -112,7 +112,7 @@
                                             <ColumnDefinition Width="{Binding Axis.BarFillWidth}"/>
                                             <ColumnDefinition Width="{Binding Axis.BarRightWidth}"/>
                                         </Grid.ColumnDefinitions>
-                                        <Border Grid.Column="1" Background="#EF4444" CornerRadius="1"/>
+                                        <Border Grid.Column="1" Background="#3B82F6" CornerRadius="1"/>
                                     </Grid>
                                     <Rectangle Width="1" HorizontalAlignment="Center" Fill="#555555"/>
                                     <TextBlock Text="{Binding Axis.ValueLabel, FallbackValue='0.00'}"
@@ -200,7 +200,7 @@
                                      <ColumnDefinition Width="{Binding SelectedInputRow.Axis.BarFillWidth}"/>
                                      <ColumnDefinition Width="{Binding SelectedInputRow.Axis.BarRightWidth}"/>
                                  </Grid.ColumnDefinitions>
-                                 <Border Grid.Column="1" Background="#EF4444" CornerRadius="2"/>
+                                 <Border Grid.Column="1" Background="#3B82F6" CornerRadius="2"/>
                              </Grid>
                              <Rectangle Width="1" HorizontalAlignment="Center" Fill="#666666"/>
                              <TextBlock Text="{Binding SelectedInputRow.Axis.ValueLabel, FallbackValue='0.00'}"
