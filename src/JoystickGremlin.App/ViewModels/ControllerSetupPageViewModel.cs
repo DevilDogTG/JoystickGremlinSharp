@@ -8,6 +8,7 @@ using System.Reactive.Linq;
 using Avalonia.Threading;
 using JoystickGremlin.App.ViewModels.InputViewer;
 using JoystickGremlin.Core.Actions;
+using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.Events;
 using JoystickGremlin.Core.Profile;
@@ -27,14 +28,14 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
     private readonly IActionRegistry _actionRegistry;
     private readonly IProfileRepository _profileRepository;
     private readonly IProfileState _profileState;
+    private readonly ISettingsService _settingsService;
     private readonly ILogger<ControllerSetupPageViewModel> _logger;
     private readonly ConcurrentDictionary<Guid, DeviceLiveInputViewModel> _liveDevices = new();
     private readonly CompositeDisposable _subscriptions = [];
 
-    // Throttle live-input UI updates to ~100 Hz per device to prevent flooding the UI thread
-    // at high polling rates (e.g. 1000 Hz steering wheels).
+    // Throttle live-input UI updates per device to prevent flooding the UI thread
+    // at high polling rates (e.g. 1000 Hz steering wheels). Interval is read from settings.
     private readonly ConcurrentDictionary<Guid, long> _lastUiUpdateMs = new();
-    private const long UiUpdateIntervalMs = 10; // ~100 Hz
 
     private DeviceViewModel? _selectedDevice;
     private UnifiedInputRowViewModel? _selectedInputRow;
@@ -49,12 +50,14 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         IProfileRepository profileRepository,
         IProfileState profileState,
         BindingsPageViewModel bindingEditor,
+        ISettingsService settingsService,
         ILogger<ControllerSetupPageViewModel> logger)
     {
         _deviceManager = deviceManager;
         _actionRegistry = actionRegistry;
         _profileRepository = profileRepository;
         _profileState = profileState;
+        _settingsService = settingsService;
         BindingEditor = bindingEditor;
         _logger = logger;
 
@@ -368,7 +371,7 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         // and cause visible lag. Only post when the interval has elapsed.
         var now = Environment.TickCount64;
         var last = _lastUiUpdateMs.GetOrAdd(inputEvent.DeviceGuid, 0L);
-        if (now - last < UiUpdateIntervalMs)
+        if (now - last < _settingsService.Settings.UiUpdateIntervalMs)
             return;
 
         _lastUiUpdateMs[inputEvent.DeviceGuid] = now;
