@@ -11,7 +11,7 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > **Status**: Phase complete. All core features implemented and released.
 > - Release v10.0.3 published with auto-generated release notes
 > - Workflow: main-first + tag-based release (no merge-back)
-> - 218 tests passing, 0 build warnings
+> - 236 tests passing, 0 build warnings
 > - Latest: Modes removed — profiles are now flat (direct `List<InputBinding>`); folder-based profile library with category support via subfolders; legacy mode-based profiles auto-migrated on load
 > - GitHub Actions permissions must be set to "Allow all actions and reusable workflows"
 >   (Settings → Actions → General) for workflows to run on `main`
@@ -372,6 +372,7 @@ Actions are **statically registered** (no runtime plugin discovery).
 | `"vjoy-hat"` | `VJoyHatDescriptor` | `vjoyId` (uint, default 1), `hatIndex` (int, default 1) |
 | `"buttons-to-hat"` | `ButtonsToHatDescriptor` | `vjoyId` (uint, default 1), `hatIndex` (int, default 1), `upButtonId`, `downButtonId`, `leftButtonId`, `rightButtonId` (int) |
 | `"buttons-to-axes"` | `ButtonsToAxesDescriptor` | `vjoyId` (uint, default 1), `xAxisIndex` (int, default 1), `yAxisIndex` (int, default 2), `upButtonId`, `downButtonId`, `leftButtonId`, `rightButtonId` (int) |
+| `"hat-to-axis"` | `HatToAxisDescriptor` | `vjoyId` (uint, default 1), `xAxisIndex` (int, default 1, 0=disabled), `yAxisIndex` (int, default 2, 0=disabled) |
 | `"macro"` | `MacroActionDescriptor` | `keys` (comma-separated), `onPress` (bool, default true) |
 | `"map-to-keyboard"` | `MapToKeyboardActionDescriptor` | `keys` (comma-separated key names), `behavior` ("Hold"/"Toggle"/"PressOnly"/"ReleaseOnly", default "Hold") |
 
@@ -732,7 +733,7 @@ dotnet build --configuration Release -warnaserror
 dotnet test
 ```
 
-> Current baseline: **218 tests, 0 failures, 0 build warnings**.
+> Current baseline: **236 tests, 0 failures, 0 build warnings**.
 
 
 

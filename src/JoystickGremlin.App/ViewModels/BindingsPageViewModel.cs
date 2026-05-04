@@ -48,6 +48,8 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     private int _editDirectionalDownButtonId = 2;
     private int _editDirectionalLeftButtonId = 3;
     private int _editDirectionalRightButtonId = 4;
+    private int _editHatToAxisXAxisIndex = 1;
+    private int _editHatToAxisYAxisIndex = 2;
     private string _editMacroKeys = string.Empty;
     private string _editMapToKeyboardKeys = string.Empty;
     private string _editMapToKeyboardBehavior = "Hold";
@@ -190,6 +192,20 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _editButtonsToAxesYAxisIndex, value);
     }
 
+    /// <summary>Gets or sets the X axis index for the selected hat-to-axis action (0 = disabled).</summary>
+    public int EditHatToAxisXAxisIndex
+    {
+        get => _editHatToAxisXAxisIndex;
+        set => this.RaiseAndSetIfChanged(ref _editHatToAxisXAxisIndex, value);
+    }
+
+    /// <summary>Gets or sets the Y axis index for the selected hat-to-axis action (0 = disabled).</summary>
+    public int EditHatToAxisYAxisIndex
+    {
+        get => _editHatToAxisYAxisIndex;
+        set => this.RaiseAndSetIfChanged(ref _editHatToAxisYAxisIndex, value);
+    }
+
     /// <summary>Gets or sets the source button ID used for the Up direction.</summary>
     public int EditDirectionalUpButtonId
     {
@@ -276,6 +292,9 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets whether the buttons-to-axes config section should be shown.</summary>
     public bool ShowButtonsToAxesConfig => SelectedBoundAction?.IsButtonsToAxes ?? false;
+
+    /// <summary>Gets whether the hat-to-axis config section should be shown.</summary>
+    public bool ShowHatToAxisConfig => SelectedBoundAction?.IsHatToAxis ?? false;
 
     /// <summary>Gets whether any config section is visible (i.e. an action is selected).</summary>
     public bool ShowConfigPanel => SelectedBoundAction is not null;
@@ -384,6 +403,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         this.RaisePropertyChanged(nameof(ShowMapToKeyboardConfig));
         this.RaisePropertyChanged(nameof(ShowButtonsToHatConfig));
         this.RaisePropertyChanged(nameof(ShowButtonsToAxesConfig));
+        this.RaisePropertyChanged(nameof(ShowHatToAxisConfig));
         this.RaisePropertyChanged(nameof(ShowConfigPanel));
 
         if (vm is null) return;
@@ -424,6 +444,11 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
             case MacroActionDescriptor.ActionTag:
                 EditMacroKeys = cfg?["keys"]?.GetValue<string>() ?? string.Empty;
                 break;
+            case HatToAxisDescriptor.ActionTag:
+                EditVJoyDeviceId       = cfg?["vjoyId"]?.GetValue<int>()     ?? 1;
+                EditHatToAxisXAxisIndex = cfg?["xAxisIndex"]?.GetValue<int>() ?? 1;
+                EditHatToAxisYAxisIndex = cfg?["yAxisIndex"]?.GetValue<int>() ?? 2;
+                break;
             case MapToKeyboardActionDescriptor.ActionTag:
                 EditMapToKeyboardKeys     = cfg?["keys"]?.GetValue<string>() ?? string.Empty;
                 EditMapToKeyboardBehavior = cfg?["behavior"]?.GetValue<string>() ?? "Hold";
@@ -438,6 +463,14 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         {
             _logger.LogWarning(
                 "Cannot add action {ActionTag} to non-button input type {InputType}",
+                SelectedNewActionType.Tag,
+                SelectedInput.InputType);
+            return;
+        }
+        if (IsHatOnlyAction(SelectedNewActionType.Tag) && SelectedInput.InputType != InputType.JoystickHat)
+        {
+            _logger.LogWarning(
+                "Cannot add action {ActionTag} to non-hat input type {InputType}",
                 SelectedNewActionType.Tag,
                 SelectedInput.InputType);
             return;
@@ -496,6 +529,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
             },
             MacroActionDescriptor.ActionTag         => new JsonObject { ["keys"] = string.Empty, ["onPress"] = true },
             MapToKeyboardActionDescriptor.ActionTag => new JsonObject { ["keys"] = string.Empty, ["behavior"] = "Hold" },
+            HatToAxisDescriptor.ActionTag           => new JsonObject { ["vjoyId"] = 1, ["xAxisIndex"] = 1, ["yAxisIndex"] = 2 },
             _ => null,
         };
     }
@@ -606,6 +640,12 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
             {
                 ["keys"]     = EditMapToKeyboardKeys,
                 ["behavior"] = EditMapToKeyboardBehavior,
+            },
+            HatToAxisDescriptor.ActionTag => new JsonObject
+            {
+                ["vjoyId"]     = EditVJoyDeviceId,
+                ["xAxisIndex"] = EditHatToAxisXAxisIndex,
+                ["yAxisIndex"] = EditHatToAxisYAxisIndex,
             },
             _ => model.Configuration,
         };
@@ -729,6 +769,9 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
 
     private static bool IsMultiButtonAction(string actionTag) =>
         actionTag is ButtonsToHatDescriptor.ActionTag or ButtonsToAxesDescriptor.ActionTag;
+
+    private static bool IsHatOnlyAction(string actionTag) =>
+        actionTag is HatToAxisDescriptor.ActionTag;
 
     private static string GetOrCreateMappingId(JsonObject? configuration)
     {

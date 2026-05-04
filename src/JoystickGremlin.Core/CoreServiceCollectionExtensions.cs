@@ -40,6 +40,7 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<IActionDescriptor, VJoyHatDescriptor>();
         services.AddSingleton<IActionDescriptor, ButtonsToHatDescriptor>();
         services.AddSingleton<IActionDescriptor, ButtonsToAxesDescriptor>();
+        services.AddSingleton<IActionDescriptor, HatToAxisDescriptor>();
 
         // Built-in macro and keyboard-mapping descriptors
         services.AddSingleton<IActionDescriptor, MacroActionDescriptor>();

@@ -47,6 +47,9 @@ public sealed class BoundActionViewModel : ViewModelBase
     /// <summary>Gets whether this action maps multiple buttons to vJoy axes.</summary>
     public bool IsButtonsToAxes => ActionTag == ButtonsToAxesDescriptor.ActionTag;
 
+    /// <summary>Gets whether this action maps a hat to vJoy axes.</summary>
+    public bool IsHatToAxis => ActionTag == HatToAxisDescriptor.ActionTag;
+
     /// <summary>
     /// Initializes a new instance of <see cref="BoundActionViewModel"/>.
     /// </summary>
@@ -81,6 +84,8 @@ public sealed class BoundActionViewModel : ViewModelBase
                 cfg["keys"]?.GetValue<string>() is { Length: > 0 } k ? k : "(no keys)",
             MapToKeyboardActionDescriptor.ActionTag =>
                 BuildMapToKeyboardSummary(cfg),
+            HatToAxisDescriptor.ActionTag =>
+                BuildHatToAxisSummary(cfg),
             _ => "(default config)",
         };
     }
@@ -133,6 +138,19 @@ public sealed class BoundActionViewModel : ViewModelBase
         var right = cfg["rightButtonId"]?.GetValue<int>() ?? 0;
 
         return $"U{up} D{down} L{left} R{right} → vJoy {vjoyId} X{xAxisIndex}/Y{yAxisIndex}";
+    }
+
+    private static string BuildHatToAxisSummary(JsonObject? cfg)
+    {
+        if (cfg is null) return "(default config)";
+
+        var vjoyId     = cfg["vjoyId"]?.GetValue<int>() ?? 1;
+        var xAxisIndex = cfg["xAxisIndex"]?.GetValue<int>() ?? 1;
+        var yAxisIndex = cfg["yAxisIndex"]?.GetValue<int>() ?? 2;
+        var xPart = xAxisIndex > 0 ? $"X{xAxisIndex}" : string.Empty;
+        var yPart = yAxisIndex > 0 ? $"Y{yAxisIndex}" : string.Empty;
+        var axes  = string.Join("/", new[] { xPart, yPart }.Where(s => s.Length > 0));
+        return axes.Length > 0 ? $"→ vJoy {vjoyId} {axes}" : "(no axes)";
     }
 }
 
