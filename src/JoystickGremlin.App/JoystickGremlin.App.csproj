@@ -8,6 +8,11 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <Product>Joystick Gremlin Sharp</Product>
+    <Company>DevilDogTG</Company>
+    <Description>A C#/.NET 10 rewrite of JoystickGremlin. Map joystick/gamepad inputs to virtual vJoy outputs using Avalonia UI.</Description>
+    <Copyright>Copyright © 2024–2025 DevilDogTG. GPL-3.0-only.</Copyright>
+    <NeutralLanguage>en-US</NeutralLanguage>
   </PropertyGroup>
 
   <ItemGroup>
