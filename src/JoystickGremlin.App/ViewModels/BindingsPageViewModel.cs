@@ -2,7 +2,9 @@
 
 using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Text.Json.Nodes;
 using Avalonia.Threading;
 using JoystickGremlin.Core.Actions;
@@ -27,6 +29,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     private readonly IActionRegistry _actionRegistry;
     private readonly IProfileState _profileState;
     private readonly ILogger<BindingsPageViewModel> _logger;
+    private readonly BehaviorSubject<bool> _hasProfileSubject;
 
     // Selection state
     private DeviceViewModel? _selectedDevice;
@@ -63,6 +66,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         _actionRegistry = actionRegistry;
         _profileState   = profileState;
         _logger         = logger;
+        _hasProfileSubject = new BehaviorSubject<bool>(_profileState.CurrentProfile is not null);
 
         Devices           = new ObservableCollection<DeviceViewModel>();
         AvailableInputs   = new ObservableCollection<InputDescriptorViewModel>();
@@ -72,7 +76,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         var hasInput      = this.WhenAnyValue(x => x.SelectedInput).Select(i => i is not null);
         var hasSelection  = this.WhenAnyValue(x => x.SelectedBoundAction).Select(a => a is not null);
         var hasNewType    = this.WhenAnyValue(x => x.SelectedNewActionType).Select(t => t is not null);
-        var canAdd        = hasInput.CombineLatest(hasNewType, (i, t) => i && t && HasProfile);
+        var canAdd        = hasInput.CombineLatest(hasNewType, _hasProfileSubject, (i, t, p) => i && t && p);
 
         AddActionCommand    = ReactiveCommand.Create(AddAction, canAdd);
         RemoveActionCommand = ReactiveCommand.Create(RemoveAction, hasSelection);
@@ -816,6 +820,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     {
         Dispatcher.UIThread.Post(() =>
         {
+            _hasProfileSubject.OnNext(_profileState.CurrentProfile is not null);
             this.RaisePropertyChanged(nameof(HasProfile));
             RebuildBoundActions();
         });
@@ -825,5 +830,6 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         _profileState.ProfileChanged -= OnProfileChanged;
+        _hasProfileSubject.Dispose();
     }
 }
