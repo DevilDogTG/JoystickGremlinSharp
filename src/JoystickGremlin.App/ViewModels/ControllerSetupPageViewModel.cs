@@ -2,6 +2,7 @@
 
 using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Threading;
 using JoystickGremlin.App.ViewModels.InputViewer;
@@ -27,6 +28,7 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
     private readonly IProfileState _profileState;
     private readonly ILogger<ControllerSetupPageViewModel> _logger;
     private readonly Dictionary<Guid, DeviceLiveInputViewModel> _liveDevices = [];
+    private readonly CompositeDisposable _subscriptions = [];
 
     private DeviceViewModel? _selectedDevice;
     private UnifiedInputRowViewModel? _selectedInputRow;
@@ -63,11 +65,11 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         _deviceManager.InputReceived += OnInputReceived;
         _profileState.ProfileChanged += OnProfileChanged;
 
-        _ = this.WhenAnyValue(x => x.SelectedDevice)
-            .Subscribe(OnSelectedDeviceChanged);
+        _subscriptions.Add(this.WhenAnyValue(x => x.SelectedDevice)
+            .Subscribe(OnSelectedDeviceChanged));
 
-        _ = this.WhenAnyValue(x => x.SelectedInputRow)
-            .Subscribe(OnSelectedInputRowChanged);
+        _subscriptions.Add(this.WhenAnyValue(x => x.SelectedInputRow)
+            .Subscribe(OnSelectedInputRowChanged));
     }
 
     /// <summary>Gets the device list shown in the left panel.</summary>
@@ -387,12 +389,12 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         if (_liveDevices.TryGetValue(inputEvent.DeviceGuid, out var liveDevice))
             liveDevice.ApplyEvent(inputEvent);
 
-        var device = Devices.FirstOrDefault(existing => existing.Device.Guid == inputEvent.DeviceGuid);
-        if (device is not null)
-            device.LastInputLabel = BuildLastInputLabel(inputEvent);
-
         Dispatcher.UIThread.Post(() =>
         {
+            var device = Devices.FirstOrDefault(existing => existing.Device.Guid == inputEvent.DeviceGuid);
+            if (device is not null)
+                device.LastInputLabel = BuildLastInputLabel(inputEvent);
+
             if (SelectedDevice?.Device.Guid != inputEvent.DeviceGuid)
                 return;
 
@@ -400,13 +402,7 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
                 existing.InputType == inputEvent.InputType &&
                 existing.Identifier == inputEvent.Identifier);
 
-            if (row is null)
-                return;
-
-            row.IsActive = true;
-            Observable.Timer(TimeSpan.FromMilliseconds(600))
-                .ObserveOn(AvaloniaScheduler.Instance)
-                .Subscribe(_ => row.IsActive = false);
+            row?.MarkActive();
         });
     }
 
@@ -449,6 +445,7 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         _deviceManager.InputReceived -= OnInputReceived;
         _profileState.ProfileChanged -= OnProfileChanged;
 
+        _subscriptions.Dispose();
         DisposeInputRows();
         DisposeLiveDevices();
     }
