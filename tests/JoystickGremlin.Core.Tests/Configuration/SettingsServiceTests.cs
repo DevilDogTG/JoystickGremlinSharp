@@ -26,7 +26,7 @@ public sealed class SettingsServiceTests : IDisposable
 
         svc.Settings.Should().NotBeNull();
         svc.Settings.ActiveProfilePath.Should().BeNull();
-        svc.Settings.VJoyDeviceId.Should().Be(1u);
+        svc.Settings.UiUpdateIntervalMs.Should().Be(10);
     }
 
     // ── Save → Load round-trip ─────────────────────────────────────────────
@@ -36,7 +36,7 @@ public sealed class SettingsServiceTests : IDisposable
     {
         var svc = CreateService();
         svc.Settings.ActiveProfilePath = @"C:\Profiles\test.json";
-        svc.Settings.VJoyDeviceId = 3;
+        svc.Settings.UiUpdateIntervalMs = 5;
         svc.Settings.ProfilesFolderPath = @"C:\Profiles";
         svc.Settings.StartMinimized = true;
 
@@ -46,7 +46,7 @@ public sealed class SettingsServiceTests : IDisposable
         await svc2.LoadAsync();
 
         svc2.Settings.ActiveProfilePath.Should().Be(@"C:\Profiles\test.json");
-        svc2.Settings.VJoyDeviceId.Should().Be(3u);
+        svc2.Settings.UiUpdateIntervalMs.Should().Be(5);
         svc2.Settings.ProfilesFolderPath.Should().Be(@"C:\Profiles");
         svc2.Settings.StartMinimized.Should().BeTrue();
     }
@@ -58,7 +58,7 @@ public sealed class SettingsServiceTests : IDisposable
 
         await svc.LoadAsync();
 
-        svc.Settings.VJoyDeviceId.Should().Be(1u);
+        svc.Settings.UiUpdateIntervalMs.Should().Be(10);
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────

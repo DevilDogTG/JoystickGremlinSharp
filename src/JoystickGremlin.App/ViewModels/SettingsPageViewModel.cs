@@ -24,7 +24,6 @@ public sealed class SettingsPageViewModel : ViewModelBase
     private readonly IFilePickerService _filePicker;
     private readonly IForceFeedbackBridge _ffbBridge;
     private readonly ILogger<SettingsPageViewModel> _logger;
-    private decimal _vJoyDeviceId = 1;
     private string _profilesFolderPath = string.Empty;
     private bool _startMinimized;
     private bool _startWithWindows;
@@ -35,6 +34,7 @@ public sealed class SettingsPageViewModel : ViewModelBase
     private int _ffbGainPercent = 100;
     private string _ffbWheelInstanceGuid = string.Empty;
     private string _ffbBridgeStatus = "Disabled";
+    private int _uiUpdateIntervalMs = 10;
     private bool _loading;
 
     /// <summary>
@@ -63,12 +63,12 @@ public sealed class SettingsPageViewModel : ViewModelBase
         _ffbBridgeStatus = _ffbBridge.State.ToString();
 
         this.WhenAnyValue(
-                x => x.VJoyDeviceId,
                 x => x.ProfilesFolderPath,
                 x => x.StartMinimized,
                 x => x.StartWithWindows,
                 x => x.CloseToTray,
                 x => x.EnableAutoLoading,
+                x => x.UiUpdateIntervalMs,
                 (_, _, _, _, _, _) => Unit.Default)
             .Skip(1)
             .Throttle(TimeSpan.FromMilliseconds(800), AvaloniaScheduler.Instance)
@@ -83,13 +83,6 @@ public sealed class SettingsPageViewModel : ViewModelBase
             .Skip(1)
             .Throttle(TimeSpan.FromMilliseconds(800), AvaloniaScheduler.Instance)
             .Subscribe(unit => { if (!_loading) _ = SaveAsync(); });
-    }
-
-    /// <summary>Gets or sets the vJoy device ID (1–16).</summary>
-    public decimal VJoyDeviceId
-    {
-        get => _vJoyDeviceId;
-        set => this.RaiseAndSetIfChanged(ref _vJoyDeviceId, value);
     }
 
     /// <summary>Gets or sets the folder path where profiles are stored.</summary>
@@ -126,6 +119,29 @@ public sealed class SettingsPageViewModel : ViewModelBase
         get => _enableAutoLoading;
         set => this.RaiseAndSetIfChanged(ref _enableAutoLoading, value);
     }
+
+    /// <summary>
+    /// Gets or sets the live-input UI update interval in milliseconds (1–1000).
+    /// Lower values increase refresh frequency but consume more CPU.
+    /// </summary>
+    public int UiUpdateIntervalMs
+    {
+        get => _uiUpdateIntervalMs;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _uiUpdateIntervalMs, value);
+            this.RaisePropertyChanged(nameof(UiUpdateHz));
+            this.RaisePropertyChanged(nameof(UiUpdateHighFrequencyWarning));
+        }
+    }
+
+    /// <summary>Gets the computed refresh rate in Hz based on <see cref="UiUpdateIntervalMs"/>.</summary>
+    public string UiUpdateHz => _uiUpdateIntervalMs > 0
+        ? $"{1000.0 / _uiUpdateIntervalMs:F0} Hz"
+        : "∞";
+
+    /// <summary>Gets a value indicating whether the current interval is high-frequency (≤ 5 ms).</summary>
+    public bool UiUpdateHighFrequencyWarning => _uiUpdateIntervalMs is > 0 and <= 5;
 
     /// <summary>Gets or sets whether the force feedback bridge is enabled.</summary>
     public bool EnableFfbBridge
@@ -190,12 +206,12 @@ public sealed class SettingsPageViewModel : ViewModelBase
         try
         {
             var s = _settingsService.Settings;
-            VJoyDeviceId         = s.VJoyDeviceId;
             ProfilesFolderPath   = s.ProfilesFolderPath ?? string.Empty;
             StartMinimized       = s.StartMinimized;
             StartWithWindows     = _startupService.IsEnabled;
             CloseToTray          = s.CloseToTray;
             EnableAutoLoading    = s.EnableAutoLoading;
+            UiUpdateIntervalMs   = s.UiUpdateIntervalMs > 0 ? s.UiUpdateIntervalMs : 10;
             EnableFfbBridge      = s.EnableFfbBridge;
             FfbVJoyDeviceId      = s.FfbVJoyDeviceId;
             FfbGainPercent       = s.FfbGainPercent;
@@ -260,11 +276,11 @@ public sealed class SettingsPageViewModel : ViewModelBase
             vm.ApplyToModel();
 
         var s = _settingsService.Settings;
-        s.VJoyDeviceId       = (uint)VJoyDeviceId;
         s.ProfilesFolderPath = string.IsNullOrWhiteSpace(ProfilesFolderPath) ? null : ProfilesFolderPath;
         s.StartMinimized     = StartMinimized;
         s.CloseToTray        = CloseToTray;
         s.EnableAutoLoading  = EnableAutoLoading;
+        s.UiUpdateIntervalMs = UiUpdateIntervalMs;
         s.EnableFfbBridge    = EnableFfbBridge;
         s.FfbVJoyDeviceId    = (uint)FfbVJoyDeviceId;
         s.FfbGainPercent     = FfbGainPercent;

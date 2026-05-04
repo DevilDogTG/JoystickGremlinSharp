@@ -10,18 +10,49 @@
             <TextBlock Text="Settings" FontWeight="SemiBold" FontSize="18"/>
 
             <StackPanel Spacing="4">
-                <TextBlock Text="vJoy Device ID (1–16)"/>
-                <NumericUpDown Value="{Binding VJoyDeviceId}"
-                               Minimum="1" Maximum="16" Increment="1"
-                               FormatString="0"/>
-            </StackPanel>
-
-            <StackPanel Spacing="4">
                 <TextBlock Text="Profiles Folder Path"/>
                 <TextBox Text="{Binding ProfilesFolderPath}" PlaceholderText="(default: %AppData%\JoystickGremlinSharp\profiles)"/>
             </StackPanel>
 
             <CheckBox Content="Start minimized to tray" IsChecked="{Binding StartMinimized}"/>
+
+            <!-- ─── Live Input Display ─── -->
+            <Border Padding="0,8,0,0"
+                    BorderThickness="0,1,0,0"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Live Input Display" FontWeight="SemiBold" FontSize="15"/>
+                    <TextBlock TextWrapping="Wrap" Opacity="0.6" FontSize="11">
+                        Controls how often the Controller Setup page refreshes live input state.
+                        Lower interval = higher refresh rate. Very low values (≤ 5 ms) may increase CPU usage noticeably.
+                    </TextBlock>
+                    <Grid ColumnDefinitions="*,120,Auto" RowDefinitions="Auto" ColumnSpacing="8">
+                        <TextBlock Grid.Column="0"
+                                   Text="Update interval (ms)"
+                                   VerticalAlignment="Center"/>
+                        <NumericUpDown Grid.Column="1"
+                                       Value="{Binding UiUpdateIntervalMs}"
+                                       Minimum="1" Maximum="1000" Increment="5"
+                                       FormatString="0"
+                                       ToolTip.Tip="Live input refresh interval in milliseconds. 10 ms = ~100 Hz. Lower = smoother but more CPU."/>
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding UiUpdateHz}"
+                                   VerticalAlignment="Center"
+                                   FontWeight="SemiBold"
+                                   Opacity="0.8"/>
+                    </Grid>
+                    <Border Background="#40FF6600"
+                            CornerRadius="4"
+                            Padding="8,6"
+                            IsVisible="{Binding UiUpdateHighFrequencyWarning}">
+                        <TextBlock TextWrapping="Wrap"
+                                   FontSize="11"
+                                   Foreground="Orange">
+                            ⚠️ Very high refresh rate (≤ 5 ms / ≥ 200 Hz). This may consume significant CPU resources, especially with multiple high-speed devices connected.
+                        </TextBlock>
+                    </Border>
+                </StackPanel>
+            </Border>
 
             <!-- ─── System Tray ─── -->
             <Border Padding="0,8,0,0"
