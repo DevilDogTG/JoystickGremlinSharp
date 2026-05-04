@@ -31,6 +31,11 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
     private readonly ConcurrentDictionary<Guid, DeviceLiveInputViewModel> _liveDevices = new();
     private readonly CompositeDisposable _subscriptions = [];
 
+    // Throttle live-input UI updates to ~30 Hz per device to prevent flooding the UI thread
+    // at high polling rates (e.g. 1000 Hz steering wheels).
+    private readonly ConcurrentDictionary<Guid, long> _lastUiUpdateMs = new();
+    private const long UiUpdateIntervalMs = 33; // ~30 Hz
+
     private DeviceViewModel? _selectedDevice;
     private UnifiedInputRowViewModel? _selectedInputRow;
     private bool _isBindingEditorOpen;
@@ -390,21 +395,33 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
 
     private void OnInputReceived(object? sender, InputEvent inputEvent)
     {
+        // Always update live axis/button/hat meters synchronously on the callback thread.
         if (_liveDevices.TryGetValue(inputEvent.DeviceGuid, out var liveDevice))
             liveDevice.ApplyEvent(inputEvent);
 
+        // Throttle label + row-highlight UI updates to ~30 Hz per device.
+        // At 1000 Hz polling, posting to UIThread every event would flood the message queue
+        // and cause visible lag. Only post when the interval has elapsed.
+        var now = Environment.TickCount64;
+        var last = _lastUiUpdateMs.GetOrAdd(inputEvent.DeviceGuid, 0L);
+        if (now - last < UiUpdateIntervalMs)
+            return;
+
+        _lastUiUpdateMs[inputEvent.DeviceGuid] = now;
+
+        var capturedEvent = inputEvent;
         Dispatcher.UIThread.Post(() =>
         {
-            var device = Devices.FirstOrDefault(existing => existing.Device.Guid == inputEvent.DeviceGuid);
+            var device = Devices.FirstOrDefault(existing => existing.Device.Guid == capturedEvent.DeviceGuid);
             if (device is not null)
-                device.LastInputLabel = BuildLastInputLabel(inputEvent);
+                device.LastInputLabel = BuildLastInputLabel(capturedEvent);
 
-            if (SelectedDevice?.Device.Guid != inputEvent.DeviceGuid)
+            if (SelectedDevice?.Device.Guid != capturedEvent.DeviceGuid)
                 return;
 
             var row = InputRows.FirstOrDefault(existing =>
-                existing.InputType == inputEvent.InputType &&
-                existing.Identifier == inputEvent.Identifier);
+                existing.InputType == capturedEvent.InputType &&
+                existing.Identifier == capturedEvent.Identifier);
 
             row?.MarkActive();
         });
