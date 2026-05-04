@@ -25,6 +25,7 @@ public sealed class DillDeviceManager : IDeviceManager
     private readonly HashSet<Guid> _virtualDeviceGuids = [];
     // EmuWheel devices spoofed to a non-vJoy VID/PID pair that should still be excluded from physical inputs.
     private readonly HashSet<(uint vid, uint pid)> _emuWheelVidPids = [];
+    private readonly object _emuWheelVidPidsLock = new();
     private readonly ILogger<DillDeviceManager> _logger;
 
     // Stored to prevent the GC from collecting unmanaged delegates.
@@ -118,9 +119,10 @@ public sealed class DillDeviceManager : IDeviceManager
     /// </summary>
     /// <param name="vendorId">USB Vendor ID of the spoofed wheel model.</param>
     /// <param name="productId">USB Product ID of the spoofed wheel model.</param>
-    public void RegisterEmuWheelVidPid(uint vendorId, uint productId)
+    internal void RegisterEmuWheelVidPid(uint vendorId, uint productId)
     {
-        _emuWheelVidPids.Add((vendorId, productId));
+        lock (_emuWheelVidPidsLock)
+            _emuWheelVidPids.Add((vendorId, productId));
         _logger.LogDebug(
             "Registered EmuWheel VID/PID filter: VID=0x{VID:X4} PID=0x{PID:X4}",
             vendorId, productId);
@@ -132,9 +134,10 @@ public sealed class DillDeviceManager : IDeviceManager
     /// </summary>
     /// <param name="vendorId">USB Vendor ID to unregister.</param>
     /// <param name="productId">USB Product ID to unregister.</param>
-    public void UnregisterEmuWheelVidPid(uint vendorId, uint productId)
+    internal void UnregisterEmuWheelVidPid(uint vendorId, uint productId)
     {
-        _emuWheelVidPids.Remove((vendorId, productId));
+        lock (_emuWheelVidPidsLock)
+            _emuWheelVidPids.Remove((vendorId, productId));
         _logger.LogDebug(
             "Unregistered EmuWheel VID/PID filter: VID=0x{VID:X4} PID=0x{PID:X4}",
             vendorId, productId);
@@ -159,7 +162,10 @@ public sealed class DillDeviceManager : IDeviceManager
         {
             var summary = DillNative.get_device_information_by_index(i);
             var device = new DillDevice(summary);
-            if (device.IsVirtual || _emuWheelVidPids.Contains((device.VendorId, device.ProductId)))
+            bool isEmuWheel;
+            lock (_emuWheelVidPidsLock)
+                isEmuWheel = _emuWheelVidPids.Contains((device.VendorId, device.ProductId));
+            if (device.IsVirtual || isEmuWheel)
             {
                 _virtualDeviceGuids.Add(device.Guid);
                 _logger.LogDebug(
@@ -245,7 +251,11 @@ public sealed class DillDeviceManager : IDeviceManager
 
         var device = new DillDevice(data);
 
-        if (device.IsVirtual || _emuWheelVidPids.Contains((device.VendorId, device.ProductId)))
+        bool isEmuWheel;
+        lock (_emuWheelVidPidsLock)
+            isEmuWheel = _emuWheelVidPids.Contains((device.VendorId, device.ProductId));
+
+        if (device.IsVirtual || isEmuWheel)
         {
             if (actionType == 1)
                 _virtualDeviceGuids.Add(device.Guid);

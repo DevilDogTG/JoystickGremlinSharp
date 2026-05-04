@@ -26,6 +26,7 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
     private readonly ILogger<EmuWheelDeviceManager> _logger;
 
     private readonly object _deviceLock = new();
+    private readonly object _spoofLock = new();
     private readonly Dictionary<uint, EmuWheelDevice> _acquiredDevices = [];
 
     private WheelModel? _activeModel;
@@ -55,7 +56,10 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
     public bool IsSpoofActive => _spoof.IsActive;
 
     /// <inheritdoc/>
-    public WheelModel? ActiveModel => _activeModel;
+    public WheelModel? ActiveModel
+    {
+        get { lock (_spoofLock) return _activeModel; }
+    }
 
     /// <inheritdoc/>
     public async Task ApplySpoofAsync(
@@ -73,7 +77,8 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
             dill.RegisterEmuWheelVidPid(info.VendorId, info.ProductId);
 
         var applied = await _spoof.ApplyAsync(model, vjoyId, cancellationToken).ConfigureAwait(false);
-        _activeModel = model;
+        lock (_spoofLock)
+            _activeModel = model;
 
         if (!applied)
         {
@@ -92,15 +97,20 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
 
         // Unregister the EmuWheel VID/PID filter before restoring so the original wheel
         // (if connected) becomes visible again in the physical device list.
-        if (_activeModel.HasValue && _deviceManager is DillDeviceManager dill)
+        WheelModel? modelSnapshot;
+        lock (_spoofLock)
+            modelSnapshot = _activeModel;
+
+        if (modelSnapshot.HasValue && _deviceManager is DillDeviceManager dill)
         {
-            var info = WheelModelRegistry.Get(_activeModel.Value);
+            var info = WheelModelRegistry.Get(modelSnapshot.Value);
             dill.UnregisterEmuWheelVidPid(info.VendorId, info.ProductId);
         }
 
         ReleaseAll();
         await _spoof.RestoreAsync(cancellationToken).ConfigureAwait(false);
-        _activeModel = null;
+        lock (_spoofLock)
+            _activeModel = null;
     }
 
     /// <inheritdoc/>
@@ -117,7 +127,9 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
                 return existing;
 
             var inner = _vjoyManager.AcquireDevice(vjoyId);
-            var wheelModel = _activeModel ?? WheelModel.LogitechG29;
+            WheelModel wheelModel;
+            lock (_spoofLock)
+                wheelModel = _activeModel ?? WheelModel.LogitechG29;
             var device = new EmuWheelDevice(inner, wheelModel);
             _acquiredDevices[vjoyId] = device;
 
@@ -185,9 +197,13 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
         if (_spoof.IsActive)
         {
             // Unregister EmuWheel VID/PID filter before restoring.
-            if (_activeModel.HasValue && _deviceManager is DillDeviceManager dill)
+            WheelModel? modelSnapshot;
+            lock (_spoofLock)
+                modelSnapshot = _activeModel;
+
+            if (modelSnapshot.HasValue && _deviceManager is DillDeviceManager dill)
             {
-                var info = WheelModelRegistry.Get(_activeModel.Value);
+                var info = WheelModelRegistry.Get(modelSnapshot.Value);
                 dill.UnregisterEmuWheelVidPid(info.VendorId, info.ProductId);
             }
 

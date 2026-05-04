@@ -133,8 +133,6 @@ public sealed class EventPipeline : IEventPipeline
                 _logger.LogError(ex, "EmuWheel restore failed during pipeline disposal");
             }
         }
-
-        _emuWheelManager.Dispose();
     }
 
     private void OnProfileChanged(object? sender, ProfileModel? profile)
