@@ -41,13 +41,13 @@
                                    FontWeight="SemiBold"
                                    Opacity="0.8"/>
                     </Grid>
-                    <Border Background="#40FF6600"
+                    <Border Background="{StaticResource WarningBackgroundBrush}"
                             CornerRadius="4"
                             Padding="8,6"
                             IsVisible="{Binding UiUpdateHighFrequencyWarning}">
                         <TextBlock TextWrapping="Wrap"
                                    FontSize="11"
-                                   Foreground="Orange">
+                                   Foreground="{StaticResource WarningForegroundBrush}">
                             ⚠️ Very high refresh rate (≤ 5 ms / ≥ 200 Hz). This may consume significant CPU resources, especially with multiple high-speed devices connected.
                         </TextBlock>
                     </Border>
