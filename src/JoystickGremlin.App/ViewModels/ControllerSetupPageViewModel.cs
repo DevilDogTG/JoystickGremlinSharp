@@ -23,6 +23,7 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
 {
     private readonly IDeviceManager _deviceManager;
     private readonly IActionRegistry _actionRegistry;
+    private readonly IProfileRepository _profileRepository;
     private readonly IProfileState _profileState;
     private readonly ILogger<ControllerSetupPageViewModel> _logger;
     private readonly Dictionary<Guid, DeviceLiveInputViewModel> _liveDevices = [];
@@ -38,12 +39,14 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
     public ControllerSetupPageViewModel(
         IDeviceManager deviceManager,
         IActionRegistry actionRegistry,
+        IProfileRepository profileRepository,
         IProfileState profileState,
         BindingsPageViewModel bindingEditor,
         ILogger<ControllerSetupPageViewModel> logger)
     {
         _deviceManager = deviceManager;
         _actionRegistry = actionRegistry;
+        _profileRepository = profileRepository;
         _profileState = profileState;
         BindingEditor = bindingEditor;
         _logger = logger;
@@ -53,7 +56,7 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
 
         OpenBindingEditorCommand = ReactiveCommand.Create(OpenBindingEditor);
         CloseBindingEditorCommand = ReactiveCommand.Create(CloseBindingEditor);
-        SaveBindingChangesCommand = ReactiveCommand.Create(SaveBindingChanges);
+        SaveBindingChangesCommand = ReactiveCommand.CreateFromTask(SaveBindingChangesAsync);
 
         _deviceManager.DeviceConnected += OnDeviceConnected;
         _deviceManager.DeviceDisconnected += OnDeviceDisconnected;
@@ -196,13 +199,25 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         IsBindingEditorOpen = false;
     }
 
-    private void SaveBindingChanges()
+    private async Task SaveBindingChangesAsync()
     {
-        if (SelectedInputRow is null || BindingEditor.SelectedBoundAction is null)
-            return;
+        if (SelectedInputRow is not null && BindingEditor.SelectedBoundAction is not null)
+        {
+            BindingEditor.SaveCurrentActionConfig();
+            RefreshSelectedInputRowSummary();
+        }
 
-        BindingEditor.SaveCurrentActionConfig();
-        RefreshSelectedInputRowSummary();
+        var profile = _profileState.CurrentProfile;
+        var filePath = _profileState.FilePath;
+
+        if (profile is null || string.IsNullOrWhiteSpace(filePath))
+        {
+            _logger.LogWarning("Cannot persist binding changes because no profile file is loaded.");
+            return;
+        }
+
+        await _profileRepository.SaveAsync(profile, filePath);
+        _logger.LogInformation("Saved profile {ProfileName} to {Path}", profile.Name, filePath);
     }
 
     private void RebuildInputRows()
