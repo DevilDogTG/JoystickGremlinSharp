@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+using System.Reactive.Linq;
+using Avalonia.Threading;
 using JoystickGremlin.App.ViewModels.InputViewer;
 using JoystickGremlin.Core.Devices;
 using ReactiveUI;
+using ReactiveUI.Avalonia;
 
 namespace JoystickGremlin.App.ViewModels;
 
@@ -14,6 +17,7 @@ public sealed class UnifiedInputRowViewModel : ViewModelBase, IDisposable
 {
     private bool _isActive;
     private string _boundActions = "(none)";
+    private IDisposable? _activeTimer;
 
     /// <summary>
     /// Initializes a new instance of <see cref="UnifiedInputRowViewModel"/>.
@@ -79,8 +83,28 @@ public sealed class UnifiedInputRowViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _isActive, value);
     }
 
+    /// <summary>
+    /// Marks this row as active and automatically clears the flag after 600 ms.
+    /// Cancels any pending clear from a previous call, preventing stale timers accumulating.
+    /// Must be called on the UI thread.
+    /// </summary>
+    public void MarkActive()
+    {
+        IsActive = true;
+        _activeTimer?.Dispose();
+        _activeTimer = Observable.Timer(TimeSpan.FromMilliseconds(600))
+            .ObserveOn(AvaloniaScheduler.Instance)
+            .Subscribe(_ =>
+            {
+                IsActive = false;
+                _activeTimer = null;
+            });
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {
+        _activeTimer?.Dispose();
+        _activeTimer = null;
     }
 }
