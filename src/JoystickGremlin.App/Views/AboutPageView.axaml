@@ -60,11 +60,23 @@
                     BorderThickness="0,1,0,0"
                     BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                 <StackPanel Spacing="6">
-                    <TextBlock Text="Attribution" FontWeight="SemiBold" FontSize="15"/>
+                    <TextBlock Text="Based On" FontWeight="SemiBold" FontSize="15"/>
                     <TextBlock Text="{Binding Attribution}"
                                TextWrapping="Wrap"
                                FontSize="12"
                                Opacity="0.75"/>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="Original project:" FontSize="12" Opacity="0.6"/>
+                        <SelectableTextBlock Text="{Binding OriginalRepoUrl}"
+                                             Foreground="{DynamicResource SystemAccentColor}"
+                                             FontSize="12"
+                                             ToolTip.Tip="Select all (Ctrl+A) and copy (Ctrl+C) to copy the URL"/>
+                        <Button Content="Open Original Repository"
+                                Command="{Binding OpenOriginalRepoCommand}"
+                                FontSize="12"
+                                Cursor="Hand"
+                                ToolTip.Tip="{Binding OriginalRepoUrl}"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
