@@ -321,10 +321,11 @@
                             Padding="6,4"
                             BorderThickness="0,0,1,1"
                             BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
+                        <StackPanel Spacing="4">
+                            <!-- Row 1: Action type selector -->
                             <ComboBox ItemsSource="{Binding BindingEditor.AvailableActionTypes}"
                                       SelectedItem="{Binding BindingEditor.SelectedNewActionType}"
-                                      MinWidth="130"
+                                      HorizontalAlignment="Stretch"
                                       IsEnabled="{Binding BindingEditor.HasProfile}">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate x:DataType="actions:IActionDescriptor">
@@ -332,24 +333,27 @@
                                     </DataTemplate>
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
-                            <Button Content="+ Add"
-                                    Command="{Binding BindingEditor.AddActionCommand}"
-                                    FontSize="12"/>
-                            <Button Content="− Remove"
-                                    Command="{Binding BindingEditor.RemoveActionCommand}"
-                                    FontSize="12"/>
-                            <Button Content="▲"
-                                    Command="{Binding BindingEditor.MoveUpCommand}"
-                                    FontSize="12"
-                                    ToolTip.Tip="Move action up"/>
-                            <Button Content="▼"
-                                    Command="{Binding BindingEditor.MoveDownCommand}"
-                                    FontSize="12"
-                                    ToolTip.Tip="Move action down"/>
-                            <Button Content="💾 Save"
-                                    Command="{Binding SaveBindingChangesCommand}"
-                                    FontSize="12"
-                                    ToolTip.Tip="Save binding changes to profile"/>
+                            <!-- Row 2: Action management buttons -->
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Button Content="+ Add"
+                                        Command="{Binding BindingEditor.AddActionCommand}"
+                                        FontSize="12"/>
+                                <Button Content="− Remove"
+                                        Command="{Binding BindingEditor.RemoveActionCommand}"
+                                        FontSize="12"/>
+                                <Button Content="▲"
+                                        Command="{Binding BindingEditor.MoveUpCommand}"
+                                        FontSize="12"
+                                        ToolTip.Tip="Move action up"/>
+                                <Button Content="▼"
+                                        Command="{Binding BindingEditor.MoveDownCommand}"
+                                        FontSize="12"
+                                        ToolTip.Tip="Move action down"/>
+                                <Button Content="💾 Save"
+                                        Command="{Binding SaveBindingChangesCommand}"
+                                        FontSize="12"
+                                        ToolTip.Tip="Save binding changes to profile"/>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
 
