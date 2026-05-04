@@ -53,6 +53,7 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
 
         OpenBindingEditorCommand = ReactiveCommand.Create(OpenBindingEditor);
         CloseBindingEditorCommand = ReactiveCommand.Create(CloseBindingEditor);
+        SaveBindingChangesCommand = ReactiveCommand.Create(SaveBindingChanges);
 
         _deviceManager.DeviceConnected += OnDeviceConnected;
         _deviceManager.DeviceDisconnected += OnDeviceDisconnected;
@@ -119,6 +120,9 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the command that closes the binding editor overlay.</summary>
     public ReactiveCommand<Unit, Unit> CloseBindingEditorCommand { get; }
+
+    /// <summary>Gets the command that saves the current binding editor changes.</summary>
+    public ReactiveCommand<Unit, Unit> SaveBindingChangesCommand { get; }
 
     /// <summary>
     /// Rebuilds the device and live-input state from the currently connected devices.
@@ -192,6 +196,15 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         IsBindingEditorOpen = false;
     }
 
+    private void SaveBindingChanges()
+    {
+        if (SelectedInputRow is null || BindingEditor.SelectedBoundAction is null)
+            return;
+
+        BindingEditor.SaveCurrentActionConfig();
+        RefreshSelectedInputRowSummary();
+    }
+
     private void RebuildInputRows()
     {
         (InputType inputType, int identifier)? previousSelection = SelectedInputRow is null
@@ -260,6 +273,17 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
 
         row.BoundActions = BuildBoundActionsSummary(deviceGuid, inputType, identifier);
         return row;
+    }
+
+    private void RefreshSelectedInputRowSummary()
+    {
+        if (SelectedDevice is null || SelectedInputRow is null)
+            return;
+
+        SelectedInputRow.BoundActions = BuildBoundActionsSummary(
+            SelectedDevice.Device.Guid,
+            SelectedInputRow.InputType,
+            SelectedInputRow.Identifier);
     }
 
     private string BuildBoundActionsSummary(Guid deviceGuid, InputType inputType, int identifier)
