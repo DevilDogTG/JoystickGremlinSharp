@@ -84,16 +84,6 @@ public sealed class HatToAxisDescriptor : IActionDescriptor
             {
                 var (xValue, yValue) = ComputeAxisValues(inputEvent.Value);
 
-                _logger.LogDebug(
-                    "HatToAxis: hat {Identifier} value {HatValue} -> vJoy {VJoyId} X-axis {XIndex}={XValue}, Y-axis {YIndex}={YValue}",
-                    inputEvent.Identifier,
-                    inputEvent.Value,
-                    _vjoyId,
-                    _xAxisIndex,
-                    xValue,
-                    _yAxisIndex,
-                    yValue);
-
                 var device = _manager.GetOrAcquireDevice(_vjoyId);
                 try
                 {
