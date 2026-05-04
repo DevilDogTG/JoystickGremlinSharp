@@ -31,14 +31,13 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
     private readonly ConcurrentDictionary<Guid, DeviceLiveInputViewModel> _liveDevices = new();
     private readonly CompositeDisposable _subscriptions = [];
 
-    // Throttle live-input UI updates to ~30 Hz per device to prevent flooding the UI thread
+    // Throttle live-input UI updates to ~100 Hz per device to prevent flooding the UI thread
     // at high polling rates (e.g. 1000 Hz steering wheels).
     private readonly ConcurrentDictionary<Guid, long> _lastUiUpdateMs = new();
-    private const long UiUpdateIntervalMs = 33; // ~30 Hz
+    private const long UiUpdateIntervalMs = 10; // ~100 Hz
 
     private DeviceViewModel? _selectedDevice;
     private UnifiedInputRowViewModel? _selectedInputRow;
-    private bool _isBindingEditorOpen;
     private bool _isRebuildingInputRows;
 
     /// <summary>
@@ -62,8 +61,6 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         Devices = [];
         InputRows = [];
 
-        OpenBindingEditorCommand = ReactiveCommand.Create(OpenBindingEditor);
-        CloseBindingEditorCommand = ReactiveCommand.Create(CloseBindingEditor);
         SaveBindingChangesCommand = ReactiveCommand.CreateFromTask(SaveBindingChangesAsync);
 
         _deviceManager.DeviceConnected += OnDeviceConnected;
@@ -101,13 +98,6 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _selectedInputRow, value);
     }
 
-    /// <summary>Gets or sets whether the binding editor overlay is open.</summary>
-    public bool IsBindingEditorOpen
-    {
-        get => _isBindingEditorOpen;
-        set => this.RaiseAndSetIfChanged(ref _isBindingEditorOpen, value);
-    }
-
     /// <summary>Gets whether an input row is currently selected.</summary>
     public bool HasSelectedInput => SelectedInputRow is not null;
 
@@ -125,12 +115,6 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the behavior options used by the keyboard mapping editor.</summary>
     public IReadOnlyList<string> MapToKeyboardBehaviors => BindingsPageViewModel.MapToKeyboardBehaviors;
-
-    /// <summary>Gets the command that opens the binding editor overlay.</summary>
-    public ReactiveCommand<Unit, Unit> OpenBindingEditorCommand { get; }
-
-    /// <summary>Gets the command that closes the binding editor overlay.</summary>
-    public ReactiveCommand<Unit, Unit> CloseBindingEditorCommand { get; }
 
     /// <summary>Gets the command that saves the current binding editor changes.</summary>
     public ReactiveCommand<Unit, Unit> SaveBindingChangesCommand { get; }
@@ -184,27 +168,10 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         this.RaisePropertyChanged(nameof(ShowHatDetail));
         this.RaisePropertyChanged(nameof(CanEditBinding));
 
-        if (row is null)
-        {
-            if (!_isRebuildingInputRows)
-                IsBindingEditorOpen = false;
-
-            if (_isRebuildingInputRows)
-                return;
-        }
+        if (row is null && _isRebuildingInputRows)
+            return;
 
         SyncBindingEditorSelection();
-    }
-
-    private void OpenBindingEditor()
-    {
-        if (CanEditBinding)
-            IsBindingEditorOpen = true;
-    }
-
-    private void CloseBindingEditor()
-    {
-        IsBindingEditorOpen = false;
     }
 
     private async Task SaveBindingChangesAsync()
@@ -233,7 +200,6 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         (InputType inputType, int identifier)? previousSelection = SelectedInputRow is null
             ? null
             : (SelectedInputRow.InputType, SelectedInputRow.Identifier);
-        var shouldKeepBindingEditorOpen = IsBindingEditorOpen;
 
         _isRebuildingInputRows = true;
 
@@ -273,8 +239,6 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         finally
         {
             _isRebuildingInputRows = false;
-            if (shouldKeepBindingEditorOpen && SelectedInputRow is not null)
-                IsBindingEditorOpen = true;
         }
     }
 

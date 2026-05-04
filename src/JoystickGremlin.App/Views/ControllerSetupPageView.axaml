@@ -151,34 +151,28 @@
                       ResizeBehavior="PreviousAndNext"
                       ShowsPreview="True"/>
 
-        <DockPanel Grid.Column="4"
-                   MinWidth="320">
-            <Border DockPanel.Dock="Top"
-                    Padding="12,8"
-                    BorderThickness="0,0,0,1"
-                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                <StackPanel Spacing="3">
-                    <TextBlock Text="{Binding SelectedDevice.Name, FallbackValue='Controller Setup'}"
-                               FontWeight="SemiBold"
-                               FontSize="14"/>
-                    <TextBlock Text="{Binding SelectedInputRow.Label, FallbackValue='Select an input row to inspect it live'}"
-                               FontSize="12"
-                               Opacity="0.75"/>
-                    <TextBlock Text="{Binding SelectedInputRow.BoundActions, FallbackValue='(none)'}"
-                               FontSize="11"
-                               Opacity="0.6"/>
-                </StackPanel>
-            </Border>
+        <Grid Grid.Column="4"
+              RowDefinitions="*,6,*"
+              MinWidth="320">
 
-            <Border DockPanel.Dock="Bottom"
-                    Padding="12,8"
-                    BorderThickness="0,1,0,0"
-                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                <Button Content="Edit Binding"
-                        Command="{Binding OpenBindingEditorCommand}"
-                        IsEnabled="{Binding CanEditBinding}"
-                        HorizontalAlignment="Left"/>
-            </Border>
+            <!-- ─── Row 0: Live detail ─── -->
+            <DockPanel Grid.Row="0">
+                <Border DockPanel.Dock="Top"
+                        Padding="12,8"
+                        BorderThickness="0,0,0,1"
+                        BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="{Binding SelectedDevice.Name, FallbackValue='Controller Setup'}"
+                                   FontWeight="SemiBold"
+                                   FontSize="14"/>
+                        <TextBlock Text="{Binding SelectedInputRow.Label, FallbackValue='Select an input row to inspect it live'}"
+                                   FontSize="12"
+                                   Opacity="0.75"/>
+                        <TextBlock Text="{Binding SelectedInputRow.BoundActions, FallbackValue='(none)'}"
+                                   FontSize="11"
+                                   Opacity="0.6"/>
+                    </StackPanel>
+                </Border>
 
             <ScrollViewer>
                 <StackPanel Margin="12"
@@ -295,77 +289,79 @@
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>
-        </DockPanel>
+            </DockPanel>
 
-        <Border Grid.Column="4"
-                Background="#F0202020"
-                IsVisible="{Binding IsBindingEditorOpen}">
-            <DockPanel LastChildFill="True">
-                <Border DockPanel.Dock="Top"
-                        Padding="12,10"
-                        BorderThickness="0,0,0,1"
-                        BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                    <Grid ColumnDefinitions="*,Auto">
+            <!-- ─── Row 1: Splitter ─── -->
+            <GridSplitter Grid.Row="1"
+                          Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                          ResizeDirection="Rows"
+                          ResizeBehavior="PreviousAndNext"
+                          ShowsPreview="True"/>
+
+            <!-- ─── Row 2: Binding editor (action list left, config right) ─── -->
+            <Grid Grid.Row="2" ColumnDefinitions="*,6,*">
+
+                <!-- Left: bound action list + toolbar -->
+                <DockPanel Grid.Column="0">
+                    <Border DockPanel.Dock="Top"
+                            Padding="8,6"
+                            BorderThickness="0,0,1,1"
+                            BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                         <StackPanel Spacing="2">
-                            <TextBlock Text="Edit Binding"
+                            <TextBlock Text="Bindings"
                                        FontWeight="SemiBold"
-                                       FontSize="14"/>
-                            <TextBlock Text="{Binding SelectedInputRow.Label, FallbackValue='Input'}"
+                                       FontSize="13"/>
+                            <TextBlock Text="{Binding SelectedInputRow.Label, FallbackValue='Select an input row'}"
                                        FontSize="11"
-                                       Opacity="0.7"/>
+                                       Opacity="0.65"/>
                         </StackPanel>
-                        <Button Grid.Column="1"
-                                Content="✕ Close"
-                                Command="{Binding CloseBindingEditorCommand}"/>
-                    </Grid>
-                </Border>
+                    </Border>
 
-                <Border DockPanel.Dock="Top"
-                        Padding="8,4"
-                        BorderThickness="0,0,0,1"
-                        BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <ComboBox ItemsSource="{Binding BindingEditor.AvailableActionTypes}"
-                                  SelectedItem="{Binding BindingEditor.SelectedNewActionType}"
-                                  MinWidth="140"
-                                  IsEnabled="{Binding BindingEditor.HasProfile}">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate x:DataType="actions:IActionDescriptor">
-                                    <TextBlock Text="{Binding Name}"/>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                        <Button Content="+ Add"
-                                Command="{Binding BindingEditor.AddActionCommand}"
-                                FontSize="12"/>
-                        <Button Content="− Remove"
-                                Command="{Binding BindingEditor.RemoveActionCommand}"
-                                FontSize="12"/>
-                        <Button Content="▲"
-                                Command="{Binding BindingEditor.MoveUpCommand}"
-                                FontSize="12"
-                                ToolTip.Tip="Move action up"/>
-                        <Button Content="▼"
-                                Command="{Binding BindingEditor.MoveDownCommand}"
-                                FontSize="12"
-                                ToolTip.Tip="Move action down"/>
-                        <Button Content="Save Changes"
-                                Command="{Binding SaveBindingChangesCommand}"
-                                FontSize="12"/>
-                    </StackPanel>
-                </Border>
+                    <Border DockPanel.Dock="Top"
+                            Padding="6,4"
+                            BorderThickness="0,0,1,1"
+                            BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <ComboBox ItemsSource="{Binding BindingEditor.AvailableActionTypes}"
+                                      SelectedItem="{Binding BindingEditor.SelectedNewActionType}"
+                                      MinWidth="130"
+                                      IsEnabled="{Binding BindingEditor.HasProfile}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="actions:IActionDescriptor">
+                                        <TextBlock Text="{Binding Name}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Content="+ Add"
+                                    Command="{Binding BindingEditor.AddActionCommand}"
+                                    FontSize="12"/>
+                            <Button Content="− Remove"
+                                    Command="{Binding BindingEditor.RemoveActionCommand}"
+                                    FontSize="12"/>
+                            <Button Content="▲"
+                                    Command="{Binding BindingEditor.MoveUpCommand}"
+                                    FontSize="12"
+                                    ToolTip.Tip="Move action up"/>
+                            <Button Content="▼"
+                                    Command="{Binding BindingEditor.MoveDownCommand}"
+                                    FontSize="12"
+                                    ToolTip.Tip="Move action down"/>
+                            <Button Content="💾 Save"
+                                    Command="{Binding SaveBindingChangesCommand}"
+                                    FontSize="12"
+                                    ToolTip.Tip="Save binding changes to profile"/>
+                        </StackPanel>
+                    </Border>
 
-                <Grid RowDefinitions="180,*">
-                    <ListBox Grid.Row="0"
-                             ItemsSource="{Binding BindingEditor.BoundActions}"
+                    <ListBox ItemsSource="{Binding BindingEditor.BoundActions}"
                              SelectedItem="{Binding BindingEditor.SelectedBoundAction}"
-                             BorderThickness="0,0,0,1">
+                             BorderThickness="0,0,1,0">
                         <ListBox.ItemTemplate>
                             <DataTemplate x:DataType="vm:BoundActionViewModel">
                                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="4,3">
                                     <TextBlock Text="{Binding ActionName}"
                                                FontWeight="SemiBold"
-                                               MinWidth="120"/>
+                                               MinWidth="100"/>
                                     <TextBlock Text="{Binding ConfigSummary}"
                                                Opacity="0.6"
                                                FontSize="11"/>
@@ -373,13 +369,32 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
+                </DockPanel>
 
-                    <ScrollViewer Grid.Row="1">
+                <GridSplitter Grid.Column="1"
+                              Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                              ResizeDirection="Columns"
+                              ResizeBehavior="PreviousAndNext"
+                              ShowsPreview="True"/>
+
+                <!-- Right: configure action form -->
+                <DockPanel Grid.Column="2">
+                    <Border DockPanel.Dock="Top"
+                            Padding="8,6"
+                            BorderThickness="0,0,0,1"
+                            BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                        <TextBlock Text="Configure Action"
+                                   FontWeight="SemiBold"
+                                   FontSize="13"/>
+                    </Border>
+
+                    <ScrollViewer>
                         <StackPanel Margin="12" Spacing="10">
+                            <TextBlock Text="Select a binding to configure it."
+                                       Opacity="0.5"
+                                       IsVisible="{Binding !BindingEditor.ShowConfigPanel}"/>
+
                             <StackPanel Spacing="10" IsVisible="{Binding BindingEditor.ShowConfigPanel}">
-                                <TextBlock Text="Configure Action"
-                                           FontWeight="SemiBold"
-                                           FontSize="14"/>
 
                                 <StackPanel Spacing="6" IsVisible="{Binding BindingEditor.ShowVJoyAxisConfig}">
                                     <TextBlock Text="vJoy Device ID"/>
@@ -554,7 +569,6 @@
                                               HorizontalAlignment="Left"/>
                                 </StackPanel>
 
-                                <!-- Hat to Axes config -->
                                 <StackPanel Spacing="6" IsVisible="{Binding BindingEditor.ShowHatToAxisConfig}">
                                     <TextBlock Text="Target vJoy Device ID"/>
                                     <NumericUpDown Value="{Binding BindingEditor.EditVJoyDeviceId}"
@@ -576,11 +590,13 @@
                                                Opacity="0.65"
                                                Text="Maps hat/POV direction to X/Y axis values. 0°=North(Y+), 90°=East(X+). Diagonals output ~0.707 on each axis. Set an index to 0 to disable that axis."/>
                                 </StackPanel>
+
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
-                </Grid>
-            </DockPanel>
-        </Border>
+                </DockPanel>
+
+            </Grid>
+        </Grid>
     </Grid>
 </UserControl>
