@@ -101,20 +101,33 @@
 
                             <Grid Grid.Column="2"
                                   ClipToBounds="True">
-                                <Grid ColumnDefinitions="50,*"
-                                      ColumnSpacing="4"
-                                      IsVisible="{Binding IsAxis}">
-                                    <ProgressBar Width="50"
-                                                 Height="10"
-                                                 Minimum="0"
-                                                 Maximum="100"
-                                                 Value="{Binding Axis.DisplayPercent, FallbackValue=50}"
+                                 <Grid ColumnDefinitions="50,*"
+                                       ColumnSpacing="4"
+                                       IsVisible="{Binding IsAxis}">
+                                     <Grid Width="50"
+                                           Height="10"
+                                           VerticalAlignment="Center"
+                                           ClipToBounds="True">
+                                         <Border Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+                                         <Grid ColumnDefinitions="*,1,*">
+                                             <ProgressBar Grid.Column="0"
+                                                          Minimum="0"
+                                                          Maximum="100"
+                                                          Value="{Binding Axis.NegativePercent, FallbackValue=0}"
+                                                          FlowDirection="RightToLeft"/>
+                                             <Border Grid.Column="1"
+                                                     Background="{DynamicResource SystemAccentColor}"/>
+                                             <ProgressBar Grid.Column="2"
+                                                          Minimum="0"
+                                                          Maximum="100"
+                                                          Value="{Binding Axis.PositivePercent, FallbackValue=0}"/>
+                                         </Grid>
+                                     </Grid>
+                                     <TextBlock Text="{Binding Axis.ValueLabel, FallbackValue='0.00'}"
+                                                Grid.Column="1"
+                                                 FontSize="10"
+                                                 FontFamily="Consolas,Monospace"
                                                  VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding Axis.ValueLabel, FallbackValue='0.00'}"
-                                               Grid.Column="1"
-                                                FontSize="10"
-                                                FontFamily="Consolas,Monospace"
-                                                VerticalAlignment="Center"/>
                                 </Grid>
 
                                 <TextBlock Text="{Binding Button.IsPressed, StringFormat='{}{0:Pressed;Pressed;Released}'}"
@@ -181,19 +194,32 @@
                                Opacity="0.5"
                                IsVisible="{Binding !HasSelectedInput}"/>
 
-                    <StackPanel Spacing="8"
-                                IsVisible="{Binding ShowAxisDetail}">
-                        <TextBlock Text="Axis Detail"
-                                   FontWeight="SemiBold"
-                                   FontSize="14"/>
-                        <ProgressBar Minimum="0"
-                                     Maximum="100"
-                                     Height="20"
-                                     Value="{Binding SelectedInputRow.Axis.DisplayPercent, FallbackValue=50}"/>
-                        <TextBlock Text="{Binding SelectedInputRow.Axis.ValueLabel, FallbackValue='0.00'}"
-                                   FontSize="13"
-                                   FontFamily="Consolas,Monospace"/>
-                    </StackPanel>
+                     <StackPanel Spacing="8"
+                                 IsVisible="{Binding ShowAxisDetail}">
+                         <TextBlock Text="Axis Detail"
+                                    FontWeight="SemiBold"
+                                    FontSize="14"/>
+                         <Grid Height="20"
+                               ClipToBounds="True">
+                             <Border Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
+                             <Grid ColumnDefinitions="*,2,*">
+                                 <ProgressBar Grid.Column="0"
+                                              Minimum="0"
+                                              Maximum="100"
+                                              Value="{Binding SelectedInputRow.Axis.NegativePercent, FallbackValue=0}"
+                                              FlowDirection="RightToLeft"/>
+                                 <Border Grid.Column="1"
+                                         Background="{DynamicResource SystemAccentColor}"/>
+                                 <ProgressBar Grid.Column="2"
+                                              Minimum="0"
+                                              Maximum="100"
+                                              Value="{Binding SelectedInputRow.Axis.PositivePercent, FallbackValue=0}"/>
+                             </Grid>
+                         </Grid>
+                         <TextBlock Text="{Binding SelectedInputRow.Axis.ValueLabel, FallbackValue='0.00'}"
+                                    FontSize="13"
+                                    FontFamily="Consolas,Monospace"/>
+                     </StackPanel>
 
                     <StackPanel Spacing="8"
                                 IsVisible="{Binding ShowButtonDetail}">
