@@ -17,7 +17,7 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 >   (Settings → Actions → General) for workflows to run on `main`
 > - Release pipeline requires either `RELEASE_TOKEN` secret (fine-grained PAT: Contents+PRs write)
 >   OR repo setting: Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"
-> - **Skills**: Updated code-review (C#/.NET/Avalonia), new finish-feature (automated release workflow)
+> - **Skills**: `code-review`, `finish-feature`, `review-fix`, `re-code-review` — see AI Skills section
 > - **Remaining optional features**: response curve editor (axes), condition-based action pipeline, UI for button mapping configuration
 
 
@@ -697,12 +697,22 @@ Specialized skills are available in `.claude/commands/` to automate common tasks
 
 | Skill | Purpose | Usage |
 |---|---|---|
-| `code-review` | Structured code review for C#/.NET/Avalonia code. Checks ReactiveUI patterns, XAML bindings, threading, C# correctness, Avalonia conventions. Surfaces CRITICAL (crashes, deadlocks, data loss), WARNING (perf, memory, maintenance), and STYLE (idiom violations). Publishes the review to the PR on GitHub when a PR exists, then posts a fix-summary follow-up comment after fixes are applied. | Invoke when PR code needs review or before pushing |
-| `finish-feature` | Automates finalization of a feature branch: commit → push → PR → code review → summary. The workflow now publishes the GitHub PR review and posts a fix-status summary comment instead of stopping at terminal output only. | Use after completing feature implementation |
+| `code-review` | Structured code review for C#/.NET/Avalonia code. Checks ReactiveUI patterns, XAML bindings, threading, C# correctness, Avalonia conventions. Surfaces CRITICAL (crashes, deadlocks, data loss), WARNING (perf, memory, maintenance), and STYLE (idiom violations). Publishes the review to the PR on GitHub when a PR exists. | Invoke for initial PR review |
+| `finish-feature` | Automates finalization of a feature branch: commit → push → PR → code review → **stop**. After the review is posted the workflow ends; user decides what to do next. | Use after completing feature implementation |
+| `review-fix` | Verify that the latest commits resolve the findings from the last code review. Lightweight check — does not re-run the full review checklist. Posts a reply to the original review comment with a resolution table. | Run after applying fixes to check coverage before full re-review |
+| `re-code-review` | Full structured re-review after fixes. Runs preflight checks (PR exists, prior review exists, new commits since last review), then performs and publishes a complete fresh review. Includes a prior-findings delta table. | Manually trigger when you want a full re-review after fixes |
+
+**Review workflow**:
+```
+finish-feature  →  (user fixes code)  →  review-fix (quick check)
+                                       →  re-code-review (full re-review)
+```
 
 **Skill locations**:
 - `.claude/commands/code-review.md` — C#/.NET/Avalonia code review checklist
-- `.claude/commands/finish-feature.md` — Release workflow automation
+- `.claude/commands/finish-feature.md` — Feature finalization workflow
+- `.claude/commands/review-fix.md` — Fix verification workflow
+- `.claude/commands/re-code-review.md` — Full re-review with preflight checks
 
 
 ## Pre-commit Checks
