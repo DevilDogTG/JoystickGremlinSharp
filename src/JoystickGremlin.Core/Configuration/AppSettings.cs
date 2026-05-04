@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+using JoystickGremlin.Core.EmuWheel;
+
 namespace JoystickGremlin.Core.Configuration;
 
 /// <summary>
@@ -53,6 +55,27 @@ public sealed class AppSettings
 
     /// <summary>Gets or sets the FFB gain multiplier as a percentage (0–100). Defaults to 100.</summary>
     public int FfbGainPercent { get; set; } = 100;
+
+    /// <summary>
+    /// Gets or sets whether the EmuWheel backend is enabled.
+    /// When <c>true</c>, profiles containing <c>emuwheel-*</c> actions will apply a USB identity spoof
+    /// to the configured vJoy slot so that games detect it as a steering wheel.
+    /// Defaults to <c>false</c>.
+    /// </summary>
+    public bool EnableEmuWheel { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets the vJoy device slot used for EmuWheel output.
+    /// Should be a different slot from any generic vJoy controller profiles.
+    /// Defaults to 2.
+    /// </summary>
+    public uint EmuWheelVJoyDeviceId { get; set; } = 2;
+
+    /// <summary>
+    /// Gets or sets the wheel model whose USB VID/PID identity will be spoofed.
+    /// Defaults to <see cref="WheelModel.LogitechG29"/>.
+    /// </summary>
+    public WheelModel EmuWheelModel { get; set; } = WheelModel.LogitechG29;
 
     /// <summary>
     /// Gets or sets the live-input UI update interval in milliseconds.

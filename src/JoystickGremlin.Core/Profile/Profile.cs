@@ -15,6 +15,13 @@ public sealed class Profile
 
     /// <summary>Gets the list of input bindings active in this profile.</summary>
     public List<InputBinding> Bindings { get; init; } = [];
+
+    /// <summary>
+    /// Gets whether this profile contains any EmuWheel actions (action tags prefixed with <c>emuwheel-</c>).
+    /// When <c>true</c>, starting the event pipeline will apply the USB identity spoof if EmuWheel is enabled.
+    /// </summary>
+    public bool RequiresEmuWheel =>
+        Bindings.Any(b => b.Actions.Any(a => a.ActionTag.StartsWith("emuwheel-", StringComparison.Ordinal)));
 }
 
 /// <summary>

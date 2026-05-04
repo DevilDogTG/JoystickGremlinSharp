@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using JoystickGremlin.Core.Actions;
+using JoystickGremlin.Core.Actions.EmuWheel;
 using JoystickGremlin.Core.Actions.Keyboard;
 using JoystickGremlin.Core.Actions.Macro;
 using JoystickGremlin.Core.ProcessMonitor;
 using JoystickGremlin.Core.Actions.VJoy;
 using JoystickGremlin.Core.Configuration;
+using JoystickGremlin.Core.EmuWheel;
 using JoystickGremlin.Core.ForceFeedback;
 using JoystickGremlin.Core.Pipeline;
 using JoystickGremlin.Core.Profile;
@@ -46,6 +48,11 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<IActionDescriptor, MacroActionDescriptor>();
         services.AddSingleton<IActionDescriptor, MapToKeyboardActionDescriptor>();
 
+        // Built-in EmuWheel action descriptors
+        services.AddSingleton<IActionDescriptor, EmuWheelAxisDescriptor>();
+        services.AddSingleton<IActionDescriptor, EmuWheelButtonDescriptor>();
+        services.AddSingleton<IActionDescriptor, EmuWheelHatDescriptor>();
+
         // Keyboard simulator — NullKeyboardSimulator by default; override in App or Interop for real input.
         services.TryAddSingleton<IKeyboardSimulator, NullKeyboardSimulator>();
 
@@ -57,6 +64,9 @@ public static class CoreServiceCollectionExtensions
 
         // FFB bridge — NullForceFeedbackBridge by default; override in Interop for real bridge.
         services.TryAddSingleton<IForceFeedbackBridge, NullForceFeedbackBridge>();
+
+        // EmuWheel device manager — NullEmuWheelDeviceManager by default; override in Interop for real spoof.
+        services.TryAddSingleton<IEmuWheelDeviceManager, NullEmuWheelDeviceManager>();
 
         return services;
     }

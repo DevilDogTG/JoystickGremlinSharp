@@ -61,3 +61,15 @@ public sealed class ModeException : GremlinException
     /// <inheritdoc />
     public ModeException(string message, Exception innerException) : base(message, innerException) { }
 }
+
+/// <summary>
+/// Raised when an error occurs with the EmuWheel virtual wheel device or its identity spoof.
+/// </summary>
+public sealed class EmuWheelException : GremlinException
+{
+    /// <inheritdoc />
+    public EmuWheelException(string message) : base(message) { }
+
+    /// <inheritdoc />
+    public EmuWheelException(string message, Exception innerException) : base(message, innerException) { }
+}
