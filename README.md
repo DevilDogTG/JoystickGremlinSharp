@@ -21,7 +21,7 @@ Built with **Avalonia UI** and **ReactiveUI** for a modern, maintainable MVVM ar
   - Macro (key sequence on press or release)
   - Change mode
 - **Process monitor** — automatically loads a profile when a configured executable becomes active
-- **Avalonia UI** — left-sidebar navigation with Devices, Input Viewer, Bindings, Profile, Settings pages
+- **Avalonia UI** — left-sidebar navigation with Controller Setup, Virtual Devices, Profile, and Settings pages
 
 ---
 
@@ -73,7 +73,7 @@ tests/
 |---|---|---|
 | Domain | `Core` | `Profile`, `Mode`, `InputBinding`, `ModeManager`, `EventPipeline`, `ActionRegistry` |
 | Interop | `Interop` | `VJoyDeviceManager`, `DillDeviceManager`, `SendInputKeyboardSimulator` |
-| UI | `App` | `MainWindowViewModel`, `BindingsPageViewModel`, `InputViewerPageViewModel` |
+| UI | `App` | `MainWindowViewModel`, `ControllerSetupPageViewModel`, `VirtualDevicesPageViewModel` |
 
 **DI container**: `Microsoft.Extensions.DependencyInjection`  
 **Reactive UI**: `ReactiveUI` (`ReactiveObject`, `ReactiveCommand`, `WhenAnyValue`)  

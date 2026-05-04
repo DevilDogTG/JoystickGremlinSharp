@@ -32,6 +32,9 @@ public sealed class VJoyDevice : IVirtualDevice
 
     // Keyed by AxisCode value; stores half the full axis range for normalisation.
     private readonly Dictionary<uint, double> _axisHalfRanges;
+    private readonly Dictionary<int, double> _axisValues;
+    private readonly Dictionary<int, bool> _buttonStates;
+    private readonly Dictionary<int, int> _hatStates;
 
     private readonly bool _useContHat;
 
@@ -53,6 +56,9 @@ public sealed class VJoyDevice : IVirtualDevice
         DeviceId = vjoyId;
 
         _axisHalfRanges = [];
+        _axisValues = [];
+        _buttonStates = [];
+        _hatStates = [];
         int axisCount = 0;
         foreach (AxisCode code in Enum.GetValues<AxisCode>())
         {
@@ -60,17 +66,22 @@ public sealed class VJoyDevice : IVirtualDevice
             {
                 VJoyNative.GetVJDAxisMax(vjoyId, (uint)code, out uint max);
                 _axisHalfRanges[(uint)code] = max / 2.0;
+                _axisValues[axisCount + 1] = 0.0;
                 axisCount++;
             }
         }
 
         AxisCount = axisCount;
         ButtonCount = VJoyNative.GetVJDButtonNumber(vjoyId);
+        for (var buttonIndex = 1; buttonIndex <= ButtonCount; buttonIndex++)
+            _buttonStates[buttonIndex] = false;
 
         int contHats = VJoyNative.GetVJDContPovNumber(vjoyId);
         int discHats = VJoyNative.GetVJDDiscPovNumber(vjoyId);
         HatCount = Math.Max(contHats, discHats);
         _useContHat = contHats > 0;
+        for (var hatIndex = 1; hatIndex <= HatCount; hatIndex++)
+            _hatStates[hatIndex] = -1;
     }
 
     /// <inheritdoc/>
@@ -91,6 +102,8 @@ public sealed class VJoyDevice : IVirtualDevice
 
         if (!VJoyNative.SetAxis(rawValue, _vjoyId, axisCode))
             throw new VJoyException($"Failed to set axis {axisIndex} on vJoy device {_vjoyId}");
+
+        _axisValues[axisIndex] = clamped;
     }
 
     /// <inheritdoc/>
@@ -101,6 +114,8 @@ public sealed class VJoyDevice : IVirtualDevice
     {
         if (!VJoyNative.SetBtn(pressed, _vjoyId, (byte)buttonIndex))
             throw new VJoyException($"Failed to set button {buttonIndex} on vJoy device {_vjoyId}");
+
+        _buttonStates[buttonIndex] = pressed;
     }
 
     /// <inheritdoc/>
@@ -121,11 +136,34 @@ public sealed class VJoyDevice : IVirtualDevice
             if (!VJoyNative.SetDiscPov(degrees, _vjoyId, (byte)hatIndex))
                 throw new VJoyException($"Failed to set discrete hat {hatIndex} on vJoy device {_vjoyId}");
         }
+
+        _hatStates[hatIndex] = degrees;
     }
+
+    /// <inheritdoc/>
+    public double? GetAxis(int axisIndex) =>
+        _axisValues.TryGetValue(axisIndex, out var value) ? value : null;
+
+    /// <inheritdoc/>
+    public bool? GetButton(int buttonIndex) =>
+        _buttonStates.TryGetValue(buttonIndex, out var value) ? value : null;
+
+    /// <inheritdoc/>
+    public int? GetHat(int hatIndex) =>
+        _hatStates.TryGetValue(hatIndex, out var value) ? value : null;
 
     /// <inheritdoc/>
     public void Reset()
     {
         VJoyNative.ResetVJD(_vjoyId);
+
+        foreach (var axisIndex in _axisValues.Keys.ToList())
+            _axisValues[axisIndex] = 0.0;
+
+        foreach (var buttonIndex in _buttonStates.Keys.ToList())
+            _buttonStates[buttonIndex] = false;
+
+        foreach (var hatIndex in _hatStates.Keys.ToList())
+            _hatStates[hatIndex] = -1;
     }
 }

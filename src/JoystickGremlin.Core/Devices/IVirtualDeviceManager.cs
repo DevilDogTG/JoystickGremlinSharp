@@ -14,6 +14,17 @@ public interface IVirtualDeviceManager : IDisposable
     /// <summary>Returns the IDs of all virtual devices that exist in the driver configuration.</summary>
     IReadOnlyList<uint> GetAvailableDeviceIds();
 
+    /// <summary>Gets the configured capabilities of the specified virtual device slot.</summary>
+    /// <param name="vjoyId">1-based vJoy device identifier.</param>
+    VirtualDeviceCapabilities GetCapabilities(uint vjoyId);
+
+    /// <summary>Gets the current status of the specified virtual device slot.</summary>
+    /// <param name="vjoyId">1-based vJoy device identifier.</param>
+    VirtualDeviceStatus GetStatus(uint vjoyId);
+
+    /// <summary>Gets the vJoy configuration tool path, or <c>null</c> when unavailable.</summary>
+    string? GetConfigurationToolPath();
+
     /// <summary>
     /// Acquires the specified vJoy device for exclusive use by this process.
     /// Idempotent: if this process already holds the device, the existing instance is returned

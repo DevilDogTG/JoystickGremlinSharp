@@ -59,6 +59,36 @@ public sealed class VJoyDeviceManager : IVirtualDeviceManager
     }
 
     /// <inheritdoc/>
+    public VirtualDeviceCapabilities GetCapabilities(uint vjoyId)
+    {
+        int axisCount = 0;
+        foreach (AxisCode code in Enum.GetValues<AxisCode>())
+        {
+            if (VJoyNative.GetVJDAxisExist(vjoyId, (uint)code) > 0)
+                axisCount++;
+        }
+
+        return new VirtualDeviceCapabilities(
+            axisCount,
+            VJoyNative.GetVJDButtonNumber(vjoyId),
+            Math.Max(VJoyNative.GetVJDContPovNumber(vjoyId), VJoyNative.GetVJDDiscPovNumber(vjoyId)));
+    }
+
+    /// <inheritdoc/>
+    public VirtualDeviceStatus GetStatus(uint vjoyId) =>
+        (VjdStatus)VJoyNative.GetVJDStatus(vjoyId) switch
+        {
+            VjdStatus.Owned => VirtualDeviceStatus.Owned,
+            VjdStatus.Free => VirtualDeviceStatus.Free,
+            VjdStatus.Busy => VirtualDeviceStatus.Busy,
+            VjdStatus.Missing => VirtualDeviceStatus.Missing,
+            _ => VirtualDeviceStatus.Unknown,
+        };
+
+    /// <inheritdoc/>
+    public string? GetConfigurationToolPath() => VJoyRegistryHelper.GetConfigurationToolPath();
+
+    /// <inheritdoc/>
     /// <remarks>
     /// Thread-safe and idempotent: if this process already holds the device, the existing
     /// instance is returned immediately without resetting it.

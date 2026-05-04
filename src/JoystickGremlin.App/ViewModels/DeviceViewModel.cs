@@ -6,7 +6,7 @@ using ReactiveUI;
 namespace JoystickGremlin.App.ViewModels;
 
 /// <summary>
-/// ViewModel wrapping a single <see cref="IPhysicalDevice"/> for display in the Devices page.
+/// ViewModel wrapping a single <see cref="IPhysicalDevice"/> for display in device-selection UI.
 /// </summary>
 public sealed class DeviceViewModel : ViewModelBase
 {

@@ -17,7 +17,7 @@ using ReactiveUI;
 namespace JoystickGremlin.App.ViewModels;
 
 /// <summary>
-/// ViewModel for the Bindings page.
+/// ViewModel for the binding editor state engine used by the controller setup page.
 /// Allows the user to select a device and input, then add/remove/configure action bindings
 /// for that input in the currently active profile.
 /// </summary>
@@ -78,6 +78,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         RemoveActionCommand = ReactiveCommand.Create(RemoveAction, hasSelection);
         MoveUpCommand       = ReactiveCommand.Create(MoveUp, hasSelection);
         MoveDownCommand     = ReactiveCommand.Create(MoveDown, hasSelection);
+        SaveActionConfigCommand = ReactiveCommand.Create(SaveActionConfig, hasSelection);
 
         // Rebuild inputs when device selection changes
         _ = this.WhenAnyValue(x => x.SelectedDevice)
@@ -90,25 +91,6 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         // Populate edit form when selected action changes
         _ = this.WhenAnyValue(x => x.SelectedBoundAction)
             .Subscribe(OnSelectedBoundActionChanged);
-
-        // Auto-apply config changes (debounced) so there is no manual Apply step
-        _ = Observable.Merge(
-                this.WhenAnyValue(x => x.EditVJoyDeviceId).Select(_ => Unit.Default),
-                this.WhenAnyValue(x => x.EditVJoyAxisIndex).Select(_ => Unit.Default),
-                this.WhenAnyValue(x => x.EditVJoyButtonIndex).Select(_ => Unit.Default),
-                this.WhenAnyValue(x => x.EditVJoyHatIndex).Select(_ => Unit.Default),
-                this.WhenAnyValue(x => x.EditButtonsToAxesXAxisIndex).Select(_ => Unit.Default),
-                this.WhenAnyValue(x => x.EditButtonsToAxesYAxisIndex).Select(_ => Unit.Default),
-                this.WhenAnyValue(x => x.EditDirectionalUpButtonId).Select(_ => Unit.Default),
-                this.WhenAnyValue(x => x.EditDirectionalDownButtonId).Select(_ => Unit.Default),
-                this.WhenAnyValue(x => x.EditDirectionalLeftButtonId).Select(_ => Unit.Default),
-                this.WhenAnyValue(x => x.EditDirectionalRightButtonId).Select(_ => Unit.Default),
-                this.WhenAnyValue(x => x.EditMacroKeys).Select(_ => Unit.Default),
-                this.WhenAnyValue(x => x.EditMapToKeyboardKeys).Select(_ => Unit.Default),
-                this.WhenAnyValue(x => x.EditMapToKeyboardBehavior).Select(_ => Unit.Default),
-                this.WhenAnyValue(x => x.EditVJoyButtonThreshold).Select(_ => Unit.Default))
-            .Throttle(TimeSpan.FromMilliseconds(300))
-            .Subscribe(_ => Dispatcher.UIThread.Post(ApplyActionConfig));
 
         _profileState.ProfileChanged += OnProfileChanged;
     }
@@ -261,7 +243,11 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     public double EditVJoyButtonThreshold
     {
         get => _editVJoyButtonThreshold;
-        set => this.RaiseAndSetIfChanged(ref _editVJoyButtonThreshold, value);
+        set
+        {
+            var normalizedValue = Math.Round(Math.Clamp(value, 0.0, 1.0), 2, MidpointRounding.AwayFromZero);
+            this.RaiseAndSetIfChanged(ref _editVJoyButtonThreshold, normalizedValue);
+        }
     }
 
     // ─── Visibility Helpers ─────────────────────────────────────────────────────
@@ -303,6 +289,9 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the command that moves the selected action down in the list.</summary>
     public ReactiveCommand<Unit, Unit> MoveDownCommand { get; }
+
+    /// <summary>Gets the command that saves the current config form into the selected action.</summary>
+    public ReactiveCommand<Unit, Unit> SaveActionConfigCommand { get; }
 
     // ─── Public Methods ─────────────────────────────────────────────────────────
 
@@ -555,7 +544,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         _profileState.NotifyProfileModified();
     }
 
-    private void ApplyActionConfig()
+    private void SaveActionConfig()
     {
         if (SelectedBoundAction is null) return;
 
@@ -637,7 +626,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         }
 
         _profileState.NotifyProfileModified();
-        _logger.LogTrace("Action config applied for tag {Tag}", model.ActionTag);
+        _logger.LogTrace("Action config saved for tag {Tag}", model.ActionTag);
     }
 
     private void SyncMultiButtonBindings(BoundAction model)
