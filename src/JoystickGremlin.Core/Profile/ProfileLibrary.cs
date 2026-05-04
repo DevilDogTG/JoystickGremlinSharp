@@ -9,7 +9,7 @@ namespace JoystickGremlin.Core.Profile;
 /// <summary>
 /// Scans a configurable folder for profile JSON files. Subfolders are categories.
 /// </summary>
-public sealed class ProfileLibrary : IProfileLibrary
+public sealed class ProfileLibrary : IProfileLibrary, IDisposable
 {
     private readonly ISettingsService _settingsService;
     private readonly IProfileRepository _profileRepository;
@@ -193,4 +193,7 @@ public sealed class ProfileLibrary : IProfileLibrary
         var invalid = Path.GetInvalidFileNameChars();
         return string.Concat(name.Select(c => invalid.Contains(c) ? '_' : c)).Trim('_', ' ');
     }
+
+    /// <inheritdoc/>
+    public void Dispose() => _gate.Dispose();
 }
