@@ -17,12 +17,12 @@ public sealed class DeviceLiveInputViewModel : ReactiveObject, IDisposable
 {
     private readonly IPhysicalDevice _device;
 
-    // Throttle per-input UI updates to ~30 Hz to avoid flooding the UI thread
+    // Throttle per-input UI updates to ~100 Hz to avoid flooding the UI thread
     // at high polling rates (e.g. 1000 Hz steering wheels).
     private readonly ConcurrentDictionary<int, long> _lastAxisUpdateMs   = new();
     private readonly ConcurrentDictionary<int, long> _lastButtonUpdateMs = new();
     private readonly ConcurrentDictionary<int, long> _lastHatUpdateMs    = new();
-    private const long UiUpdateIntervalMs = 33; // ~30 Hz
+    private const long UiUpdateIntervalMs = 10; // ~100 Hz
 
     /// <summary>Gets the device display name.</summary>
     public string Name => _device.Name;
