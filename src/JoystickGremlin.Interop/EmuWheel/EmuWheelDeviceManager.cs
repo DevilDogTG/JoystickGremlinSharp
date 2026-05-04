@@ -3,6 +3,7 @@
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.EmuWheel;
 using JoystickGremlin.Core.Exceptions;
+using JoystickGremlin.Interop.Dill;
 using JoystickGremlin.Interop.VJoy;
 using Microsoft.Extensions.Logging;
 
@@ -20,6 +21,7 @@ namespace JoystickGremlin.Interop.EmuWheel;
 public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
 {
     private readonly IVirtualDeviceManager _vjoyManager;
+    private readonly IDeviceManager _deviceManager;
     private readonly VJoyRegistrySpoof _spoof;
     private readonly ILogger<EmuWheelDeviceManager> _logger;
 
@@ -33,14 +35,17 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
     /// Initializes a new instance of <see cref="EmuWheelDeviceManager"/>.
     /// </summary>
     /// <param name="vjoyManager">The vJoy virtual device manager for device I/O.</param>
+    /// <param name="deviceManager">The physical device manager, used to register EmuWheel VID/PID filters.</param>
     /// <param name="logger">Logger instance.</param>
     public EmuWheelDeviceManager(
         IVirtualDeviceManager vjoyManager,
+        IDeviceManager deviceManager,
         ILogger<EmuWheelDeviceManager> logger)
     {
-        _vjoyManager = vjoyManager;
-        _logger      = logger;
-        _spoof       = new VJoyRegistrySpoof(logger);
+        _vjoyManager    = vjoyManager;
+        _deviceManager  = deviceManager;
+        _logger         = logger;
+        _spoof          = new VJoyRegistrySpoof(logger);
     }
 
     /// <inheritdoc/>
@@ -60,6 +65,13 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
+        var info = WheelModelRegistry.Get(model);
+
+        // Register the EmuWheel VID/PID with DillDeviceManager so re-enumerated devices
+        // with this identity are treated as virtual (excluded from the physical input list).
+        if (_deviceManager is DillDeviceManager dill)
+            dill.RegisterEmuWheelVidPid(info.VendorId, info.ProductId);
+
         var applied = await _spoof.ApplyAsync(model, vjoyId, cancellationToken).ConfigureAwait(false);
         _activeModel = model;
 
@@ -77,6 +89,14 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
     {
         if (_disposed)
             return;
+
+        // Unregister the EmuWheel VID/PID filter before restoring so the original wheel
+        // (if connected) becomes visible again in the physical device list.
+        if (_activeModel.HasValue && _deviceManager is DillDeviceManager dill)
+        {
+            var info = WheelModelRegistry.Get(_activeModel.Value);
+            dill.UnregisterEmuWheelVidPid(info.VendorId, info.ProductId);
+        }
 
         ReleaseAll();
         await _spoof.RestoreAsync(cancellationToken).ConfigureAwait(false);
@@ -160,6 +180,13 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
 
         if (_spoof.IsActive)
         {
+            // Unregister EmuWheel VID/PID filter before restoring.
+            if (_activeModel.HasValue && _deviceManager is DillDeviceManager dill)
+            {
+                var info = WheelModelRegistry.Get(_activeModel.Value);
+                dill.UnregisterEmuWheelVidPid(info.VendorId, info.ProductId);
+            }
+
             try
             {
                 _spoof.RestoreAsync().GetAwaiter().GetResult();

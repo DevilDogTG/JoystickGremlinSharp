@@ -23,6 +23,8 @@ public sealed class DillDeviceManager : IDeviceManager
 
     private readonly List<DillDevice> _devices = [];
     private readonly HashSet<Guid> _virtualDeviceGuids = [];
+    // EmuWheel devices spoofed to a non-vJoy VID/PID pair that should still be excluded from physical inputs.
+    private readonly HashSet<(uint vid, uint pid)> _emuWheelVidPids = [];
     private readonly ILogger<DillDeviceManager> _logger;
 
     // Stored to prevent the GC from collecting unmanaged delegates.
@@ -109,6 +111,35 @@ public sealed class DillDeviceManager : IDeviceManager
         return DillNative.device_exists(DillGuidConverter.FromGuid(deviceGuid));
     }
 
+    /// <summary>
+    /// Registers a VID/PID pair as belonging to the EmuWheel backend so that devices with that
+    /// identity are treated as virtual and excluded from the physical device list and event pipeline.
+    /// Must be called after <c>ApplySpoofAsync</c> and before the spoofed device re-enumerates.
+    /// </summary>
+    /// <param name="vendorId">USB Vendor ID of the spoofed wheel model.</param>
+    /// <param name="productId">USB Product ID of the spoofed wheel model.</param>
+    public void RegisterEmuWheelVidPid(uint vendorId, uint productId)
+    {
+        _emuWheelVidPids.Add((vendorId, productId));
+        _logger.LogDebug(
+            "Registered EmuWheel VID/PID filter: VID=0x{VID:X4} PID=0x{PID:X4}",
+            vendorId, productId);
+    }
+
+    /// <summary>
+    /// Removes a previously registered EmuWheel VID/PID filter.
+    /// Call after <c>RestoreAsync</c> so the original wheel (if connected) becomes visible again.
+    /// </summary>
+    /// <param name="vendorId">USB Vendor ID to unregister.</param>
+    /// <param name="productId">USB Product ID to unregister.</param>
+    public void UnregisterEmuWheelVidPid(uint vendorId, uint productId)
+    {
+        _emuWheelVidPids.Remove((vendorId, productId));
+        _logger.LogDebug(
+            "Unregistered EmuWheel VID/PID filter: VID=0x{VID:X4} PID=0x{PID:X4}",
+            vendorId, productId);
+    }
+
     private void RegisterCallbacks()
     {
         _inputEventCallback = OnNativeInputEvent;
@@ -128,7 +159,7 @@ public sealed class DillDeviceManager : IDeviceManager
         {
             var summary = DillNative.get_device_information_by_index(i);
             var device = new DillDevice(summary);
-            if (device.IsVirtual)
+            if (device.IsVirtual || _emuWheelVidPids.Contains((device.VendorId, device.ProductId)))
             {
                 _virtualDeviceGuids.Add(device.Guid);
                 _logger.LogDebug(
@@ -214,7 +245,7 @@ public sealed class DillDeviceManager : IDeviceManager
 
         var device = new DillDevice(data);
 
-        if (device.IsVirtual)
+        if (device.IsVirtual || _emuWheelVidPids.Contains((device.VendorId, device.ProductId)))
         {
             if (actionType == 1)
                 _virtualDeviceGuids.Add(device.Guid);
