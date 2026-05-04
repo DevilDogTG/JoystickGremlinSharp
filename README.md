@@ -1,27 +1,30 @@
 # Joystick Gremlin Sharp
 
-A C# / .NET 10 rewrite of [JoystickGremlin](https://github.com/WhiteMagic/JoystickGremlin) — a Windows application for configuring joystick and gamepad devices. Map physical inputs to virtual vJoy axes, buttons, and hats; build macros; apply keyboard mappings; and switch between named modes at runtime.
+A C# / .NET 10 rewrite of [JoystickGremlin](https://github.com/WhiteMagic/JoystickGremlin) — a Windows application for configuring joystick and gamepad devices. Map physical inputs to virtual vJoy axes, buttons, and hats; build macros; apply keyboard mappings; and configure advanced action pipelines.
 
 Built with **Avalonia UI** and **ReactiveUI** for a modern, maintainable MVVM architecture on .NET 10.
 
-> **Status**: Active development — core pipeline, bindings editor, input viewer, and process-monitor auto-load complete. 131 tests passing.
+> **Status**: Active development — 236 tests passing. Core pipeline, bindings editor, input viewer, process-monitor auto-load, force feedback bridge, and multi-button virtual output mapping complete.
 
 ---
 
 ## Features
 
 - **Device detection** — lists all physical joystick/gamepad devices via DILL (DirectInput)
-- **Input viewer** — live axis, button, and hat readout per device
-- **Profile system** — JSON profiles saved to `%APPDATA%\JoystickGremlin\`, with load/save from the UI
-- **Mode system** — named modes with runtime switching (keyboard shortcut or action)
+- **Input viewer** — live axis, button, and hat readout per device (configurable refresh rate)
+- **Profile system** — flat JSON profiles (no modes) saved per-file; folder-based library with category support via subfolders
 - **Bindings editor** — three-panel editor: device → input slot → bound actions
 - **Action types**:
   - Map to vJoy axis / button / hat
   - Map to keyboard (Hold, Toggle, Press-Only, Release-Only behaviours)
   - Macro (key sequence on press or release)
-  - Change mode
-- **Process monitor** — automatically loads a profile when a configured executable becomes active
-- **Avalonia UI** — left-sidebar navigation with Controller Setup, Virtual Devices, Profile, and Settings pages
+  - Buttons-to-Hat (four physical buttons → vJoy POV/hat with directional state tracking)
+  - Buttons-to-Axes (four physical buttons → dual vJoy axes, e.g. WASD → analog stick)
+  - Hat-to-Axes (physical hat → dual vJoy axes)
+- **Force feedback bridge** — forwards FFB commands from a game (via vJoy) to a physical DirectInput racing wheel (e.g. MOZA)
+- **Process monitor** — automatically loads a profile when a configured executable becomes the active window
+- **Avalonia UI** — left-sidebar navigation: Controller Setup, Virtual Devices, Profile, Settings, and About pages
+- **About page** — displays application version, GitHub repository link, and license information
 
 ---
 
@@ -30,8 +33,10 @@ Built with **Avalonia UI** and **ReactiveUI** for a modern, maintainable MVVM ar
 | Dependency | Version | Notes |
 |---|---|---|
 | [.NET SDK](https://dotnet.microsoft.com/download) | 10.0+ | Runtime + build tools |
-| [vJoy](https://sourceforge.net/projects/vjoystick/) | 2.1.9+ | Virtual joystick driver (Windows) |
+| [vJoy (BrunnerInnovation fork)](https://github.com/BrunnerInnovation/vJoy/releases) | 2.2.x+ | Virtual joystick driver (Windows) |
 | Windows | 10+ | Device I/O via vJoy and DILL is Windows-only |
+
+> **Note**: The original vJoy on SourceForge is no longer maintained. Use the [BrunnerInnovation fork](https://github.com/BrunnerInnovation/vJoy/releases).
 
 ---
 
@@ -45,8 +50,8 @@ cd JoystickGremlinSharp
 # Build all projects
 dotnet build
 
-# Run tests
-dotnet test tests/JoystickGremlin.Core.Tests
+# Run tests (236 tests)
+dotnet test
 
 # Run the application
 dotnet run --project src/JoystickGremlin.App
@@ -58,11 +63,11 @@ dotnet run --project src/JoystickGremlin.App
 
 ```
 src/
-  JoystickGremlin.Core/         # Domain logic — profile, modes, events, actions, process monitor
+  JoystickGremlin.Core/         # Domain logic — profile, events, actions, FFB bridge, process monitor
   JoystickGremlin.Interop/      # P/Invoke wrappers for vJoy + DILL (Windows only)
   JoystickGremlin.App/          # Avalonia MVVM application (views, view-models, DI bootstrap)
 tests/
-  JoystickGremlin.Core.Tests/   # xUnit tests for Core domain (131 tests)
+  JoystickGremlin.Core.Tests/   # xUnit tests for Core domain (236 tests)
 ```
 
 ---
@@ -71,9 +76,9 @@ tests/
 
 | Layer | Project | Key Types |
 |---|---|---|
-| Domain | `Core` | `Profile`, `Mode`, `InputBinding`, `ModeManager`, `EventPipeline`, `ActionRegistry` |
-| Interop | `Interop` | `VJoyDeviceManager`, `DillDeviceManager`, `SendInputKeyboardSimulator` |
-| UI | `App` | `MainWindowViewModel`, `ControllerSetupPageViewModel`, `VirtualDevicesPageViewModel` |
+| Domain | `Core` | `Profile`, `InputBinding`, `ProfileLibrary`, `EventPipeline`, `ActionRegistry`, `ForceFeedbackBridge` |
+| Interop | `Interop` | `VJoyDeviceManager`, `DillDeviceManager`, `SendInputKeyboardSimulator`, `MozaFfbSink` |
+| UI | `App` | `MainWindowViewModel`, `ControllerSetupPageViewModel`, `VirtualDevicesPageViewModel`, `AboutPageViewModel` |
 
 **DI container**: `Microsoft.Extensions.DependencyInjection`  
 **Reactive UI**: `ReactiveUI` (`ReactiveObject`, `ReactiveCommand`, `WhenAnyValue`)  
@@ -96,7 +101,8 @@ License texts for all third-party dependencies are in the [`licenses/`](licenses
 | [Moq](https://github.com/devlooped/moq) | BSD-3-Clause |
 | [coverlet](https://github.com/coverlet-coverage/coverlet) | MIT |
 | [Bootstrap Icons](https://github.com/twbs/icons) | MIT |
-| [vJoy](https://sourceforge.net/projects/vjoystick/) | MIT |
+| [vJoy (BrunnerInnovation)](https://github.com/BrunnerInnovation/vJoy) | MIT |
+| [Velopack](https://github.com/velopack/velopack) | MIT |
 
 ---
 
