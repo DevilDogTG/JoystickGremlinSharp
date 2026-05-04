@@ -69,7 +69,7 @@ public sealed class EmuWheelButtonDescriptor : IActionDescriptor
         {
             try
             {
-                var device = _manager.GetOrAcquireDevice(_vjoyId);
+                var device = _manager.AcquireDevice(_vjoyId);
                 bool pressed = GetPressedState(inputEvent);
                 _logger.LogDebug(
                     "EmuWheel button: source {SourceDeviceGuid} input {Identifier} value {Value} -> device {VJoyId} button {ButtonIndex} pressed {Pressed}",

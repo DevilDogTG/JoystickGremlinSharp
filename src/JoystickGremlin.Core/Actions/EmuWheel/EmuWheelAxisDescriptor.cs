@@ -69,7 +69,7 @@ public sealed class EmuWheelAxisDescriptor : IActionDescriptor
                     inputEvent.Value,
                     _vjoyId,
                     _axisIndex);
-                var device = _manager.GetOrAcquireDevice(_vjoyId);
+                var device = _manager.AcquireDevice(_vjoyId);
                 try
                 {
                     device.SetAxis(_axisIndex, inputEvent.Value);

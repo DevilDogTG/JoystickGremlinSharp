@@ -70,7 +70,7 @@ public sealed class EmuWheelHatDescriptor : IActionDescriptor
                     _vjoyId,
                     _hatIndex);
                 int degrees = inputEvent.Value < 0.0 ? -1 : (int)(inputEvent.Value * 35999.0);
-                var device = _manager.GetOrAcquireDevice(_vjoyId);
+                var device = _manager.AcquireDevice(_vjoyId);
                 try
                 {
                     device.SetHat(_hatIndex, degrees);

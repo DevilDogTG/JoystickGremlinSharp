@@ -94,7 +94,6 @@ internal sealed class VJoyRegistrySpoof
                     "EmuWheel spoof: vJoy parameters key not found at HKLM\\{Key}. " +
                     "Ensure vJoy is installed and the device slot {VJoyId} exists.",
                     subKeyName, vjoyId);
-                WriteSentinelFile(model, vjoyId);
                 return Task.FromResult(false);
             }
 
@@ -120,13 +119,11 @@ internal sealed class VJoyRegistrySpoof
                 "HKLM\\{Key}. Run the application as Administrator to enable wheel detection. " +
                 "The pipeline will continue with the standard vJoy identity.",
                 subKeyName);
-            WriteSentinelFile(model, vjoyId);
             return Task.FromResult(false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "EmuWheel spoof failed unexpectedly for slot={VJoyId}", vjoyId);
-            WriteSentinelFile(model, vjoyId);
             return Task.FromResult(false);
         }
     }
@@ -217,7 +214,7 @@ internal sealed class VJoyRegistrySpoof
                 // No saved VID/PID in sentinel — just delete the spoof values.
             }
         }
-        catch { /* best effort */ }
+        catch (Exception) { /* best effort — sentinel parse failure is non-fatal */ }
 
         return RestoreAsync(cancellationToken);
     }
@@ -251,6 +248,6 @@ internal sealed class VJoyRegistrySpoof
     private static void TryDeleteValue(RegistryKey key, string valueName)
     {
         try { key.DeleteValue(valueName, throwOnMissingValue: false); }
-        catch { /* best effort */ }
+        catch (Exception) { /* best effort */ }
     }
 }
