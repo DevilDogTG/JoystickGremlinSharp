@@ -47,17 +47,18 @@ internal sealed class VJoyRegistrySpoof
 
     private readonly ILogger _logger;
 
-    /// <summary>Saved VendorID before spoofing (null = not saved yet).</summary>
-    private int? _savedVendorId;
-
-    /// <summary>Saved ProductID before spoofing (null = not saved yet).</summary>
-    private int? _savedProductId;
-
     /// <summary>The device slot the current spoof was applied to (null = none active).</summary>
     private uint? _activeVJoyId;
 
     /// <summary>Gets whether a spoof is currently recorded as active.</summary>
     internal bool IsActive => _activeVJoyId.HasValue;
+
+    /// <summary>
+    /// Gets whether the registry was actually written in this process session.
+    /// <c>true</c> indicates the VID/PID values were changed and a driver reload (reboot) is needed.
+    /// <c>false</c> means the registry already contained the correct values on apply.
+    /// </summary>
+    internal bool RegistryChanged { get; private set; }
 
     /// <summary>
     /// Initializes a new instance of <see cref="VJoyRegistrySpoof"/>.
@@ -69,19 +70,17 @@ internal sealed class VJoyRegistrySpoof
 
     /// <summary>
     /// Applies the VID/PID spoof for the specified wheel model to the given vJoy device slot.
-    /// Idempotent when called with the same slot and model.
+    /// Reads the current registry values first; only writes when they differ from the desired
+    /// values. When the registry already contains the correct VID/PID (e.g. after a reboot with
+    /// the spoof already persisted) this is a true no-op and <see cref="RegistryChanged"/> is
+    /// not set.
     /// </summary>
     /// <returns>
-    /// <c>true</c> when the registry write succeeded; <c>false</c> when the write was skipped or denied.
+    /// <c>true</c> when the spoof is active (either newly written or already correct);
+    /// <c>false</c> when the registry write was denied or the key was not found.
     /// </returns>
     internal Task<bool> ApplyAsync(WheelModel model, uint vjoyId, CancellationToken cancellationToken = default)
     {
-        if (_activeVJoyId == vjoyId)
-        {
-            _logger.LogDebug("EmuWheel spoof already active for vJoy slot {VJoyId}; skipping", vjoyId);
-            return Task.FromResult(true);
-        }
-
         var info = WheelModelRegistry.Get(model);
         var subKeyName = $@"{VJoyParamsKeyBase}\Device{vjoyId:D2}";
 
@@ -97,13 +96,26 @@ internal sealed class VJoyRegistrySpoof
                 return Task.FromResult(false);
             }
 
-            // Save current values for restore.
-            _savedVendorId  = key.GetValue("VendorID")  is int v ? v : null;
-            _savedProductId = key.GetValue("ProductID") is int p ? p : null;
+            // Read current registry values to decide whether a write is actually needed.
+            var currentVendorId  = key.GetValue("VendorID")  is int v ? v : (int?)null;
+            var currentProductId = key.GetValue("ProductID") is int p ? p : (int?)null;
+
+            _activeVJoyId = vjoyId;
+
+            if (currentVendorId == (int)info.VendorId && currentProductId == (int)info.ProductId)
+            {
+                // Registry already correct — driver will use the right identity on next boot.
+                // No write needed, no reboot flag to set.
+                _logger.LogInformation(
+                    "EmuWheel spoof already correct in registry: slot={VJoyId}, model={Model}, " +
+                    "VID=0x{VID:X4}, PID=0x{PID:X4} — no write performed",
+                    vjoyId, model, info.VendorId, info.ProductId);
+                return Task.FromResult(true);
+            }
 
             key.SetValue("VendorID",  (int)info.VendorId,  RegistryValueKind.DWord);
             key.SetValue("ProductID", (int)info.ProductId, RegistryValueKind.DWord);
-            _activeVJoyId = vjoyId;
+            RegistryChanged = true;
 
             _logger.LogInformation(
                 "EmuWheel spoof applied: slot={VJoyId}, model={Model}, VID=0x{VID:X4}, PID=0x{PID:X4}",
@@ -129,7 +141,8 @@ internal sealed class VJoyRegistrySpoof
     }
 
     /// <summary>
-    /// Restores the saved VID/PID values in the registry for the currently spoofed slot.
+    /// Removes the custom VID/PID values from the registry for the currently spoofed slot,
+    /// reverting the vJoy device to its default identity on the next driver load (reboot).
     /// Deletes the sentinel file. Safe to call when no spoof is active.
     /// </summary>
     internal Task RestoreAsync(CancellationToken cancellationToken = default)
@@ -148,18 +161,10 @@ internal sealed class VJoyRegistrySpoof
             using var key = Registry.LocalMachine.OpenSubKey(subKeyName, writable: true);
             if (key is not null)
             {
-                if (_savedVendorId.HasValue)
-                    key.SetValue("VendorID", _savedVendorId.Value, RegistryValueKind.DWord);
-                else
-                    TryDeleteValue(key, "VendorID");
-
-                if (_savedProductId.HasValue)
-                    key.SetValue("ProductID", _savedProductId.Value, RegistryValueKind.DWord);
-                else
-                    TryDeleteValue(key, "ProductID");
-
+                TryDeleteValue(key, "VendorID");
+                TryDeleteValue(key, "ProductID");
                 _logger.LogInformation(
-                    "EmuWheel spoof restored for slot={VJoyId}", vjoyId);
+                    "EmuWheel spoof restored (registry values cleared) for slot={VJoyId}", vjoyId);
             }
             else
             {
@@ -180,13 +185,23 @@ internal sealed class VJoyRegistrySpoof
         }
         finally
         {
-            _activeVJoyId   = null;
-            _savedVendorId  = null;
-            _savedProductId = null;
+            _activeVJoyId = null;
             DeleteSentinelFile();
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Deletes the sentinel file on a clean exit without restoring the registry.
+    /// Call from <see cref="EmuWheelDeviceManager"/> Dispose when EmuWheel is still enabled
+    /// so that the VID/PID values persist in the registry across the reboot but the next
+    /// startup does not trigger a spurious crash-recovery restore.
+    /// </summary>
+    internal void ClearSentinelOnExit()
+    {
+        _activeVJoyId = null;
+        DeleteSentinelFile();
     }
 
     /// <summary>

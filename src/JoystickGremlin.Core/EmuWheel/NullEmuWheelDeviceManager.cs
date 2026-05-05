@@ -18,6 +18,9 @@ public sealed class NullEmuWheelDeviceManager : IEmuWheelDeviceManager
     public bool IsSpoofActive => false;
 
     /// <inheritdoc/>
+    public bool RebootRecommended => false;
+
+    /// <inheritdoc/>
     public WheelModel? ActiveModel => null;
 
     /// <inheritdoc/>

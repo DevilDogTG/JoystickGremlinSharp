@@ -84,8 +84,9 @@ public sealed class SettingsPageViewModel : ViewModelBase
                 x => x.UiUpdateIntervalMs,
                 (_, _, _, _, _, _) => Unit.Default)
             .Skip(1)
+            .Where(_ => !_loading)
             .Throttle(TimeSpan.FromMilliseconds(800), AvaloniaScheduler.Instance)
-            .Subscribe(unit => { if (!_loading) _ = SaveAsync(); });
+            .Subscribe(unit => _ = SaveAsync());
 
         this.WhenAnyValue(
                 x => x.EnableFfbBridge,
@@ -94,8 +95,9 @@ public sealed class SettingsPageViewModel : ViewModelBase
                 x => x.FfbWheelInstanceGuid,
                 (_, _, _, _) => Unit.Default)
             .Skip(1)
+            .Where(_ => !_loading)
             .Throttle(TimeSpan.FromMilliseconds(800), AvaloniaScheduler.Instance)
-            .Subscribe(unit => { if (!_loading) _ = SaveAsync(); });
+            .Subscribe(unit => _ = SaveAsync());
 
         this.WhenAnyValue(
                 x => x.EnableEmuWheel,
@@ -103,8 +105,9 @@ public sealed class SettingsPageViewModel : ViewModelBase
                 x => x.EmuWheelModel,
                 (_, _, _) => Unit.Default)
             .Skip(1)
+            .Where(_ => !_loading)
             .Throttle(TimeSpan.FromMilliseconds(800), AvaloniaScheduler.Instance)
-            .Subscribe(unit => { if (!_loading) _ = SaveAsync(); });
+            .Subscribe(unit => _ = SaveAsync());
 
         // Show admin dialog immediately if EmuWheel is toggled on without elevation.
         this.WhenAnyValue(x => x.EnableEmuWheel)
@@ -315,6 +318,8 @@ public sealed class SettingsPageViewModel : ViewModelBase
             EnableEmuWheel       = s.EnableEmuWheel;
             EmuWheelVJoyDeviceId = s.EmuWheelVJoyDeviceId;
             EmuWheelModel        = s.EmuWheelModel;
+            // Reflect the manager's current reboot status (set by startup apply or prior session).
+            EmuWheelRebootRequired = _emuWheelManager.RebootRecommended;
 
             ProcessMappings.Clear();
             foreach (var m in s.ProcessMappings)
@@ -423,13 +428,13 @@ public sealed class SettingsPageViewModel : ViewModelBase
             {
                 _logger.LogInformation("Applying EmuWheel spoof for vJoy {DeviceId} model {Model}", vjoyId, model);
                 await _emuWheelManager.ApplySpoofAsync(model, vjoyId);
-                EmuWheelRebootRequired = true;
+                EmuWheelRebootRequired = _emuWheelManager.RebootRecommended;
             }
             else
             {
                 _logger.LogInformation("Restoring EmuWheel spoof for vJoy {DeviceId}", vjoyId);
                 await _emuWheelManager.RestoreAsync();
-                EmuWheelRebootRequired = _emuWheelManager.IsSpoofActive;
+                EmuWheelRebootRequired = false;
             }
         }
         catch (Exception ex)

@@ -30,6 +30,13 @@ public interface IEmuWheelDeviceManager : IDisposable
     /// <summary>Gets whether a USB identity spoof is currently active.</summary>
     bool IsSpoofActive { get; }
 
+    /// <summary>
+    /// Gets whether a reboot is recommended because the vJoy registry was actually written
+    /// in this process session (VID/PID changed but the driver has not yet been reloaded).
+    /// <c>false</c> when the registry already contained the correct values on apply.
+    /// </summary>
+    bool RebootRecommended { get; }
+
     /// <summary>Gets the wheel model currently being spoofed, or <c>null</c> if no spoof is active.</summary>
     WheelModel? ActiveModel { get; }
 

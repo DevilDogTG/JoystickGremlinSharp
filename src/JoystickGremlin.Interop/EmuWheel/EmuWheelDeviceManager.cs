@@ -56,6 +56,9 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
     public bool IsSpoofActive => _spoof.IsActive;
 
     /// <inheritdoc/>
+    public bool RebootRecommended => _spoof.RegistryChanged;
+
+    /// <inheritdoc/>
     public WheelModel? ActiveModel
     {
         get { lock (_spoofLock) return _activeModel; }
@@ -194,27 +197,9 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
         _disposed = true;
         ReleaseAll();
 
-        if (_spoof.IsActive)
-        {
-            // Unregister EmuWheel VID/PID filter before restoring.
-            WheelModel? modelSnapshot;
-            lock (_spoofLock)
-                modelSnapshot = _activeModel;
-
-            if (modelSnapshot.HasValue && _deviceManager is DillDeviceManager dill)
-            {
-                var info = WheelModelRegistry.Get(modelSnapshot.Value);
-                dill.UnregisterEmuWheelVidPid(info.VendorId, info.ProductId);
-            }
-
-            try
-            {
-                _spoof.RestoreAsync().GetAwaiter().GetResult();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "EmuWheel restore failed during disposal");
-            }
-        }
+        // On clean exit, VID/PID are intentionally left in the registry so the vJoy driver
+        // picks them up on the next reboot.  Only clear the sentinel file so the next startup
+        // does not mistakenly trigger crash-recovery restore.
+        _spoof.ClearSentinelOnExit();
     }
 }
