@@ -19,6 +19,7 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 >   OR repo setting: Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"
 > - **Skills**: `code-review`, `finish-feature`, `review-fix`, `re-code-review` — see AI Skills section
 > - **Remaining optional features**: response curve editor (axes), condition-based action pipeline, UI for button mapping configuration
+> - **Wheel emulation (not feasible without custom driver)**: Making the virtual device appear as a known wheel VID/PID requires a custom UMDF/KMDF driver + EV certificate signing. vJoy VID/PID (`0x1234/0xBEAD`) is a compile-time constant in `vjoy.sys` — registry writes have zero effect. ViGEmBus has `vigem_target_set_vid/pid` API but its HID descriptor is locked to Xbox 360/DS4; DirectInput wheel detection fails. Feature shelved.
 
 
 ## Project Overview
