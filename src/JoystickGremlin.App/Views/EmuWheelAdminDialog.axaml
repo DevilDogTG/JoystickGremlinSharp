@@ -1,0 +1,62 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="JoystickGremlin.App.Views.EmuWheelAdminDialog"
+        Title="Administrator Privileges Required"
+        Width="520"
+        MinWidth="420" MinHeight="220"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <Border Padding="24">
+        <StackPanel Spacing="16">
+
+            <!-- Header row -->
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBlock Text="🔒" FontSize="32" VerticalAlignment="Center"/>
+                <StackPanel Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="Administrator Privileges Required"
+                               FontSize="16"
+                               FontWeight="SemiBold"/>
+                    <TextBlock Text="EmuWheel needs to modify the vJoy registry to spoof the wheel identity."
+                               FontSize="12"
+                               Opacity="0.7"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Detail box -->
+            <Border Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                    CornerRadius="4"
+                    Padding="12,8">
+                <TextBlock FontSize="13"
+                           TextWrapping="Wrap"
+                           Text="Writing to HKLM\SYSTEM\CurrentControlSet\Services\vjoy\Parameters requires administrator access. Restart the application as administrator so games can detect the virtual wheel correctly." />
+            </Border>
+
+            <!-- Note -->
+            <TextBlock Text="You can continue without restarting — joystick input will still work, but games may not recognise the virtual device as a steering wheel."
+                       FontSize="11"
+                       Opacity="0.6"
+                       TextWrapping="Wrap"/>
+
+            <!-- Buttons -->
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="8">
+                <Button x:Name="RestartButton"
+                        Content="🔒  Restart as Administrator"
+                        Click="RestartButton_Click"
+                        IsDefault="True"/>
+                <Button x:Name="ContinueButton"
+                        Content="Continue Without EmuWheel"
+                        Click="ContinueButton_Click"/>
+            </StackPanel>
+
+        </StackPanel>
+    </Border>
+
+</Window>

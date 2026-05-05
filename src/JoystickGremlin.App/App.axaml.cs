@@ -65,6 +65,9 @@ public partial class App : Application
 
                 filePickerService.SetTopLevel(_mainWindow);
 
+                var adminDialogService = _services.GetRequiredService<AdminDialogService>();
+                adminDialogService.SetTopLevel(_mainWindow);
+
                 // Recover any EmuWheel spoof left active by a previous crashed session
                 // before any UI or pipeline starts, so vJoy identity is clean.
                 var emuWheel = _services.GetRequiredService<IEmuWheelDeviceManager>();
@@ -183,6 +186,9 @@ public partial class App : Application
         // File picker service — concrete type also registered so SetTopLevel can be called.
         services.AddSingleton<FilePickerService>();
         services.AddSingleton<IFilePickerService>(sp => sp.GetRequiredService<FilePickerService>());
+
+        // Admin dialog service — shows UAC restart dialog when EmuWheel needs elevation.
+        services.AddSingleton<AdminDialogService>();
 
         // Process monitor orchestration service.
         services.AddSingleton<ProcessMonitorService>();

@@ -271,6 +271,20 @@
                         Disable Steam Input per game (Properties → Controller → Disable Steam Input) for The Crew 2 and Forza Horizon 4.
                     </TextBlock>
 
+                    <!-- Admin warning: shown when EmuWheel is enabled but process is not elevated -->
+                    <Border Background="{StaticResource WarningBackgroundBrush}"
+                            CornerRadius="4"
+                            Padding="10,6"
+                            IsVisible="{Binding EmuWheelAdminWarning}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="⚠️" VerticalAlignment="Center"/>
+                            <TextBlock TextWrapping="Wrap"
+                                       Foreground="{StaticResource WarningForegroundBrush}"
+                                       FontSize="12"
+                                       Text="Not running as administrator — EmuWheel identity spoofing will not work. Start the app with 'Run as administrator', or click Start on a profile that uses EmuWheel to be prompted automatically."/>
+                        </StackPanel>
+                    </Border>
+
                     <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto"
                           RowSpacing="8" ColumnSpacing="12">
 

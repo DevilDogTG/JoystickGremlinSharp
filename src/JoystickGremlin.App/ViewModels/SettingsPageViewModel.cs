@@ -3,6 +3,7 @@
 using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
+using JoystickGremlin.App.Helpers;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.EmuWheel;
 using JoystickGremlin.Core.ForceFeedback;
@@ -198,8 +199,24 @@ public sealed class SettingsPageViewModel : ViewModelBase
     public bool EnableEmuWheel
     {
         get => _enableEmuWheel;
-        set => this.RaiseAndSetIfChanged(ref _enableEmuWheel, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _enableEmuWheel, value);
+            this.RaisePropertyChanged(nameof(EmuWheelAdminWarning));
+        }
     }
+
+    /// <summary>
+    /// Gets whether the current process is running with administrator privileges.
+    /// EmuWheel identity spoofing requires admin access to write to the vJoy registry.
+    /// </summary>
+    public static bool IsRunningAsAdmin => AdminHelper.IsRunningAsAdmin();
+
+    /// <summary>
+    /// Gets whether to show the "not running as administrator" warning for EmuWheel.
+    /// True when EmuWheel is enabled but the process does not have administrator privileges.
+    /// </summary>
+    public bool EmuWheelAdminWarning => EnableEmuWheel && !IsRunningAsAdmin;
 
     /// <summary>Gets or sets the vJoy device ID used for the EmuWheel virtual device (1–16).</summary>
     public decimal EmuWheelVJoyDeviceId

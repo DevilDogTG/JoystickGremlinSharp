@@ -5,6 +5,8 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia.Threading;
+using JoystickGremlin.App.Helpers;
+using JoystickGremlin.App.Services;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.Pipeline;
@@ -29,6 +31,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly IProfileLibrary _profileLibrary;
     private readonly ISettingsService _settingsService;
     private readonly IDeviceManager _deviceManager;
+    private readonly AdminDialogService _adminDialogService;
     private readonly ControllerSetupPageViewModel _controllerSetupPage;
     private readonly SettingsPageViewModel _settingsPage;
     private readonly VirtualDevicesPageViewModel _virtualDevicesPage;
@@ -56,6 +59,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         IProfileLibrary profileLibrary,
         ISettingsService settingsService,
         IDeviceManager deviceManager,
+        AdminDialogService adminDialogService,
         ILogger<MainWindowViewModel> logger)
     {
         _eventPipeline = eventPipeline;
@@ -64,6 +68,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _profileLibrary = profileLibrary;
         _settingsService = settingsService;
         _deviceManager = deviceManager;
+        _adminDialogService = adminDialogService;
         _controllerSetupPage = controllerSetupPage;
         _settingsPage = settingsPage;
         _virtualDevicesPage = virtualDevicesPage;
@@ -194,7 +199,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private Task ToggleActiveAsync()
+    private async Task ToggleActiveAsync()
     {
         if (_isGremlinActive)
         {
@@ -205,12 +210,30 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         else
         {
             var profile = _profileState.CurrentProfile;
-            if (profile is null) return Task.CompletedTask;
+            if (profile is null) return;
+
+            var settings = _settingsService.Settings;
+            if (profile.RequiresEmuWheel && settings.EnableEmuWheel && !AdminHelper.IsRunningAsAdmin())
+            {
+                _logger.LogWarning(
+                    "Profile '{Profile}' requires EmuWheel but process is not elevated; showing admin dialog",
+                    profile.Name);
+
+                var restart = await _adminDialogService.ShowEmuWheelAdminDialogAsync();
+                if (restart)
+                {
+                    _logger.LogInformation("User chose to restart as administrator for EmuWheel support");
+                    AdminHelper.RestartAsAdmin();
+                    Environment.Exit(0);
+                    return;
+                }
+                // User chose "Continue without EmuWheel" — fall through and start pipeline.
+            }
+
             _logger.LogInformation("Starting Gremlin event pipeline for profile {Profile}", profile.Name);
             _eventPipeline.Start(profile);
             IsGremlinActive = true;
         }
-        return Task.CompletedTask;
     }
 
     private async Task CheckForUpdatesAsync()
