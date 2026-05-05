@@ -363,6 +363,10 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
 
     private void OnInputReceived(object? sender, InputEvent inputEvent)
     {
+        // Skip all live UI updates when the user has disabled live input refresh.
+        if (!_settingsService.Settings.EnableLiveInputRefresh)
+            return;
+
         // Always update live axis/button/hat meters synchronously on the callback thread.
         if (_liveDevices.TryGetValue(inputEvent.DeviceGuid, out var liveDevice))
             liveDevice.ApplyEvent(inputEvent);
