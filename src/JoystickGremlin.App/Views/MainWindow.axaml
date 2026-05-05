@@ -3,13 +3,13 @@
         xmlns:vm="using:JoystickGremlin.App.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="1024" d:DesignHeight="680"
+        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="720"
         x:Class="JoystickGremlin.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/icon.ico"
         Title="Joystick Gremlin"
-        Width="1024" Height="680"
-        MinWidth="900" MinHeight="500">
+        Width="1280" Height="720"
+        MinWidth="1280" MinHeight="720">
 
     <DockPanel>
 
