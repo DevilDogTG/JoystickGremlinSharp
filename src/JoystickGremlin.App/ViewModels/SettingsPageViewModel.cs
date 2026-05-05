@@ -236,8 +236,9 @@ public sealed class SettingsPageViewModel : ViewModelBase
     public bool EmuWheelAdminWarning => EnableEmuWheel && !IsRunningAsAdmin;
 
     /// <summary>
-    /// Gets whether a system reboot is recommended for the most recent EmuWheel registry
-    /// change to take effect. The vJoy driver reads VID/PID from registry at boot time.
+    /// Gets whether a system reboot is recommended because the vJoy device re-enumeration
+    /// step failed (e.g. the app was not running as administrator). When <c>false</c>, the
+    /// new wheel identity is already live in the device tree — no reboot is needed.
     /// </summary>
     public bool EmuWheelRebootRequired
     {

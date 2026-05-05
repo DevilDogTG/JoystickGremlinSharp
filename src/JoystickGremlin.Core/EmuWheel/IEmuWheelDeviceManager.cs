@@ -31,9 +31,11 @@ public interface IEmuWheelDeviceManager : IDisposable
     bool IsSpoofActive { get; }
 
     /// <summary>
-    /// Gets whether a reboot is recommended because the vJoy registry was actually written
-    /// in this process session (VID/PID changed but the driver has not yet been reloaded).
-    /// <c>false</c> when the registry already contained the correct values on apply.
+    /// Gets whether a reboot is recommended because the device re-enumeration could not be
+    /// performed (e.g. the process is not running with administrator privileges). When
+    /// re-enumeration succeeds this is always <c>false</c> — the device identity is updated
+    /// immediately without a reboot. <c>true</c> only as a fallback when the Windows
+    /// Configuration Manager API call failed.
     /// </summary>
     bool RebootRecommended { get; }
 
@@ -42,8 +44,10 @@ public interface IEmuWheelDeviceManager : IDisposable
 
     /// <summary>
     /// Applies the USB identity spoof for the specified wheel model on the given vJoy device slot,
-    /// then reinitializes the device so the OS re-enumerates it with the new identity.
-    /// Idempotent: calling again with the same model and slot is a no-op.
+    /// writes VID/PID to the vJoy service-parameters registry, and forces a device re-enumeration
+    /// so the OS immediately presents the HID device with the new identity (no reboot required).
+    /// Idempotent: if the registry already has the correct values the write is skipped but
+    /// re-enumeration still runs to ensure the live device identity is up-to-date.
     /// </summary>
     /// <param name="model">The wheel model whose VID/PID to write to the registry.</param>
     /// <param name="vjoyId">The 1-based vJoy device slot to spoof.</param>

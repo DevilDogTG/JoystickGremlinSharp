@@ -16,13 +16,16 @@ namespace JoystickGremlin.Interop.EmuWheel;
 /// </summary>
 /// <remarks>
 /// Device I/O (axis/button/hat) is handled by the underlying <see cref="IVirtualDeviceManager"/>.
-/// Identity spoofing is handled by <see cref="VJoyRegistrySpoof"/>.
+/// Identity spoofing is handled by <see cref="VJoyRegistrySpoof"/> (writes registry) and
+/// <see cref="VJoyDeviceReenumerator"/> (forces the vJoy bus to re-present child devices with
+/// the updated hardware ID, making the change effective immediately without a reboot).
 /// </remarks>
 public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
 {
     private readonly IVirtualDeviceManager _vjoyManager;
     private readonly IDeviceManager _deviceManager;
     private readonly VJoyRegistrySpoof _spoof;
+    private readonly VJoyDeviceReenumerator _reenumerator;
     private readonly ILogger<EmuWheelDeviceManager> _logger;
 
     private readonly object _deviceLock = new();
@@ -30,6 +33,7 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
     private readonly Dictionary<uint, EmuWheelDevice> _acquiredDevices = [];
 
     private WheelModel? _activeModel;
+    private bool _reEnumerationFailed;
     private bool _disposed;
 
     /// <summary>
@@ -47,6 +51,7 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
         _deviceManager  = deviceManager;
         _logger         = logger;
         _spoof          = new VJoyRegistrySpoof(logger);
+        _reenumerator   = new VJoyDeviceReenumerator(logger);
     }
 
     /// <inheritdoc/>
@@ -56,7 +61,7 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
     public bool IsSpoofActive => _spoof.IsActive;
 
     /// <inheritdoc/>
-    public bool RebootRecommended => _spoof.RegistryChanged;
+    public bool RebootRecommended => _reEnumerationFailed;
 
     /// <inheritdoc/>
     public WheelModel? ActiveModel
@@ -85,10 +90,35 @@ public sealed class EmuWheelDeviceManager : IEmuWheelDeviceManager
 
         if (!applied)
         {
+            _reEnumerationFailed = true;
             _logger.LogWarning(
                 "EmuWheel spoof could not be applied (registry access denied or key missing). " +
                 "The vJoy device will be used with its default identity (VID 0x1234 / PID 0xBEAD). " +
                 "Games that require a wheel VID/PID whitelist match may not detect it as a wheel.");
+            return;
+        }
+
+        // Force the vJoy bus to re-enumerate its child HID devices so the updated VID/PID
+        // takes effect immediately without requiring a reboot. RebootRecommended is set to
+        // true only when this step fails (e.g. not running as administrator).
+        var reEnumerated = await _reenumerator
+            .ReEnumerateVJoyBusAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        _reEnumerationFailed = !reEnumerated;
+
+        if (_reEnumerationFailed)
+        {
+            _logger.LogWarning(
+                "EmuWheel: device re-enumeration failed — a system reboot is required for " +
+                "games to detect the virtual device as a steering wheel.");
+        }
+        else
+        {
+            _logger.LogInformation(
+                "EmuWheel: device re-enumerated successfully. " +
+                "The vJoy device should now present as {Model} (VID 0x{VID:X4} / PID 0x{PID:X4}) to games.",
+                model, info.VendorId, info.ProductId);
         }
     }
 

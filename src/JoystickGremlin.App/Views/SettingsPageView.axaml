@@ -262,12 +262,12 @@
                         <CheckBox Content="Enabled"
                                   IsChecked="{Binding EnableEmuWheel}"
                                   VerticalAlignment="Center"
-                                  ToolTip.Tip="Enables EmuWheel: writes VID/PID registry entries for the selected vJoy slot so Windows identifies it as the chosen wheel model. Changes take effect after a reboot (the vJoy driver reads identity at boot time). Requires administrator privileges."/>
+                                  ToolTip.Tip="Enables EmuWheel: writes VID/PID registry entries for the selected vJoy slot so Windows identifies it as the chosen wheel model. Re-enumerates the vJoy bus immediately so the identity change is live without a reboot. Requires administrator privileges."/>
                     </StackPanel>
 
                     <TextBlock TextWrapping="Wrap" Opacity="0.6" FontSize="11">
                         Spoofs a vJoy device's USB identity to appear as a real steering wheel.
-                        Requires administrator privileges to write registry entries.
+                        Requires administrator privileges to write registry entries and re-enumerate the vJoy bus.
                         Disable Steam Input per game (Properties → Controller → Disable Steam Input) for The Crew 2 and Forza Horizon 4.
                     </TextBlock>
 
@@ -285,7 +285,7 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Reboot required banner: shown after registry is written -->
+                    <!-- Reboot required banner: shown when device re-enumeration failed -->
                     <Border Background="{StaticResource WarningBackgroundBrush}"
                             CornerRadius="4"
                             Padding="10,6"
@@ -295,7 +295,7 @@
                             <TextBlock TextWrapping="Wrap"
                                        Foreground="{StaticResource WarningForegroundBrush}"
                                        FontSize="12"
-                                       Text="Reboot required — the registry has been updated. Restart Windows for the wheel identity to take effect."/>
+                                       Text="Reboot required — device re-enumeration failed (run as administrator). Restart Windows for the wheel identity to take effect."/>
                         </StackPanel>
                     </Border>
 

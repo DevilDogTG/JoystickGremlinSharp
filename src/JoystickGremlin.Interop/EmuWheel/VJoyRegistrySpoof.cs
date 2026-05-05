@@ -55,8 +55,10 @@ internal sealed class VJoyRegistrySpoof
 
     /// <summary>
     /// Gets whether the registry was actually written in this process session.
-    /// <c>true</c> indicates the VID/PID values were changed and a driver reload (reboot) is needed.
-    /// <c>false</c> means the registry already contained the correct values on apply.
+    /// <c>true</c> indicates the VID/PID values were changed; device re-enumeration is needed
+    /// to apply the new identity without a reboot. <c>false</c> means the registry already
+    /// contained the correct values — re-enumeration is still run to ensure the live device
+    /// presents the correct identity.
     /// </summary>
     internal bool RegistryChanged { get; private set; }
 
