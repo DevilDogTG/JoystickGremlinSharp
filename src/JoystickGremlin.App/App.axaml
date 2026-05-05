@@ -9,13 +9,21 @@
         <local:ViewLocator/>
     </Application.DataTemplates>
 
-    <TrayIcon.Icons>
-        <TrayIcons>
-            <TrayIcon Icon="/Assets/icon.ico"
+     <TrayIcon.Icons>
+         <TrayIcons>
+             <TrayIcon Icon="/Assets/icon.ico"
                       ToolTipText="Joystick Gremlin"
-                      Clicked="TrayIcon_Clicked" />
-        </TrayIcons>
-    </TrayIcon.Icons>
+                      Clicked="TrayIcon_Clicked">
+                 <TrayIcon.Menu>
+                     <NativeMenu>
+                         <NativeMenuItem Header="Show" Click="ShowWindow_Click"/>
+                         <NativeMenuItemSeparator/>
+                         <NativeMenuItem Header="Exit" Click="Exit_Click"/>
+                     </NativeMenu>
+                 </TrayIcon.Menu>
+             </TrayIcon>
+         </TrayIcons>
+     </TrayIcon.Icons>
 
     <Application.Styles>
         <FluentTheme />

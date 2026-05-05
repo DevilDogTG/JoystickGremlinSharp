@@ -74,27 +74,7 @@ public partial class App : Application
                 }
 
                 await mainWindowVm.InitializeAsync();
-
-                // Build the tray context menu now that all state is loaded.
-                var trayLogger = _services.GetRequiredService<ILogger<TrayMenuService>>();
-                _trayMenuService = new TrayMenuService(
-                    mainWindowVm,
-                    _services.GetRequiredService<IProfileLibrary>(),
-                    trayLogger,
-                    showWindowCallback: ShowMainWindow,
-                    exitCallback: () =>
-                    {
-                        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime dt)
-                        {
-                            if (_services is not null)
-                                _services.GetRequiredService<ISettingsService>().Settings.CloseToTray = false;
-                            dt.Shutdown();
-                        }
-                    });
-                // Wire the built menu to the tray icon.
-                var icons = TrayIcon.GetIcons(this);
-                if (icons is { Count: > 0 })
-                    icons[0].Menu = _trayMenuService.Menu;
+                AttachTrayMenu(mainWindowVm);
 
                 // After settings are loaded, hide window if start-minimized is set.
                 if (settingsService.Settings.StartMinimized)
@@ -113,9 +93,7 @@ public partial class App : Application
 
             desktop.Exit += (_, _) =>
             {
-                _trayMenuService?.Dispose();
-                _services.Dispose();
-                Log.CloseAndFlush();
+                DisposeApp();
             };
         }
 
@@ -127,12 +105,54 @@ public partial class App : Application
     /// <summary>Restores the main window when the tray icon is double-clicked.</summary>
     private void TrayIcon_Clicked(object? sender, EventArgs e) => ShowMainWindow();
 
+    /// <summary>Restores the main window from the tray context menu.</summary>
+    private void ShowWindow_Click(object? sender, EventArgs e) => ShowMainWindow();
+
+    /// <summary>Exits the application from the tray context menu.</summary>
+    private void Exit_Click(object? sender, EventArgs e) => ExitApplication();
+
     private void ShowMainWindow()
     {
         if (_mainWindow is null) return;
         _mainWindow.Show();
         _mainWindow.WindowState = WindowState.Normal;
         _mainWindow.Activate();
+    }
+
+    private void AttachTrayMenu(MainWindowViewModel mainWindowVm)
+    {
+        if (_services is null)
+            return;
+
+        var trayLogger = _services.GetRequiredService<ILogger<TrayMenuService>>();
+        _trayMenuService = new TrayMenuService(
+            mainWindowVm,
+            _services.GetRequiredService<IProfileLibrary>(),
+            trayLogger,
+            showWindowCallback: ShowMainWindow,
+            exitCallback: ExitApplication);
+
+        var icons = TrayIcon.GetIcons(this);
+        if (icons is { Count: > 0 })
+            icons[0].Menu = _trayMenuService.Menu;
+    }
+
+    private void ExitApplication()
+    {
+        if (ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+            return;
+
+        if (_services is not null)
+            _services.GetRequiredService<ISettingsService>().Settings.CloseToTray = false;
+
+        desktop.Shutdown();
+    }
+
+    private void DisposeApp()
+    {
+        _trayMenuService?.Dispose();
+        _services?.Dispose();
+        Log.CloseAndFlush();
     }
 
     // ── DI configuration ────────────────────────────────────────────────────

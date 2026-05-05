@@ -62,10 +62,10 @@ public sealed class TrayMenuService : IDisposable
         _profilesItem = new NativeMenuItem { Header = "Profiles" };
 
         var showItem = new NativeMenuItem { Header = "Show" };
-        showItem.Click += (_, _) => showWindowCallback();
+        showItem.Click += (_, _) => Dispatcher.UIThread.Post(showWindowCallback);
 
         var exitItem = new NativeMenuItem { Header = "Exit" };
-        exitItem.Click += (_, _) => exitCallback();
+        exitItem.Click += (_, _) => Dispatcher.UIThread.Post(exitCallback);
 
         // Assemble the top-level menu.
         Menu = new NativeMenu();
