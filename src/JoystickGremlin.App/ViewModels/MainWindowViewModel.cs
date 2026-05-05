@@ -185,8 +185,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
         await _settingsService.LoadAsync();
         _settingsPage.LoadFromSettings();
-        _isLiveInputRefreshEnabled = _settingsService.Settings.EnableLiveInputRefresh;
-        this.RaisePropertyChanged(nameof(IsLiveInputRefreshEnabled));
+        // IsLiveInputRefreshEnabled is kept in sync via the WhenAnyValue subscription
+        // on _settingsPage set up in the constructor; no explicit sync needed here.
 
         _deviceManager.Initialize();
         _controllerSetupPage.RefreshDevices();
