@@ -40,6 +40,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private NavItemViewModel? _selectedNavItem;
     private bool _isGremlinActive;
     private ProfileEntry? _selectedProfileEntry;
+    private bool _isLiveInputRefreshEnabled = true;
 
     /// <summary>
     /// Initializes a new instance of <see cref="MainWindowViewModel"/>.
@@ -103,6 +104,16 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
         _profileLibrary.LibraryChanged += OnLibraryChanged;
         _profileState.ProfileChanged   += OnProfileChanged;
+
+        // Keep toolbar toggle in sync with the Settings page property (single source of truth).
+        _subscriptions.Add(
+            _settingsPage.WhenAnyValue(x => x.EnableLiveInputRefresh)
+                .Subscribe(v =>
+                {
+                    if (_isLiveInputRefreshEnabled == v) return;
+                    _isLiveInputRefreshEnabled = v;
+                    this.RaisePropertyChanged(nameof(IsLiveInputRefreshEnabled));
+                }));
     }
 
     /// <summary>Gets the sidebar navigation items.</summary>
@@ -142,6 +153,22 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the label for the Start/Stop toggle button.</summary>
     public string ToggleButtonLabel => _toggleButtonLabel.Value;
 
+    /// <summary>
+    /// Gets or sets whether live-input UI refresh is enabled.
+    /// Toggling this from the toolbar is equivalent to changing the same setting on the Settings page.
+    /// </summary>
+    public bool IsLiveInputRefreshEnabled
+    {
+        get => _isLiveInputRefreshEnabled;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _isLiveInputRefreshEnabled, value);
+            // Forward to SettingsPageViewModel — it owns persistence via its debounced auto-save.
+            if (_settingsPage.EnableLiveInputRefresh != value)
+                _settingsPage.EnableLiveInputRefresh = value;
+        }
+    }
+
     /// <summary>Gets the command that toggles the Gremlin event pipeline on or off.</summary>
     public ReactiveCommand<Unit, Unit> ToggleActiveCommand { get; }
 
@@ -158,6 +185,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
         await _settingsService.LoadAsync();
         _settingsPage.LoadFromSettings();
+        _isLiveInputRefreshEnabled = _settingsService.Settings.EnableLiveInputRefresh;
+        this.RaisePropertyChanged(nameof(IsLiveInputRefreshEnabled));
 
         _deviceManager.Initialize();
         _controllerSetupPage.RefreshDevices();
