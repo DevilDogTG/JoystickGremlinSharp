@@ -101,6 +101,20 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _selectedInputRow, value);
     }
 
+    /// <summary>Gets whether a device is currently selected.</summary>
+    public bool HasSelectedDevice => SelectedDevice is not null;
+
+    /// <summary>Gets the live input state for the selected device, or null if none is selected.</summary>
+    public DeviceLiveInputViewModel? SelectedDeviceLiveInput
+    {
+        get
+        {
+            if (SelectedDevice is null) return null;
+            _liveDevices.TryGetValue(SelectedDevice.Device.Guid, out var live);
+            return live;
+        }
+    }
+
     /// <summary>Gets whether an input row is currently selected.</summary>
     public bool HasSelectedInput => SelectedInputRow is not null;
 
@@ -150,6 +164,9 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
 
     private void OnSelectedDeviceChanged(DeviceViewModel? device)
     {
+        this.RaisePropertyChanged(nameof(HasSelectedDevice));
+        this.RaisePropertyChanged(nameof(SelectedDeviceLiveInput));
+
         if (device is null)
         {
             DisposeInputRows();
