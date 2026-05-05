@@ -59,6 +59,12 @@ dotnet run --project src/JoystickGremlin.App
 
 ---
 
+## Documentation
+
+- [EmuWheel Configuration Guide](docs/emuwheel-configuration.md)
+
+---
+
 ## Solution Structure
 
 ```
