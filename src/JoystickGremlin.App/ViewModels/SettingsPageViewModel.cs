@@ -35,6 +35,7 @@ public sealed class SettingsPageViewModel : ViewModelBase
     private string _ffbWheelInstanceGuid = string.Empty;
     private string _ffbBridgeStatus = "Disabled";
     private decimal _uiUpdateIntervalMs = 10m;
+    private bool _enableLiveInputRefresh = true;
     private bool _loading;
 
     /// <summary>
@@ -69,7 +70,8 @@ public sealed class SettingsPageViewModel : ViewModelBase
                 x => x.CloseToTray,
                 x => x.EnableAutoLoading,
                 x => x.UiUpdateIntervalMs,
-                (_, _, _, _, _, _) => Unit.Default)
+                x => x.EnableLiveInputRefresh,
+                (_, _, _, _, _, _, _) => Unit.Default)
             .Skip(1)
             .Throttle(TimeSpan.FromMilliseconds(800), AvaloniaScheduler.Instance)
             .Subscribe(unit => { if (!_loading) _ = SaveAsync(); });
@@ -143,6 +145,17 @@ public sealed class SettingsPageViewModel : ViewModelBase
     /// <summary>Gets a value indicating whether the current interval is high-frequency (≤ 5 ms).</summary>
     public bool UiUpdateHighFrequencyWarning => _uiUpdateIntervalMs is > 0 and <= 5;
 
+    /// <summary>
+    /// Gets or sets whether live-input UI refresh is enabled.
+    /// When disabled, axis/button/hat meters and input row highlights stop updating —
+    /// useful when running games to prevent UI thread load.
+    /// </summary>
+    public bool EnableLiveInputRefresh
+    {
+        get => _enableLiveInputRefresh;
+        set => this.RaiseAndSetIfChanged(ref _enableLiveInputRefresh, value);
+    }
+
     /// <summary>Gets or sets whether the force feedback bridge is enabled.</summary>
     public bool EnableFfbBridge
     {
@@ -212,6 +225,7 @@ public sealed class SettingsPageViewModel : ViewModelBase
             CloseToTray          = s.CloseToTray;
             EnableAutoLoading    = s.EnableAutoLoading;
             UiUpdateIntervalMs   = s.UiUpdateIntervalMs > 0 ? (decimal)s.UiUpdateIntervalMs : 10m;
+            EnableLiveInputRefresh = s.EnableLiveInputRefresh;
             EnableFfbBridge      = s.EnableFfbBridge;
             FfbVJoyDeviceId      = s.FfbVJoyDeviceId;
             FfbGainPercent       = s.FfbGainPercent;
@@ -281,6 +295,7 @@ public sealed class SettingsPageViewModel : ViewModelBase
         s.CloseToTray        = CloseToTray;
         s.EnableAutoLoading  = EnableAutoLoading;
         s.UiUpdateIntervalMs = (int)UiUpdateIntervalMs;
+        s.EnableLiveInputRefresh = EnableLiveInputRefresh;
         s.EnableFfbBridge    = EnableFfbBridge;
         s.FfbVJoyDeviceId    = (uint)FfbVJoyDeviceId;
         s.FfbGainPercent     = FfbGainPercent;
