@@ -351,7 +351,7 @@ to the bundled DLL if the installed path cannot be found.
 
 - **InputIndex is 1-based** for all input types (buttons, axes, hats). Physical button 1 = `InputIndex=1`. Pass `data.InputIndex` directly as the event identifier — no offset adjustment needed. (The `NativeJoystickInputData` comment saying "Zero-based" is incorrect.)
 - **Axis values** arrive as raw DirectInput signed-short integers (range −32768 to 32767). `DillDeviceManager` normalises to `[−1.0, 1.0]` via `Math.Clamp(data.Value / 32767.0, -1.0, 1.0)` before creating `InputEvent`.
-- **AxisCount may be 0** from DILL even when axes exist (confirmed on MOZA R9 Base). `DillDevice` falls back to counting non-zero `AxisIndex` entries from `AxisMap`; DirectInput axis codes start at `0x30`, so `AxisIndex == 0` is the unused-slot sentinel.
+- **AxisCount may be wrong** from DILL (reports 0 or under-counts). `DillDevice` always walks the full `AxisMap` for non-zero `AxisIndex` entries and uses `Math.Max(native.AxisCount, mappings.Count)`; DirectInput axis codes start at `0x30`, so `AxisIndex == 0` is the unused-slot sentinel. MOZA R9 Base confirmed to have 8 axes while DILL reports 7.
 
 ### SendInput Struct Size (x64)
 

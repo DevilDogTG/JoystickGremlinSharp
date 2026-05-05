@@ -54,20 +54,20 @@ public sealed class DillDevice : IPhysicalDevice
         var mappings = new List<AxisMapping>();
         var axisMap = native.AxisMap ?? [];
 
-        // DILL sometimes reports AxisCount = 0 even when axes exist. Walk the AxisMap
-        // directly and stop at the first entry where AxisIndex = 0 (DirectInput axis codes
-        // start at 0x30, so 0 is the sentinel for an unused slot).
-        var maxEntries = native.AxisCount > 0 ? (int)native.AxisCount : axisMap.Length;
-        for (int i = 0; i < maxEntries && i < axisMap.Length; i++)
+        // Always walk the full AxisMap to discover all valid axes, regardless of AxisCount.
+        // DILL sometimes under-reports (e.g. MOZA R9 Base reports 7 but has 8 valid entries)
+        // or reports 0 even when axes exist. DirectInput axis codes start at 0x30, so
+        // AxisIndex == 0 is the sentinel for an unused slot.
+        for (int i = 0; i < axisMap.Length; i++)
         {
             if (axisMap[i].AxisIndex == 0) break;
             mappings.Add(new AxisMapping(axisMap[i].LinearIndex, axisMap[i].AxisIndex));
         }
         AxisMappings = mappings;
 
-        // Prefer the DILL-reported count but fall back to AxisMap-derived count when DILL
-        // reports 0 (observed on some devices, e.g. MOZA R9 Base).
-        AxisCount = native.AxisCount > 0 ? (int)native.AxisCount : mappings.Count;
+        // Use the larger of: what DILL reports vs. what the AxisMap actually contains.
+        // This handles under-reporting (AxisCount < real count) and zero-reporting alike.
+        AxisCount = Math.Max((int)native.AxisCount, mappings.Count);
     }
 }
 
