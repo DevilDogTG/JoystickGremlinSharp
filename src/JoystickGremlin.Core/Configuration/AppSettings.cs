@@ -60,4 +60,12 @@ public sealed class AppSettings
     /// Defaults to 10 ms (~100 Hz). Valid range: 1–1000 ms.
     /// </summary>
     public int UiUpdateIntervalMs { get; set; } = 10;
+
+    /// <summary>
+    /// Gets or sets whether the live-input UI refresh is enabled.
+    /// When <c>false</c>, the Controller Setup page stops updating axis/button/hat meters
+    /// and input row highlights — useful when running games to prevent UI thread load.
+    /// Defaults to <c>true</c>.
+    /// </summary>
+    public bool EnableLiveInputRefresh { get; set; } = true;
 }
