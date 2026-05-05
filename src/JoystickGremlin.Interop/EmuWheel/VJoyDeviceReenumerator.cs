@@ -93,23 +93,65 @@ internal sealed class VJoyDeviceReenumerator
     /// <returns>The device node handle, or 0 when not found.</returns>
     private uint FindVJoyBusDevNode()
     {
-        // Enumerate all devices and look for one whose hardware ID starts with "root\vjoy".
-        // vJoy bus instance ID is typically "ROOT\VJOY\0000" (root-enumerated virtual bus).
-        var instanceIds = new[] { "ROOT\\VJOY\\0000", "ROOT\\VJOY\\0001" };
-
-        foreach (var instanceId in instanceIds)
+        // Most reliable: the Windows SCM maintains a service→device instance ID map under
+        // HKLM\SYSTEM\CurrentControlSet\Services\<service>\Enum. Each value 0, 1, … holds
+        // the instance ID of a device driven by that service.  Reading this avoids any
+        // assumption about the vJoy bus instance ID format.
+        var instanceId = ReadVJoyServiceEnumInstanceId();
+        if (instanceId is not null)
         {
             var cr = NativeMethods.CM_Locate_DevNodeW(out var devNode, instanceId, 0);
-            if (cr == 0 /* CR_SUCCESS */ && devNode != 0)
+            if (cr == 0 && devNode != 0)
             {
                 _logger.LogDebug(
-                    "EmuWheel re-enumeration: found vJoy bus at instance {InstanceId}", instanceId);
+                    "EmuWheel re-enumeration: found vJoy bus via service enum at {InstanceId}",
+                    instanceId);
+                return devNode;
+            }
+
+            _logger.LogDebug(
+                "EmuWheel re-enumeration: service enum instance {InstanceId} listed but " +
+                "CM_Locate_DevNodeW returned CR=0x{CR:X} — falling back to known IDs",
+                instanceId, cr);
+        }
+
+        // Fallback: try well-known instance IDs used by common vJoy builds.
+        var knownIds = new[] { "ROOT\\VJOYBUS\\0000", "ROOT\\VJOY\\0000", "ROOT\\VJOY\\0001" };
+        foreach (var id in knownIds)
+        {
+            var cr = NativeMethods.CM_Locate_DevNodeW(out var devNode, id, 0);
+            if (cr == 0 && devNode != 0)
+            {
+                _logger.LogDebug(
+                    "EmuWheel re-enumeration: found vJoy bus at known instance {InstanceId}", id);
                 return devNode;
             }
         }
 
-        // Fallback: walk all root device nodes and match by hardware ID buffer.
+        // Last resort: walk the PnP device tree matching by hardware ID.
         return FindDevNodeByHardwareId(VJoyBusHardwareIdPrefix);
+    }
+
+    /// <summary>
+    /// Reads the first device instance ID registered under the vJoy service enum key:
+    /// <c>HKLM\SYSTEM\CurrentControlSet\Services\vjoy\Enum\0</c>.
+    /// Returns <c>null</c> when the key or value is absent.
+    /// </summary>
+    private string? ReadVJoyServiceEnumInstanceId()
+    {
+        const string keyPath = @"SYSTEM\CurrentControlSet\Services\vjoy\Enum";
+        try
+        {
+            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(keyPath);
+            var value = key?.GetValue("0") as string;
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "EmuWheel re-enumeration: could not read vJoy service enum registry key");
+        }
+        return null;
     }
 
     /// <summary>
