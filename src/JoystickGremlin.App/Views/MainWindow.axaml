@@ -18,7 +18,7 @@
                 Padding="8,6"
                 BorderThickness="0,0,0,1"
                 BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
-            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
 
                 <!-- Profile label -->
                 <TextBlock Grid.Column="0"
@@ -41,8 +41,18 @@
                     </ComboBox.ItemTemplate>
                 </ComboBox>
 
+                <!-- Live input refresh toggle -->
+                <ToggleButton Grid.Column="2"
+                              IsChecked="{Binding IsLiveInputRefreshEnabled}"
+                              MinWidth="80"
+                              ToolTip.Tip="Toggle live input UI refresh. Uncheck while gaming to prevent UI thread load from high-frequency device polling.">
+                    <TextBlock>
+                        <Run Text="📡 Live"/>
+                    </TextBlock>
+                </ToggleButton>
+
                 <!-- Start / Stop toggle -->
-                <Button Grid.Column="2"
+                <Button Grid.Column="3"
                         Content="{Binding ToggleButtonLabel}"
                         Command="{Binding ToggleActiveCommand}"
                         MinWidth="90"
