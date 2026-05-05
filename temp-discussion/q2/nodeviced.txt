@@ -1,2 +1,0 @@
-Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Services\vjoy\Parameters\Device002" | Select-Object VendorID, ProductID
-Get-ItemProperty: Cannot find path 'HKLM:\SYSTEM\CurrentControlSet\Services\vjoy\Parameters\Device002' because it does not exist
