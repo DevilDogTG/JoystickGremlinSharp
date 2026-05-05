@@ -73,6 +73,20 @@ public partial class App : Application
                 var emuWheel = _services.GetRequiredService<IEmuWheelDeviceManager>();
                 await emuWheel.RecoverIfNeededAsync();
 
+                // Re-apply EmuWheel registry spoof on startup if it was previously enabled.
+                // vJoy reads VID/PID at driver load time, so the spoof must be present in the
+                // registry before the next reboot — keep it applied whenever EnableEmuWheel is on.
+                var startupSettings = settingsService.Settings;
+                if (startupSettings.EnableEmuWheel && !emuWheel.IsSpoofActive)
+                {
+                    _services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<App>>()
+                        .LogInformation(
+                            "Startup: re-applying EmuWheel spoof (vJoy {DeviceId}, model {Model})",
+                            startupSettings.EmuWheelVJoyDeviceId,
+                            startupSettings.EmuWheelModel);
+                    await emuWheel.ApplySpoofAsync(startupSettings.EmuWheelModel, startupSettings.EmuWheelVJoyDeviceId);
+                }
+
                 // Check vJoy prerequisite before initialising — show a warning dialog if not met.
                 var vjoyCheck = VJoyPrerequisiteChecker.Check();
                 if (!vjoyCheck.IsOk)

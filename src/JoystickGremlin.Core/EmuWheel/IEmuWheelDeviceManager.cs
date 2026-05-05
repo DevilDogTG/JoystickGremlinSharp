@@ -10,10 +10,12 @@ namespace JoystickGremlin.Core.EmuWheel;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The spoof is <b>profile-scoped</b>: call <see cref="ApplySpoofAsync"/> when a profile
-/// containing <c>emuwheel-*</c> actions starts, and <see cref="RestoreAsync"/> when the
-/// pipeline stops or the app exits. This limits the system-wide identity change to the
-/// window when wheel emulation is intentionally active.
+/// The spoof is <b>settings-scoped</b>: call <see cref="ApplySpoofAsync"/> when the user
+/// enables EmuWheel in Settings, and <see cref="RestoreAsync"/> when it is disabled.
+/// The registry change persists through reboots; the vJoy driver reads VID/PID at boot
+/// time, so the device retains wheel identity after a restart without the app running.
+/// Call <see cref="ApplySpoofAsync"/> again on app startup (if EnableEmuWheel is set) to
+/// ensure the registry remains correct after any external modifications.
 /// </para>
 /// <para>
 /// A sentinel file is written when the spoof is applied and deleted on restore, allowing

@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
 using JoystickGremlin.App.Helpers;
+using JoystickGremlin.App.Services;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.EmuWheel;
 using JoystickGremlin.Core.ForceFeedback;
@@ -25,6 +26,8 @@ public sealed class SettingsPageViewModel : ViewModelBase
     private readonly IStartupService _startupService;
     private readonly IFilePickerService _filePicker;
     private readonly IForceFeedbackBridge _ffbBridge;
+    private readonly IEmuWheelDeviceManager _emuWheelManager;
+    private readonly AdminDialogService _adminDialogService;
     private readonly ILogger<SettingsPageViewModel> _logger;
     private string _profilesFolderPath = string.Empty;
     private bool _startMinimized;
@@ -39,6 +42,7 @@ public sealed class SettingsPageViewModel : ViewModelBase
     private bool _enableEmuWheel;
     private decimal _emuWheelVJoyDeviceId = 2;
     private WheelModel _emuWheelModel = WheelModel.LogitechG29;
+    private bool _emuWheelRebootRequired;
     private decimal _uiUpdateIntervalMs = 10m;
     private bool _loading;
 
@@ -50,13 +54,17 @@ public sealed class SettingsPageViewModel : ViewModelBase
         IStartupService startupService,
         IFilePickerService filePicker,
         IForceFeedbackBridge ffbBridge,
+        IEmuWheelDeviceManager emuWheelManager,
+        AdminDialogService adminDialogService,
         ILogger<SettingsPageViewModel> logger)
     {
-        _settingsService = settingsService;
-        _startupService  = startupService;
-        _filePicker      = filePicker;
-        _ffbBridge       = ffbBridge;
-        _logger          = logger;
+        _settingsService  = settingsService;
+        _startupService   = startupService;
+        _filePicker       = filePicker;
+        _ffbBridge        = ffbBridge;
+        _emuWheelManager  = emuWheelManager;
+        _adminDialogService = adminDialogService;
+        _logger           = logger;
 
         ProcessMappings = [];
         AddMappingCommand    = ReactiveCommand.Create(AddMapping);
@@ -97,6 +105,12 @@ public sealed class SettingsPageViewModel : ViewModelBase
             .Skip(1)
             .Throttle(TimeSpan.FromMilliseconds(800), AvaloniaScheduler.Instance)
             .Subscribe(unit => { if (!_loading) _ = SaveAsync(); });
+
+        // Show admin dialog immediately if EmuWheel is toggled on without elevation.
+        this.WhenAnyValue(x => x.EnableEmuWheel)
+            .Skip(1)
+            .Where(enabled => enabled && !_loading)
+            .Subscribe(_ => ShowEmuWheelAdminDialogIfNeeded());
     }
 
     /// <summary>Gets or sets the folder path where profiles are stored.</summary>
@@ -217,6 +231,16 @@ public sealed class SettingsPageViewModel : ViewModelBase
     /// True when EmuWheel is enabled but the process does not have administrator privileges.
     /// </summary>
     public bool EmuWheelAdminWarning => EnableEmuWheel && !IsRunningAsAdmin;
+
+    /// <summary>
+    /// Gets whether a system reboot is recommended for the most recent EmuWheel registry
+    /// change to take effect. The vJoy driver reads VID/PID from registry at boot time.
+    /// </summary>
+    public bool EmuWheelRebootRequired
+    {
+        get => _emuWheelRebootRequired;
+        private set => this.RaiseAndSetIfChanged(ref _emuWheelRebootRequired, value);
+    }
 
     /// <summary>Gets or sets the vJoy device ID used for the EmuWheel virtual device (1–16).</summary>
     public decimal EmuWheelVJoyDeviceId
@@ -378,6 +402,9 @@ public sealed class SettingsPageViewModel : ViewModelBase
 
         s.StartWithWindows = StartWithWindows;
         // ProcessMappings list is already mutated in-place by AddMapping/RemoveMapping/Move*.
+        // Apply or restore the EmuWheel spoof based on the new setting value.
+        await ApplyEmuWheelSpoofAsync(s.EnableEmuWheel, s.EmuWheelModel, s.EmuWheelVJoyDeviceId);
+
         try
         {
             await _settingsService.SaveAsync();
@@ -385,6 +412,41 @@ public sealed class SettingsPageViewModel : ViewModelBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save settings");
+        }
+    }
+
+    private async Task ApplyEmuWheelSpoofAsync(bool enable, WheelModel model, uint vjoyId)
+    {
+        try
+        {
+            if (enable)
+            {
+                _logger.LogInformation("Applying EmuWheel spoof for vJoy {DeviceId} model {Model}", vjoyId, model);
+                await _emuWheelManager.ApplySpoofAsync(model, vjoyId);
+                EmuWheelRebootRequired = true;
+            }
+            else
+            {
+                _logger.LogInformation("Restoring EmuWheel spoof for vJoy {DeviceId}", vjoyId);
+                await _emuWheelManager.RestoreAsync();
+                EmuWheelRebootRequired = _emuWheelManager.IsSpoofActive;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to apply/restore EmuWheel spoof");
+        }
+    }
+
+    private async void ShowEmuWheelAdminDialogIfNeeded()
+    {
+        if (AdminHelper.IsRunningAsAdmin()) return;
+
+        var restart = await _adminDialogService.ShowEmuWheelAdminDialogAsync();
+        if (restart)
+        {
+            AdminHelper.RestartAsAdmin();
+            Environment.Exit(0);
         }
     }
 }

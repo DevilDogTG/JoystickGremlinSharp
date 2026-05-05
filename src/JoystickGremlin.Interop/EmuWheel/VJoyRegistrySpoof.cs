@@ -32,7 +32,7 @@ internal sealed class VJoyRegistrySpoof
 {
     /// <summary>
     /// vJoy driver service-parameters registry base path.
-    /// Per-device subkeys: <c>Device001</c>, <c>Device002</c>, …
+    /// Per-device subkeys: <c>Device01</c>, <c>Device02</c>, …
     /// </summary>
     internal const string VJoyParamsKeyBase = @"SYSTEM\CurrentControlSet\Services\vjoy\Parameters";
 
@@ -83,7 +83,7 @@ internal sealed class VJoyRegistrySpoof
         }
 
         var info = WheelModelRegistry.Get(model);
-        var subKeyName = $@"{VJoyParamsKeyBase}\Device{vjoyId:D3}";
+        var subKeyName = $@"{VJoyParamsKeyBase}\Device{vjoyId:D2}";
 
         try
         {
@@ -141,7 +141,7 @@ internal sealed class VJoyRegistrySpoof
         }
 
         var vjoyId = _activeVJoyId.Value;
-        var subKeyName = $@"{VJoyParamsKeyBase}\Device{vjoyId:D3}";
+        var subKeyName = $@"{VJoyParamsKeyBase}\Device{vjoyId:D2}";
 
         try
         {

@@ -262,7 +262,7 @@
                         <CheckBox Content="Enabled"
                                   IsChecked="{Binding EnableEmuWheel}"
                                   VerticalAlignment="Center"
-                                  ToolTip.Tip="Enables the EmuWheel backend. When a profile containing emuwheel-* actions is started, the selected vJoy slot is spoofed to appear as the chosen wheel model."/>
+                                  ToolTip.Tip="Enables EmuWheel: writes VID/PID registry entries for the selected vJoy slot so Windows identifies it as the chosen wheel model. Changes take effect after a reboot (the vJoy driver reads identity at boot time). Requires administrator privileges."/>
                     </StackPanel>
 
                     <TextBlock TextWrapping="Wrap" Opacity="0.6" FontSize="11">
@@ -281,7 +281,21 @@
                             <TextBlock TextWrapping="Wrap"
                                        Foreground="{StaticResource WarningForegroundBrush}"
                                        FontSize="12"
-                                       Text="Not running as administrator — EmuWheel identity spoofing will not work. Start the app with 'Run as administrator', or click Start on a profile that uses EmuWheel to be prompted automatically."/>
+                                       Text="Not running as administrator — EmuWheel identity spoofing will not work. Start the app as Administrator."/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Reboot required banner: shown after registry is written -->
+                    <Border Background="{StaticResource WarningBackgroundBrush}"
+                            CornerRadius="4"
+                            Padding="10,6"
+                            IsVisible="{Binding EmuWheelRebootRequired}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="🔄" VerticalAlignment="Center"/>
+                            <TextBlock TextWrapping="Wrap"
+                                       Foreground="{StaticResource WarningForegroundBrush}"
+                                       FontSize="12"
+                                       Text="Reboot required — the registry has been updated. Restart Windows for the wheel identity to take effect."/>
                         </StackPanel>
                     </Border>
 
