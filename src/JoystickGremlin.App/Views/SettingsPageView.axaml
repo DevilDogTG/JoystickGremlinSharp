@@ -22,11 +22,15 @@
                     BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
                 <StackPanel Spacing="8">
                     <TextBlock Text="Live Input Display" FontWeight="SemiBold" FontSize="15"/>
+                    <CheckBox Content="Enable live input refresh"
+                              IsChecked="{Binding EnableLiveInputRefresh}"
+                              ToolTip.Tip="When unchecked, axis/button/hat meters and input row highlights stop updating. Uncheck while gaming to reduce UI thread load."/>
                     <TextBlock TextWrapping="Wrap" Opacity="0.6" FontSize="11">
                         Controls how often the Controller Setup page refreshes live input state.
                         Lower interval = higher refresh rate. Very low values (≤ 5 ms) may increase CPU usage noticeably.
                     </TextBlock>
-                    <Grid ColumnDefinitions="*,120,Auto" RowDefinitions="Auto" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="*,120,Auto" RowDefinitions="Auto" ColumnSpacing="8"
+                          IsEnabled="{Binding EnableLiveInputRefresh}">
                         <TextBlock Grid.Column="0"
                                    Text="Update interval (ms)"
                                    VerticalAlignment="Center"/>
