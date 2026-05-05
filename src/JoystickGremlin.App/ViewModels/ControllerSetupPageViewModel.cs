@@ -115,18 +115,6 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>Gets whether an input row is currently selected.</summary>
-    public bool HasSelectedInput => SelectedInputRow is not null;
-
-    /// <summary>Gets whether the selected input is an axis.</summary>
-    public bool ShowAxisDetail => SelectedInputRow?.IsAxis ?? false;
-
-    /// <summary>Gets whether the selected input is a button.</summary>
-    public bool ShowButtonDetail => SelectedInputRow?.IsButton ?? false;
-
-    /// <summary>Gets whether the selected input is a hat.</summary>
-    public bool ShowHatDetail => SelectedInputRow?.IsHat ?? false;
-
     /// <summary>Gets whether the selected input can currently be edited.</summary>
     public bool CanEditBinding => SelectedInputRow is not null && BindingEditor.HasProfile;
 
@@ -182,10 +170,6 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
 
     private void OnSelectedInputRowChanged(UnifiedInputRowViewModel? row)
     {
-        this.RaisePropertyChanged(nameof(HasSelectedInput));
-        this.RaisePropertyChanged(nameof(ShowAxisDetail));
-        this.RaisePropertyChanged(nameof(ShowButtonDetail));
-        this.RaisePropertyChanged(nameof(ShowHatDetail));
         this.RaisePropertyChanged(nameof(CanEditBinding));
 
         if (row is null && _isRebuildingInputRows)

@@ -228,6 +228,8 @@
                                        FontSize="12"
                                        Opacity="0.75"/>
                             <ItemsControl ItemsSource="{Binding SelectedDeviceLiveInput.Buttons}">
+                                <!-- WrapPanel does not support UI virtualization. Acceptable for ≤128 buttons;
+                                     revisit if devices with >200 buttons are encountered. -->
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <WrapPanel/>
