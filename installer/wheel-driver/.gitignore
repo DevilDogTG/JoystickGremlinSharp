@@ -1,0 +1,5 @@
+# Build outputs and clones — not tracked.
+build/
+out/
+*.cer
+*.pfx
