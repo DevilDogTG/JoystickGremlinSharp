@@ -308,7 +308,7 @@ internal static partial class VJoyFfbNative
 
     /// <summary>Decodes a Set Constant Force packet.</summary>
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern uint Ffb_h_Eff_Const(IntPtr packet, IntPtr effect);
+    internal static extern uint Ffb_h_Eff_Constant(IntPtr packet, IntPtr effect);
 
     /// <summary>Decodes a Set Ramp Force packet.</summary>
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
@@ -342,5 +342,5 @@ internal static partial class VJoyFfbNative
     /// <param name="gain">Receives the gain value (0–255).</param>
     /// <returns>0 on success.</returns>
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern uint Ffb_h_Eff_Gain(IntPtr packet, out byte gain);
+    internal static extern uint Ffb_h_DevGain(IntPtr packet, out byte gain);
 }
