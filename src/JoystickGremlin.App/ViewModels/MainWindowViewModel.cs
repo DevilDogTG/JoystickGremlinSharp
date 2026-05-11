@@ -7,6 +7,7 @@ using System.Reactive.Linq;
 using Avalonia.Threading;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Devices;
+using JoystickGremlin.Core.ForceFeedback;
 using JoystickGremlin.Core.Pipeline;
 using JoystickGremlin.Core.Profile;
 using Microsoft.Extensions.Logging;
@@ -29,6 +30,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly IProfileLibrary _profileLibrary;
     private readonly ISettingsService _settingsService;
     private readonly IDeviceManager _deviceManager;
+    private readonly IForceFeedbackBridge _forceFeedbackBridge;
     private readonly ControllerSetupPageViewModel _controllerSetupPage;
     private readonly SettingsPageViewModel _settingsPage;
     private readonly VirtualDevicesPageViewModel _virtualDevicesPage;
@@ -57,6 +59,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         IProfileLibrary profileLibrary,
         ISettingsService settingsService,
         IDeviceManager deviceManager,
+        IForceFeedbackBridge forceFeedbackBridge,
         ILogger<MainWindowViewModel> logger)
     {
         _eventPipeline = eventPipeline;
@@ -65,6 +68,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _profileLibrary = profileLibrary;
         _settingsService = settingsService;
         _deviceManager = deviceManager;
+        _forceFeedbackBridge = forceFeedbackBridge;
         _controllerSetupPage = controllerSetupPage;
         _settingsPage = settingsPage;
         _virtualDevicesPage = virtualDevicesPage;
@@ -225,21 +229,45 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private Task ToggleActiveAsync()
     {
-        if (_isGremlinActive)
+        return _isGremlinActive
+            ? StopRuntimeAsync()
+            : StartRuntimeAsync();
+    }
+
+    private async Task StopRuntimeAsync()
+    {
+        _logger.LogInformation("Stopping Gremlin event pipeline");
+
+        if (_forceFeedbackBridge.State != ForceFeedbackBridgeState.Disabled &&
+            _forceFeedbackBridge.State != ForceFeedbackBridgeState.Stopped)
         {
-            _logger.LogInformation("Stopping Gremlin event pipeline");
-            _eventPipeline.Stop();
-            IsGremlinActive = false;
+            await _forceFeedbackBridge.StopAsync();
         }
-        else
+
+        _eventPipeline.Stop();
+        IsGremlinActive = false;
+    }
+
+    private async Task StartRuntimeAsync()
+    {
+        var profile = _profileState.CurrentProfile;
+        if (profile is null)
         {
-            var profile = _profileState.CurrentProfile;
-            if (profile is null) return Task.CompletedTask;
-            _logger.LogInformation("Starting Gremlin event pipeline for profile {Profile}", profile.Name);
-            _eventPipeline.Start(profile);
-            IsGremlinActive = true;
+            return;
         }
-        return Task.CompletedTask;
+
+        _logger.LogInformation("Starting Gremlin event pipeline for profile {Profile}", profile.Name);
+        _eventPipeline.Start(profile);
+
+        if (_settingsService.Settings.EnableFfbBridge)
+        {
+            _logger.LogInformation(
+                "Starting force feedback bridge for vJoy device {DeviceId}",
+                _settingsService.Settings.FfbVJoyDeviceId);
+            await _forceFeedbackBridge.StartAsync();
+        }
+
+        IsGremlinActive = true;
     }
 
     private async Task CheckForUpdatesAsync()
