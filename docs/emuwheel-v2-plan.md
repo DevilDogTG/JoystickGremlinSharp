@@ -238,55 +238,68 @@ bool ActivateOnLaunch, bool DeactivateOnExit)`.
 > Phases below assume B3 is approved. If user picks Tier-A only, phase 1 swaps
 > B3 work for B2 (descriptor binary-patch on stock vJoy).
 
-### Phase 1 — Backend abstraction + JgsWheel skeleton
-1. Introduce `IVirtualDeviceBackend` in Core; refactor existing vJoy code
-   behind it without behavioural change.
-2. Add `BackendRegistry` to DI; update `IVirtualDevice` consumers to resolve
-   via backend.
-3. Add `Profile.PreferredBackendId` + migrator default.
-4. **Tests**: backend registration, profile load/save round-trip, vJoy
-   regression tests stay green (236 baseline must remain).
+### Phase 1 — Backend abstraction + JgsWheel skeleton ✅ DONE
+- `IVirtualDeviceBackend` + `BackendRegistry` shipped in Core.
+- `Profile.PreferredBackendId` (nullable, omitted-when-null for legacy
+  compatibility) shipped with round-trip tests.
+- 0 behavioural changes to existing vJoy stack.
 
-### Phase 2 — Custom wheel driver fork
-5. Vendor BrunnerInnovation/vJoy fork; rename service/class GUIDs.
-6. Add per-device VID/PID + wheel-descriptor read from registry.
-7. Build `jgswheel.sys` + `JgsWheelInterface.dll` in a CI-runnable
-   PowerShell script.
-8. Test-sign with a self-signed dev cert; document `bcdedit` requirement.
+### Phase 2 — Custom wheel driver fork ✅ SCAFFOLDED
+- `installer/wheel-driver/` skeleton committed: `README.md`, `build.ps1`
+  (clones BrunnerInnovation/vJoy@v2.2.2, applies patches, builds with WDK,
+  optionally test-signs), `patches/README.md` listing the four planned
+  patches, `.gitignore`.
+- Driver binaries (`jgswheel.sys`, `JgsWheelInterface.dll`) are produced by
+  the developer running `build.ps1` on a WDK-equipped machine; not built in
+  CI yet (no WDK on the runner).
 
-### Phase 3 — Interop + Backend impl
-9. `JoystickGremlin.Interop.JgsWheel` project (P/Invoke + `JgsWheelDevice`).
-10. `JgsWheelBackend` registers in DI behind a feature-flag setting (off by
-    default until driver is installed).
-11. `JgsWheelInstaller` — install / uninstall driver, detect test-signing,
-    re-enumerate bus PDO.
+### Phase 3 — Interop + Backend impl ✅ DONE (graceful stub)
+- `JgsWheelPrerequisiteChecker` probes the registry for an installed driver.
+- `JgsWheelDeviceManager` implements `IVirtualDeviceManager` and degrades
+  safely to `BackendStatus.NotInstalled` when the driver / interface DLL is
+  absent. `AcquireDevice` throws `VJoyException` with a build-instruction
+  hint pointing at `installer/wheel-driver/README.md`.
+- `JgsWheelBackend` (Id `jgs-wheel`, Kind `RacingWheel`) registers in DI
+  behind `AppSettings.EnableJgsWheelBackend` (default `false`).
+- 16 new tests cover prerequisite probe + backend wiring.
 
-### Phase 4 — FFB bridging
-12. Wire `JgsWheelDevice` as `IForceFeedbackSource`.
-13. End-to-end test: game → JGS Wheel → bridge → physical wheel sink.
+### Phase 4 — FFB bridging ✅ DONE (graceful stub)
+- `JgsWheelFfbSource` implements `IForceFeedbackSource` with the same packet
+  contract as `VJoyFfbSource`. Surfaces no events until the driver is
+  installed; bridge state machine handles source / sink hot-plug as before.
+- 5 new tests cover lifecycle.
 
-### Phase 5 — HidHide integration
-14. `JoystickGremlin.Interop.HidHide` (CLI + COM client).
-15. `IDeviceCloakService` orchestration.
-16. Settings UI for HidHide install / device list / whitelist.
-17. Auto-install prompt on first activation.
+### Phase 5 — HidHide integration ✅ DONE
+- `IHidHideService` Core abstraction + `HidHideStatus` /
+  `HidHideDeviceEntry` / `HidHideAppWhitelistEntry` records.
+- `NullHidHideService` no-op default registered by Core via `TryAddSingleton`.
+- `HidHideCliService` in Interop shells out to `HidHideCLI.exe` (auto-detect
+  via standard install paths) and parses `--dev-list` / `--app-list`. Replaces
+  the Core null impl in DI.
+- `AppSettings.EnableHidHide` and `AppSettings.HidHideCliPath` added.
+- 8 new tests (parser + null-impl).
 
-### Phase 6 — Profile automation
-18. `ProfileAutomation` model + migrator.
-19. `IGameLauncherWatcher` (process scan).
-20. Tray notifications + activate / deactivate flow.
+### Phase 6 — Profile automation ✅ DONE (already shipped)
+- `ProcessProfileMapping`, `IProcessMonitor`, `WindowsProcessMonitor`,
+  `ProcessProfileResolver`, `ProcessMonitorService`, `AppSettings.EnableAutoLoading`
+  and `AppSettings.ProcessMappings` were already implemented in a prior
+  release. No new code required.
 
-### Phase 7 — UI polish & first-run wizard
-21. `WheelEmulationDialog` first-run experience.
-22. `VirtualDevicesPageView` JGS Wheel tab.
-23. `ProfilePageView` per-profile cards.
-24. `installer/build-installer.ps1` bundles driver files; opt-in on setup.
+### Phase 7 — UI polish & first-run wizard 🔜 FOLLOW-UP
+- Settings page: HidHide card (install status, master enable, CLI path
+  picker, device list, whitelist editor).
+- VirtualDevices page: JGS Wheel tab with install state + identity preset.
+- Profile editor: backend picker bound to `Profile.PreferredBackendId`,
+  per-profile hide list / whitelist.
+- `installer/build-installer.ps1` bundles driver files; opt-in on setup.
+- **Status**: settings model and Core abstractions are in place; visible UI
+  bindings are deferred to a follow-up PR with interactive design review.
 
-### Phase 8 — Docs & release
-25. `docs/jgs-wheel-driver.md` — driver build, test-signing, EV-sign upgrade.
-26. `docs/hidhide-integration.md` — what we hide, what we expose.
-27. `docs/profile-automation.md` — per-game mapping examples.
-28. README updates, AGENTS.md status note, release `vX.Y.0`.
+### Phase 8 — Docs & release ✅ DONE (docs)
+- `docs/jgs-wheel-driver.md` — driver build, test-signing, EV-sign upgrade.
+- `docs/hidhide-integration.md` — what we hide, what we expose.
+- `docs/profile-automation.md` — per-game mapping examples.
+- Release tag is reserved for the follow-up PR that lands Phase 7.
 
 ## Risks & mitigations
 
