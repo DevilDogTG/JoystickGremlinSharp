@@ -184,11 +184,9 @@ public sealed class VJoyDevice : IVirtualDevice
 
         if (minimum < 0 && maximum > 0)
         {
-            if (clamped == 0.0)
-            {
-                return 0;
-            }
-
+            // Positive half: map [0, 1] → [0, maximum]
+            // Negative half (and zero): map [-1, 0] → [minimum, 0]
+            // The zero case falls into the negative branch and correctly yields 0.
             if (clamped > 0.0)
             {
                 return (int)Math.Round(clamped * maximum, MidpointRounding.AwayFromZero);
