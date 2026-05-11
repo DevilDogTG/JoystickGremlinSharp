@@ -45,9 +45,10 @@ public static class InteropServiceCollectionExtensions
         services.TryAddSingleton<IProcessMonitor, WindowsProcessMonitor>();
         services.TryAddSingleton<IStartupService, WindowsStartupService>();
 
-        // Register FFB services — only active if EnableFfbBridge=true in settings.
+        // Register FFB services. The runtime decides whether the bridge is started,
+        // and the source/sink resolve the latest settings when they activate.
         services.AddSingleton<VJoyFfbSource>(sp => new VJoyFfbSource(
-            sp.GetRequiredService<ISettingsService>().Settings.FfbVJoyDeviceId,
+            sp.GetRequiredService<ISettingsService>(),
             sp.GetRequiredService<ILogger<VJoyFfbSource>>()));
         services.AddSingleton<MozaFfbSink>();
         services.TryAddSingleton<IForceFeedbackBridge>(sp =>
