@@ -5,9 +5,11 @@ using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.Devices.Backends;
 using JoystickGremlin.Core.ForceFeedback;
+using JoystickGremlin.Core.HidHide;
 using JoystickGremlin.Core.ProcessMonitor;
 using JoystickGremlin.Core.Startup;
 using JoystickGremlin.Interop.Dill;
+using JoystickGremlin.Interop.HidHide;
 using JoystickGremlin.Interop.JgsWheel;
 using JoystickGremlin.Interop.Keyboard;
 using JoystickGremlin.Interop.Moza;
@@ -64,6 +66,9 @@ public static class InteropServiceCollectionExtensions
         services.TryAddSingleton<IKeyboardSimulator>(sp => sp.GetRequiredService<SendInputKeyboardSimulator>());
         services.TryAddSingleton<IProcessMonitor, WindowsProcessMonitor>();
         services.TryAddSingleton<IStartupService, WindowsStartupService>();
+
+        // HidHide CLI service overrides Core's no-op default.
+        services.TryAddSingleton<IHidHideService, HidHideCliService>();
 
         // Register FFB services. The runtime decides whether the bridge is started,
         // and the source/sink resolve the latest settings when they activate.

@@ -7,6 +7,7 @@ using JoystickGremlin.Core.ProcessMonitor;
 using JoystickGremlin.Core.Actions.VJoy;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.ForceFeedback;
+using JoystickGremlin.Core.HidHide;
 using JoystickGremlin.Core.Pipeline;
 using JoystickGremlin.Core.Profile;
 using JoystickGremlin.Core.Startup;
@@ -57,6 +58,9 @@ public static class CoreServiceCollectionExtensions
 
         // FFB bridge — NullForceFeedbackBridge by default; override in Interop for real bridge.
         services.TryAddSingleton<IForceFeedbackBridge, NullForceFeedbackBridge>();
+
+        // HidHide — NullHidHideService by default; override in Interop with the CLI-backed impl.
+        services.TryAddSingleton<IHidHideService, NullHidHideService>();
 
         return services;
     }
