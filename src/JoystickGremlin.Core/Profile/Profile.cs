@@ -13,6 +13,14 @@ public sealed class Profile
     /// <summary>Gets or sets the display name of the profile.</summary>
     public string Name { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Identifier of the <see cref="Devices.Backends.IVirtualDeviceBackend"/> that should
+    /// host the virtual devices targeted by this profile. <c>null</c> means "use the default
+    /// backend registered in <see cref="Devices.Backends.IBackendRegistry"/>" (typically vJoy),
+    /// which preserves the legacy behaviour for profiles created before backends existed.
+    /// </summary>
+    public string? PreferredBackendId { get; set; }
+
     /// <summary>Gets the list of input bindings active in this profile.</summary>
     public List<InputBinding> Bindings { get; init; } = [];
 }
