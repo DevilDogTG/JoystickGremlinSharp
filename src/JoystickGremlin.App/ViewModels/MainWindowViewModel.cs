@@ -264,7 +264,14 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             _logger.LogInformation(
                 "Starting force feedback bridge for vJoy device {DeviceId}",
                 _settingsService.Settings.FfbVJoyDeviceId);
-            await _forceFeedbackBridge.StartAsync();
+            try
+            {
+                await _forceFeedbackBridge.StartAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Force feedback bridge failed to start; continuing without FFB.");
+            }
         }
 
         IsGremlinActive = true;
