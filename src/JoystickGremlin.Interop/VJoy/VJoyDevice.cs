@@ -31,8 +31,8 @@ public sealed class VJoyDevice : IVirtualDevice
 
     private readonly uint _vjoyId;
 
-    // Keyed by AxisCode value; stores half the full axis range for normalisation.
-    private readonly Dictionary<uint, double> _axisHalfRanges;
+    // Keyed by AxisCode value; stores the raw vJoy range reported by the driver.
+    private readonly Dictionary<uint, AxisRange> _axisRanges;
     private readonly ConcurrentDictionary<int, double> _axisValues;
     private readonly ConcurrentDictionary<int, bool> _buttonStates;
     private readonly ConcurrentDictionary<int, int> _hatStates;
@@ -56,7 +56,7 @@ public sealed class VJoyDevice : IVirtualDevice
         _vjoyId = vjoyId;
         DeviceId = vjoyId;
 
-        _axisHalfRanges = [];
+        _axisRanges = [];
         _axisValues = new();
         _buttonStates = new();
         _hatStates = new();
@@ -65,8 +65,13 @@ public sealed class VJoyDevice : IVirtualDevice
         {
             if (VJoyNative.GetVJDAxisExist(vjoyId, (uint)code) > 0)
             {
-                VJoyNative.GetVJDAxisMax(vjoyId, (uint)code, out uint max);
-                _axisHalfRanges[(uint)code] = max / 2.0;
+                if (!VJoyNative.GetVJDAxisMin(vjoyId, (uint)code, out int min) ||
+                    !VJoyNative.GetVJDAxisMax(vjoyId, (uint)code, out int max))
+                {
+                    throw new VJoyException($"Failed to query axis range for axis {(uint)code} on vJoy device {vjoyId}");
+                }
+
+                _axisRanges[(uint)code] = new AxisRange(min, max);
                 _axisValues[axisCount + 1] = 0.0;
                 axisCount++;
             }
@@ -95,11 +100,11 @@ public sealed class VJoyDevice : IVirtualDevice
             throw new VJoyException($"Axis index {axisIndex} is out of range (1–8) for device {_vjoyId}");
 
         uint axisCode = LinearToAxisCode[axisIndex];
-        if (!_axisHalfRanges.TryGetValue(axisCode, out double halfRange))
+        if (!_axisRanges.TryGetValue(axisCode, out AxisRange range))
             return; // axis not present on this device — silently ignore
 
         double clamped = Math.Clamp(value, -1.0, 1.0);
-        int rawValue = (int)(halfRange + halfRange * clamped + 0.5);
+        int rawValue = NormalizeToRawValue(clamped, range.Min, range.Max);
 
         if (!VJoyNative.SetAxis(rawValue, _vjoyId, axisCode))
             throw new VJoyException($"Failed to set axis {axisIndex} on vJoy device {_vjoyId}");
@@ -167,4 +172,34 @@ public sealed class VJoyDevice : IVirtualDevice
         foreach (var hatIndex in _hatStates.Keys.ToList())
             _hatStates[hatIndex] = -1;
     }
+
+    internal static int NormalizeToRawValue(double value, int minimum, int maximum)
+    {
+        if (minimum > maximum)
+        {
+            throw new ArgumentOutOfRangeException(nameof(minimum), "Axis minimum cannot be greater than axis maximum.");
+        }
+
+        double clamped = Math.Clamp(value, -1.0, 1.0);
+
+        if (minimum < 0 && maximum > 0)
+        {
+            if (clamped == 0.0)
+            {
+                return 0;
+            }
+
+            if (clamped > 0.0)
+            {
+                return (int)Math.Round(clamped * maximum, MidpointRounding.AwayFromZero);
+            }
+
+            return (int)Math.Round(clamped * -minimum, MidpointRounding.AwayFromZero);
+        }
+
+        double normalized = (clamped + 1.0) / 2.0;
+        return (int)Math.Round(minimum + (normalized * (maximum - minimum)), MidpointRounding.AwayFromZero);
+    }
+
+    private readonly record struct AxisRange(int Min, int Max);
 }

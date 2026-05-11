@@ -165,23 +165,24 @@ public class VJoyManagedTests
     // ── Axis normalisation formula tests (unit test without DLL) ────────────
 
     [Theory]
-    [InlineData(0.0, 16384.0, 16384)]   // centre: halfRange + halfRange * 0 + 0.5 → 16384.5 → 16384
-    [InlineData(1.0, 16384.0, 32768)]   // max: halfRange * 2 + 0.5 → 32768.5 → 32768 (clamped by int)
-    [InlineData(-1.0, 16384.0, 0)]      // min: 0 + 0.5 → 0 (halfRange - halfRange + 0.5 = 0.5 → 0)
+    [InlineData(-1.0, 0, 32768, 0)]
+    [InlineData(0.0, 0, 32768, 16384)]
+    [InlineData(1.0, 0, 32768, 32768)]
+    [InlineData(-1.0, -32768, 32767, -32768)]
+    [InlineData(0.0, -32768, 32767, 0)]
+    [InlineData(1.0, -32768, 32767, 32767)]
     public void AxisNormalisationFormula_GivesExpectedRawValue(
-        double normalised, double halfRange, int expectedRaw)
+        double normalised, int minimum, int maximum, int expectedRaw)
     {
-        int raw = (int)(halfRange + halfRange * normalised + 0.5);
+        int raw = VJoyDevice.NormalizeToRawValue(normalised, minimum, maximum);
         raw.Should().Be(expectedRaw);
     }
 
     [Fact]
     public void AxisNormalisationFormula_ClampsAboveOne()
     {
-        double halfRange = 16384.0;
         double overdriven = 1.5;
-        double clamped = Math.Clamp(overdriven, -1.0, 1.0);
-        int raw = (int)(halfRange + halfRange * clamped + 0.5);
+        int raw = VJoyDevice.NormalizeToRawValue(overdriven, 0, 32768);
         raw.Should().Be(32768);
     }
 }

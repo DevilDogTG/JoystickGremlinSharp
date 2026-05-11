@@ -114,12 +114,12 @@ internal static partial class VJoyNative
     /// <summary>Reads the maximum value of the specified axis into <paramref name="max"/>.</summary>
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    internal static extern bool GetVJDAxisMax(uint rID, uint axis, out uint max);
+    internal static extern bool GetVJDAxisMax(uint rID, uint axis, out int max);
 
     /// <summary>Reads the minimum value of the specified axis into <paramref name="min"/>.</summary>
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    internal static extern bool GetVJDAxisMin(uint rID, uint axis, out uint min);
+    internal static extern bool GetVJDAxisMin(uint rID, uint axis, out int min);
 
     // ── Device management ────────────────────────────────────────────────────
 
