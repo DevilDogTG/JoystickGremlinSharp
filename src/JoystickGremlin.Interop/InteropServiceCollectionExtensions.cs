@@ -8,6 +8,7 @@ using JoystickGremlin.Core.ForceFeedback;
 using JoystickGremlin.Core.ProcessMonitor;
 using JoystickGremlin.Core.Startup;
 using JoystickGremlin.Interop.Dill;
+using JoystickGremlin.Interop.JgsWheel;
 using JoystickGremlin.Interop.Keyboard;
 using JoystickGremlin.Interop.Moza;
 using JoystickGremlin.Interop.ProcessMonitor;
@@ -46,6 +47,15 @@ public static class InteropServiceCollectionExtensions
         // default fallback when a profile does not pin a specific backend id.
         services.AddSingleton<IVirtualDeviceBackend>(sp =>
             new VJoyBackend(sp.GetRequiredService<IVirtualDeviceManager>()));
+
+        // JGS Wheel backend — additive second backend wrapping a custom vJoy fork
+        // (see installer/wheel-driver/README.md). Always registered so the UI can
+        // surface install prompts; the manager itself reports NotInstalled when
+        // the driver service is absent.
+        services.AddSingleton<JgsWheelDeviceManager>();
+        services.AddSingleton<IVirtualDeviceBackend>(sp =>
+            new JgsWheelBackend(sp.GetRequiredService<JgsWheelDeviceManager>()));
+
         services.TryAddSingleton<IBackendRegistry>(sp =>
             new BackendRegistry(sp.GetServices<IVirtualDeviceBackend>()));
 

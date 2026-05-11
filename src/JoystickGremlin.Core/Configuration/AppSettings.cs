@@ -68,4 +68,26 @@ public sealed class AppSettings
     /// Defaults to <c>true</c>.
     /// </summary>
     public bool EnableLiveInputRefresh { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether the JGS Wheel backend is enabled.
+    /// When <c>false</c> (default), the backend is hidden from profile pickers and the
+    /// driver is not probed. Enable only after building and installing the driver — see
+    /// <c>installer/wheel-driver/README.md</c>.
+    /// </summary>
+    public bool EnableJgsWheelBackend { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets whether HidHide integration is enabled.
+    /// When <c>true</c>, the app uses the HidHide CLI/COM API to hide physical and/or
+    /// virtual devices from games as configured. Requires HidHide to be installed.
+    /// </summary>
+    public bool EnableHidHide { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets the absolute path to the HidHide CLI executable
+    /// (<c>HidHideCLI.exe</c>). When null/empty, the app probes the default install
+    /// location under <c>%ProgramFiles%\Nefarius Software Solutions\HidHide\x64\</c>.
+    /// </summary>
+    public string? HidHideCliPath { get; set; }
 }
