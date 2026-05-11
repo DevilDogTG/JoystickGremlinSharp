@@ -3,6 +3,7 @@
 using JoystickGremlin.Core.Actions.Keyboard;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Devices;
+using JoystickGremlin.Core.Devices.Backends;
 using JoystickGremlin.Core.ForceFeedback;
 using JoystickGremlin.Core.ProcessMonitor;
 using JoystickGremlin.Core.Startup;
@@ -38,6 +39,15 @@ public static class InteropServiceCollectionExtensions
 
         services.AddSingleton<IDeviceManager, DillDeviceManager>();
         services.AddSingleton<IVirtualDeviceManager, VJoyDeviceManager>();
+
+        // Register vJoy as the first virtual-device backend. Additional backends
+        // (JGS Wheel fork, future ViGEm wheel target, ...) will be appended here
+        // and resolved via IBackendRegistry. The first registered backend is the
+        // default fallback when a profile does not pin a specific backend id.
+        services.AddSingleton<IVirtualDeviceBackend>(sp =>
+            new VJoyBackend(sp.GetRequiredService<IVirtualDeviceManager>()));
+        services.TryAddSingleton<IBackendRegistry>(sp =>
+            new BackendRegistry(sp.GetServices<IVirtualDeviceBackend>()));
 
         // Override Core's no-op defaults with real Windows implementations.
         services.AddSingleton<SendInputKeyboardSimulator>();
