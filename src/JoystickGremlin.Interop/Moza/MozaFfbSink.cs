@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using System.Runtime.InteropServices;
+using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.ForceFeedback;
 using JoystickGremlin.Interop.DirectInput;
 using Microsoft.Extensions.Logging;
@@ -19,6 +20,7 @@ public sealed class MozaFfbSink : IForceFeedbackSink
 {
     private const ushort MozaVendorId = 0x346e;
 
+    private readonly ISettingsService _settingsService;
     private readonly ILogger<MozaFfbSink> _logger;
 
     private IDirectInput8W? _directInput;
@@ -39,9 +41,11 @@ public sealed class MozaFfbSink : IForceFeedbackSink
     /// <summary>
     /// Initialises a new <see cref="MozaFfbSink"/>.
     /// </summary>
+    /// <param name="settingsService">Settings service used to resolve the configured wheel instance.</param>
     /// <param name="logger">Logger instance.</param>
-    public MozaFfbSink(ILogger<MozaFfbSink> logger)
+    public MozaFfbSink(ISettingsService settingsService, ILogger<MozaFfbSink> logger)
     {
+        _settingsService = settingsService;
         _logger = logger;
     }
 
@@ -82,6 +86,10 @@ public sealed class MozaFfbSink : IForceFeedbackSink
 
     private void ConnectCore()
     {
+        var configuredWheelGuid = string.IsNullOrWhiteSpace(_settingsService.Settings.FfbWheelInstanceGuid)
+            ? null
+            : _settingsService.Settings.FfbWheelInstanceGuid;
+
         _logger.LogInformation("MozaFfbSink: scanning for MOZA wheel device (VID 0x{VID:X4}).", MozaVendorId);
 
         IntPtr hInstance = DirectInputNative.GetModuleHandle(null);
@@ -108,12 +116,19 @@ public sealed class MozaFfbSink : IForceFeedbackSink
         {
             byte[] guidBytes = instance.guidProduct.ToByteArray();
             ushort vid = (ushort)(guidBytes[0] | (guidBytes[1] << 8));
-            if (vid == MozaVendorId)
+            if (vid != MozaVendorId)
             {
-                mozaInstance = instance;
-                return 0; // DIENUM_STOP — stop after first match
+                return 1; // DIENUM_CONTINUE
             }
-            return 1; // DIENUM_CONTINUE
+
+            if (configuredWheelGuid is not null &&
+                !string.Equals(instance.guidInstance.ToString(), configuredWheelGuid, StringComparison.OrdinalIgnoreCase))
+            {
+                return 1; // DIENUM_CONTINUE
+            }
+
+            mozaInstance = instance;
+            return 0; // DIENUM_STOP — stop after first match
         };
 
         // Pin the callback delegate and enumerate.
@@ -134,6 +149,12 @@ public sealed class MozaFfbSink : IForceFeedbackSink
 
         if (mozaInstance is null)
         {
+            if (configuredWheelGuid is not null)
+            {
+                throw new InvalidOperationException(
+                    $"Configured MOZA wheel '{configuredWheelGuid}' was not found. Ensure the wheel is connected and the GUID matches the DirectInput instance GUID.");
+            }
+
             throw new InvalidOperationException("No MOZA force feedback wheel found. Ensure the MOZA driver is installed and the wheel is connected.");
         }
 
@@ -164,11 +185,19 @@ public sealed class MozaFfbSink : IForceFeedbackSink
             DirectInputNative.GetModuleHandle(null),
             IntPtr.Zero);
 
-        hr = _device.SetCooperativeLevel(_hwnd, DirectInputNative.DISCL_EXCLUSIVE | DirectInputNative.DISCL_BACKGROUND);
+        if (_hwnd == IntPtr.Zero)
+        {
+            _logger.LogWarning(
+                "MozaFfbSink: CreateWindowEx failed (Win32 error {Error}); proceeding with null HWND.",
+                Marshal.GetLastWin32Error());
+        }
+
+        // DISCL_EXCLUSIVE | DISCL_BACKGROUND is explicitly invalid per the DirectInput documentation.
+        // For a background service, DISCL_NONEXCLUSIVE | DISCL_BACKGROUND is the correct combination.
+        hr = _device.SetCooperativeLevel(_hwnd, DirectInputNative.DISCL_NONEXCLUSIVE | DirectInputNative.DISCL_BACKGROUND);
         if (hr < 0)
         {
-            _logger.LogWarning("SetCooperativeLevel returned 0x{HR:X8} — trying non-exclusive.", hr);
-            hr = _device.SetCooperativeLevel(_hwnd, DirectInputNative.DISCL_NONEXCLUSIVE | DirectInputNative.DISCL_BACKGROUND);
+            throw new InvalidOperationException($"IDirectInputDevice8W::SetCooperativeLevel failed with HRESULT 0x{hr:X8}.");
         }
 
         hr = _device.Acquire();

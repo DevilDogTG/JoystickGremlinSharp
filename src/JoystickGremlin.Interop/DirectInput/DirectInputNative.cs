@@ -119,8 +119,8 @@ internal static class DirectInputNative
     /// <summary>Data format flag: absolute axis values.</summary>
     internal const uint DIDF_ABSAXIS = 0x00000001;
 
-    /// <summary>Object type flag: axis.</summary>
-    internal const uint DIDFT_AXIS = 0x00000100;
+    /// <summary>Object type flag: axis (matches both relative and absolute axes).</summary>
+    internal const uint DIDFT_AXIS = 0x00000003;
 
     /// <summary>Object type flag: any instance.</summary>
     internal const uint DIDFT_ANYINSTANCE = 0x00FFFF00;
@@ -146,7 +146,7 @@ internal static class DirectInputNative
     // ── GUIDs ─────────────────────────────────────────────────────────────────
 
     /// <summary>IID of IDirectInput8W.</summary>
-    internal static readonly Guid IID_IDirectInput8W = new("BF798033-483A-4DA2-AA99-5D64ED369700");
+    internal static readonly Guid IID_IDirectInput8W = new("BF798031-483A-4DA2-AA99-5D64ED369700");
 
     /// <summary>IID of IDirectInputDevice8W.</summary>
     internal static readonly Guid IID_IDirectInputDevice8W = new("54D41081-DC15-4833-A41B-748F73A38179");
@@ -216,7 +216,7 @@ internal static class DirectInputNative
 /// COM interface for IDirectInput8W. All vtable methods must appear in order.
 /// </summary>
 [ComImport]
-[Guid("BF798033-483A-4DA2-AA99-5D64ED369700")]
+[Guid("BF798031-483A-4DA2-AA99-5D64ED369700")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 internal interface IDirectInput8W
 {
