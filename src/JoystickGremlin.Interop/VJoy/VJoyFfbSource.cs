@@ -257,7 +257,7 @@ public sealed class VJoyFfbSource : IForceFeedbackSource
         IntPtr buf = Marshal.AllocHGlobal(Marshal.SizeOf<VJoyFfbConstant>());
         try
         {
-            if (VJoyFfbNative.Ffb_h_Eff_Const(packet, buf) != 0)
+            if (VJoyFfbNative.Ffb_h_Eff_Constant(packet, buf) != 0)
             {
                 return null;
             }
@@ -386,7 +386,7 @@ public sealed class VJoyFfbSource : IForceFeedbackSource
 
     private FfbCommand? DecodeDeviceGain(IntPtr packet)
     {
-        if (VJoyFfbNative.Ffb_h_Eff_Gain(packet, out byte gain) != 0)
+        if (VJoyFfbNative.Ffb_h_DevGain(packet, out byte gain) != 0)
         {
             return null;
         }
