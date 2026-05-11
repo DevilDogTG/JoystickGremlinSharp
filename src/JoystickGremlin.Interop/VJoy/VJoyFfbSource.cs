@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using System.Runtime.InteropServices;
+using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.ForceFeedback;
 using Microsoft.Extensions.Logging;
 
@@ -16,7 +17,7 @@ namespace JoystickGremlin.Interop.VJoy;
 /// </remarks>
 public sealed class VJoyFfbSource : IForceFeedbackSource
 {
-    private readonly uint _vjoyDeviceId;
+    private readonly ISettingsService _settingsService;
     private readonly ILogger<VJoyFfbSource> _logger;
 
     // Keep the delegate alive for the lifetime of registration.
@@ -31,30 +32,33 @@ public sealed class VJoyFfbSource : IForceFeedbackSource
     // can be converted back to the object reference in the static callback.
     private GCHandle _selfHandle;
 
+    private volatile uint _activeVJoyDeviceId;
     private volatile bool _running;
     private bool _disposed;
 
     /// <summary>
     /// Initialises a new <see cref="VJoyFfbSource"/> for the specified vJoy device.
     /// </summary>
-    /// <param name="vjoyDeviceId">The vJoy device ID (1-based) to monitor for FFB commands.</param>
+    /// <param name="settingsService">Settings service used to resolve the configured vJoy device at start time.</param>
     /// <param name="logger">Logger instance.</param>
-    public VJoyFfbSource(uint vjoyDeviceId, ILogger<VJoyFfbSource> logger)
+    public VJoyFfbSource(ISettingsService settingsService, ILogger<VJoyFfbSource> logger)
     {
-        _vjoyDeviceId = vjoyDeviceId;
+        _settingsService = settingsService;
         _logger = logger;
         _callbackDelegate = NativeCallback;
         _delegateHandle = GCHandle.Alloc(_callbackDelegate, GCHandleType.Normal);
     }
 
     /// <inheritdoc />
-    public uint VJoyDeviceId => _vjoyDeviceId;
+    public uint VJoyDeviceId => _activeVJoyDeviceId != 0
+        ? _activeVJoyDeviceId
+        : _settingsService.Settings.FfbVJoyDeviceId;
 
     /// <inheritdoc />
     public bool IsRunning => _running;
 
     /// <inheritdoc />
-    public bool IsFfbCapable => VJoyFfbNative.IsDeviceFfb(_vjoyDeviceId);
+    public bool IsFfbCapable => VJoyFfbNative.IsDeviceFfb(VJoyDeviceId);
 
     /// <inheritdoc />
     public event EventHandler<FfbCommand>? CommandReceived;
@@ -67,10 +71,11 @@ public sealed class VJoyFfbSource : IForceFeedbackSource
             return;
         }
 
+        _activeVJoyDeviceId = _settingsService.Settings.FfbVJoyDeviceId;
         _selfHandle = GCHandle.Alloc(this, GCHandleType.Normal);
         VJoyFfbNative.FfbRegisterGenCB(_callbackDelegate, GCHandle.ToIntPtr(_selfHandle));
         _running = true;
-        _logger.LogInformation("VJoyFfbSource started for device {DeviceId}.", _vjoyDeviceId);
+        _logger.LogInformation("VJoyFfbSource started for device {DeviceId}.", _activeVJoyDeviceId);
     }
 
     /// <inheritdoc />
@@ -88,7 +93,8 @@ public sealed class VJoyFfbSource : IForceFeedbackSource
             _selfHandle.Free();
         }
 
-        _logger.LogInformation("VJoyFfbSource stopped for device {DeviceId}.", _vjoyDeviceId);
+        _logger.LogInformation("VJoyFfbSource stopped for device {DeviceId}.", _activeVJoyDeviceId);
+        _activeVJoyDeviceId = 0;
     }
 
     /// <inheritdoc />
@@ -151,7 +157,7 @@ public sealed class VJoyFfbSource : IForceFeedbackSource
             return;
         }
 
-        if (deviceId != _vjoyDeviceId)
+        if (deviceId != _activeVJoyDeviceId)
         {
             return;
         }
