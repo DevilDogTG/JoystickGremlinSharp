@@ -35,7 +35,20 @@ param(
 
     [switch]$TestSign,
 
-    [string]$UpstreamTag = 'v2.2.2'
+    [string]$UpstreamTag = 'v2.2.2.0',
+
+    # Override the C++ platform toolset (e.g. 'v143' for VS2022, 'v180' for VS2026).
+    # Leave empty to use the toolset baked into each .vcxproj (upstream vJoy uses v143).
+    [string]$PlatformToolset = '',
+
+    # Override the Windows SDK target. Use '10.0' to pick the latest installed.
+    [string]$WindowsTargetPlatformVersion = '',
+
+    # KMDF version to compile the driver against. Upstream pins to 1.9 which
+    # is no longer present in WDK 10.0.22621+. Default to 1.15 (the version
+    # bundled with current WDKs).
+    [int]$KmdfMajor = 1,
+    [int]$KmdfMinor = 15
 )
 
 $ErrorActionPreference = 'Stop'
@@ -69,6 +82,32 @@ if ($TestSign) {
 
 New-Item -ItemType Directory -Path $BuildDir, $OutDir -Force | Out-Null
 
+# ---- detect VCTargetsPath candidates ---------------------------------------
+# vJoy upstream targets v143 (VS2022) for user-mode helpers and the
+# WindowsKernelModeDriver10.0 toolset for the kernel driver. These often live
+# in *different* MSBuild VC dirs:
+#   * VS2022:        v143 + WDK toolsets both under MSBuild\Microsoft\VC\v143\
+#   * VS2026:        v143 lives under .\v170\ (sub-toolset),
+#                    WDK toolsets live under .\v180\
+# So we resolve two paths up-front and pass the right one per project.
+$VcV143TargetsPath = ''
+$VcWdkTargetsPath = ''
+$vsRoot = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -prerelease -property installationPath 2>$null
+if ($vsRoot) {
+    foreach ($name in @('v143', 'v170', 'v180')) {
+        $p = "$vsRoot\MSBuild\Microsoft\VC\$name\"
+        if (-not (Test-Path (Join-Path $p 'Microsoft.CppBuild.targets'))) { continue }
+        if (-not $VcV143TargetsPath -and (Test-Path (Join-Path $p 'Platforms\x64\PlatformToolsets\v143'))) {
+            $VcV143TargetsPath = $p
+        }
+        if (-not $VcWdkTargetsPath -and (Test-Path (Join-Path $p 'Platforms\x64\PlatformToolsets\WindowsKernelModeDriver10.0'))) {
+            $VcWdkTargetsPath = $p
+        }
+    }
+}
+if ($VcV143TargetsPath) { Write-Host "    v143 toolset path:  $VcV143TargetsPath" -ForegroundColor DarkGray }
+if ($VcWdkTargetsPath)  { Write-Host "    WDK  toolset path:  $VcWdkTargetsPath"  -ForegroundColor DarkGray }
+
 # ---- clone upstream --------------------------------------------------------
 if (-not (Test-Path $SrcDir)) {
     Step "Cloning BrunnerInnovation/vJoy@$UpstreamTag"
@@ -97,26 +136,73 @@ if ($patches.Count -eq 0) {
     }
 }
 
-# ---- build the driver + interface DLL --------------------------------------
-Step "Building driver (Configuration=$Configuration, Platform=x64)"
-$driverSln = Join-Path $SrcDir 'driver\vJoy.sln'
-if (-not (Test-Path $driverSln)) {
-    throw "Driver solution not found at $driverSln. Has the upstream layout changed?"
+function Invoke-MsBuild {
+    param(
+        [Parameter(Mandatory)] [string]$Project,
+        [string[]]$ExtraArgs = @(),
+        [string]$VCTargetsPath = ''
+    )
+    $args = @(
+        $Project,
+        "/p:Configuration=$Configuration",
+        '/p:Platform=x64',
+        '/m',
+        '/nologo'
+    ) + $ExtraArgs
+    if ($PlatformToolset) { $args += "/p:PlatformToolset=$PlatformToolset" }
+    if ($WindowsTargetPlatformVersion) { $args += "/p:WindowsTargetPlatformVersion=$WindowsTargetPlatformVersion" }
+    $oldVcTargets = $env:VCTargetsPath
+    if ($VCTargetsPath) { $env:VCTargetsPath = $VCTargetsPath }
+    try {
+        & msbuild @args
+        if ($LASTEXITCODE -ne 0) {
+            throw "msbuild failed (exit $LASTEXITCODE) for $Project"
+        }
+    } finally {
+        $env:VCTargetsPath = $oldVcTargets
+    }
 }
 
-msbuild $driverSln `
-    /p:Configuration=$Configuration `
-    /p:Platform=x64 `
-    /p:SignMode=Off `
-    /m `
-    /nologo
+# ---- build the driver + interface DLL --------------------------------------
+# vJoyDriver.sln mixes a v143 user-mode helper (CreateVersion) with the
+# WindowsKernelModeDriver10.0 driver projects. On VS2026 those toolsets live
+# in different VC\ dirs, so we can't build the whole sln in one shot — we have
+# to build CreateVersion first under the v143 targets path, then build the
+# driver Package (which pulls in vJoy + hidkmdf) under the WDK targets path.
+Step "Building CreateVersion (v143 user-mode helper)"
+Invoke-MsBuild `
+    -Project (Join-Path $SrcDir 'CreateVersion\CreateVersion.vcxproj') `
+    -VCTargetsPath $VcV143TargetsPath
+
+Step "Building vJoy driver package (KMDF $($KmdfMajor).$($KmdfMinor))"
+Invoke-MsBuild `
+    -Project (Join-Path $SrcDir 'driver\Package\Package.vcxproj') `
+    -VCTargetsPath $VcWdkTargetsPath `
+    -ExtraArgs @(
+        '/p:SignMode=Off',
+        "/p:KMDF_VERSION_MAJOR=$KmdfMajor",
+        "/p:KMDF_VERSION_MINOR=$KmdfMinor"
+    )
+
+# Without rename patches the driver retains the upstream "vJoy" naming. The
+# interface DLL lives in a separate solution under apps\common\vJoyInterface.
+# Note: vJoyInterface.sln is the legacy VS2008 (.vcproj) layout; vJoyInterface2012.sln
+# is the modern .vcxproj-based solution that MSBuild can actually consume.
+$interfaceSln = Join-Path $SrcDir 'apps\common\vJoyInterface\vJoyInterface2012.sln'
+if (Test-Path $interfaceSln) {
+    Step "Building vJoyInterface DLL"
+    Invoke-MsBuild -Project $interfaceSln -VCTargetsPath $VcV143TargetsPath
+} else {
+    Write-Warning "vJoyInterface solution not found at $interfaceSln (skipping DLL build)"
+}
 
 # ---- collect outputs -------------------------------------------------------
 Step "Collecting build outputs"
 $candidates = @(
-    @{ From = "driver\sys\x64\$Configuration\jgswheel.sys"; To = 'jgswheel.sys' }
-    @{ From = "driver\sys\x64\$Configuration\jgswheel.inf"; To = 'jgswheel.inf' }
-    @{ From = "apps\common\vJoyInterface\x64\$Configuration\JgsWheelInterface.dll"; To = 'JgsWheelInterface.dll' }
+    @{ From = "driver\Package\x64\$Configuration\Package\vJoy.sys"; To = 'vJoy.sys' }
+    @{ From = "driver\Package\x64\$Configuration\Package\vjoy.inf"; To = 'vJoy.inf' }
+    @{ From = "driver\Package\x64\$Configuration\Package\vjoy.cat"; To = 'vJoy.cat' }
+    @{ From = "apps\common\vJoyInterface\x64\$Configuration\vJoyInterface.dll"; To = 'vJoyInterface.dll' }
 )
 foreach ($c in $candidates) {
     $src = Join-Path $SrcDir $c.From
@@ -148,8 +234,8 @@ if ($TestSign) {
     inf2cat /driver:$OutDir /os:10_x64
 
     Step "Signing driver + catalogue"
-    $sysFile = Join-Path $OutDir 'jgswheel.sys'
-    $catFile = Join-Path $OutDir 'jgswheel.cat'
+    $sysFile = Join-Path $OutDir 'vJoy.sys'
+    $catFile = Join-Path $OutDir 'vJoy.cat'
     foreach ($f in @($sysFile, $catFile)) {
         if (Test-Path $f) {
             signtool sign /v `

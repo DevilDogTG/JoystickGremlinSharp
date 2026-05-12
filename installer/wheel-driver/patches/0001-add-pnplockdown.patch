@@ -1,0 +1,12 @@
+diff --git a/driver/sys/vjoy.inx b/driver/sys/vjoy.inx
+index f39f7ed..720a587 100644
+--- a/driver/sys/vjoy.inx
++++ b/driver/sys/vjoy.inx
+@@ -15,6 +15,7 @@ Provider=%VENDOR%
+ ;LayoutFile=layout.inf
+ DriverVer=01/10/2007,1.0.0.0
+ CatalogFile = vJoy.cat
++PnpLockdown=1
+ 
+ 
+ ;   
