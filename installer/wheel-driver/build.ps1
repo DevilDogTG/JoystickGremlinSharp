@@ -200,6 +200,7 @@ if (Test-Path $interfaceSln) {
 Step "Collecting build outputs"
 $candidates = @(
     @{ From = "driver\Package\x64\$Configuration\Package\vJoy.sys"; To = 'vJoy.sys' }
+    @{ From = "driver\Package\x64\$Configuration\Package\hidkmdf.sys"; To = 'hidkmdf.sys' }
     @{ From = "driver\Package\x64\$Configuration\Package\vjoy.inf"; To = 'vJoy.inf' }
     @{ From = "driver\Package\x64\$Configuration\Package\vjoy.cat"; To = 'vJoy.cat' }
     @{ From = "apps\common\vJoyInterface\x64\$Configuration\vJoyInterface.dll"; To = 'vJoyInterface.dll' }
@@ -234,9 +235,8 @@ if ($TestSign) {
     inf2cat /driver:$OutDir /os:10_x64
 
     Step "Signing driver + catalogue"
-    $sysFile = Join-Path $OutDir 'vJoy.sys'
-    $catFile = Join-Path $OutDir 'vJoy.cat'
-    foreach ($f in @($sysFile, $catFile)) {
+    $signTargets = @('vJoy.sys', 'hidkmdf.sys', 'vJoy.cat') | ForEach-Object { Join-Path $OutDir $_ }
+    foreach ($f in $signTargets) {
         if (Test-Path $f) {
             signtool sign /v `
                 /fd SHA256 `
