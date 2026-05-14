@@ -1,0 +1,33 @@
+Spoof HID VendorID/ProductID as Logitech G27 (046D:C29B).
+
+This only changes the VID/PID surfaced to userland via HID_DEVICE_ATTRIBUTES
+(driver/sys/hid.c reads VENDOR_N_ID / PRODUCT_N_ID directly). The bus-level
+HardwareIds in vjoy.inx (root\VID_1234&PID_BEAD&REV_0222) are deliberately
+left alone — they are only used by PnP to bind the driver to the
+root-enumerated bus device, never seen by games.
+
+The HID report descriptor is still vJoy's generic gamepad layout, so any
+game that inspects usage pages (steering wheel, accelerator, brake, clutch)
+will still reject the device. This patch is a smoke test to find out which
+games key on VID/PID alone vs. inspecting the descriptor.
+
+Spoofing a real vendor's IDs is fine for personal testing on your own
+machine. Do not redistribute.
+
+diff --git a/inc/public.h b/inc/public.h
+--- a/inc/public.h
++++ b/inc/public.h
+@@ -107,11 +107,11 @@
+ 
+ // Device Attributes
+ // Vendor ID
+-#define VENDOR_N_ID		0x1234
++#define VENDOR_N_ID		0x046D
+ // Product ID changes if FFB is enabled or not (so we will have 2 different products and drivers)
+ #ifdef VJOY_HAS_FFB
+ // Product ID: FFB with registry keys in INF file
+-#define	PRODUCT_N_ID	0xBEAD
++#define	PRODUCT_N_ID	0xC29B
+ // Product ID: FFB without registry keys in INF file
+ //#define	PRODUCT_N_ID	0x1FFB
+ #else
