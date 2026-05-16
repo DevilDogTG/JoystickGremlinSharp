@@ -50,6 +50,9 @@ public sealed class BoundActionViewModel : ViewModelBase
     /// <summary>Gets whether this action maps a hat to vJoy axes.</summary>
     public bool IsHatToAxis => ActionTag == HatToAxisDescriptor.ActionTag;
 
+    /// <summary>Gets whether this action maps a hat (or 4 buttons) to 4 keyboard keys.</summary>
+    public bool IsMapToArrowKeys => ActionTag == MapToArrowKeysActionDescriptor.ActionTag;
+
     /// <summary>
     /// Initializes a new instance of <see cref="BoundActionViewModel"/>.
     /// </summary>
@@ -86,6 +89,8 @@ public sealed class BoundActionViewModel : ViewModelBase
                 BuildMapToKeyboardSummary(cfg),
             HatToAxisDescriptor.ActionTag =>
                 BuildHatToAxisSummary(cfg),
+            MapToArrowKeysActionDescriptor.ActionTag =>
+                BuildMapToArrowKeysSummary(cfg),
             _ => "(default config)",
         };
     }
@@ -138,6 +143,18 @@ public sealed class BoundActionViewModel : ViewModelBase
         var right = cfg["rightButtonId"]?.GetValue<int>() ?? 0;
 
         return $"U{up} D{down} L{left} R{right} → vJoy {vjoyId} X{xAxisIndex}/Y{yAxisIndex}";
+    }
+
+    private static string BuildMapToArrowKeysSummary(JsonObject? cfg)
+    {
+        if (cfg is null) return "Up/Down/Left/Right";
+        var u = cfg["upKey"]?.GetValue<string>()    ?? "Up";
+        var d = cfg["downKey"]?.GetValue<string>()  ?? "Down";
+        var l = cfg["leftKey"]?.GetValue<string>()  ?? "Left";
+        var r = cfg["rightKey"]?.GetValue<string>() ?? "Right";
+        return $"↑{Disp(u)} ↓{Disp(d)} ←{Disp(l)} →{Disp(r)}";
+
+        static string Disp(string s) => string.IsNullOrWhiteSpace(s) ? "—" : s;
     }
 
     private static string BuildHatToAxisSummary(JsonObject? cfg)
