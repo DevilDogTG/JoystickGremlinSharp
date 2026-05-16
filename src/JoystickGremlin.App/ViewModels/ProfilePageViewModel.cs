@@ -239,6 +239,16 @@ public sealed class ProfilePageViewModel : ViewModelBase, IDisposable
             .ToDictionary(g => g.Key, StringComparer.OrdinalIgnoreCase);
 
         // Merge non-empty + empty categories into a single ordered list.
+        var overlap = groupedCategories.Keys
+            .Intersect(_profileLibrary.EmptyCategories, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (overlap.Count > 0)
+        {
+            _logger.LogWarning(
+                "Categories appear in both Entries and EmptyCategories (ProfileLibrary bug?): {Categories}",
+                string.Join(", ", overlap));
+        }
+
         var allCategoryNames = groupedCategories.Keys
             .Concat(_profileLibrary.EmptyCategories)
             .Distinct(StringComparer.OrdinalIgnoreCase)
