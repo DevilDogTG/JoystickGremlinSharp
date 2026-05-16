@@ -105,6 +105,7 @@ src/JoystickGremlin.Core/
                       VJoy/   VJoyAxisActionDescriptor, VJoyButtonActionDescriptor, VJoyHatActionDescriptor
                       Macro/  MacroActionDescriptor (tag: "macro"; fires key sequence on press/release)
                       Keyboard/   IKeyboardSimulator, NullKeyboardSimulator (overridable by Interop)
+                                  IKeyNameCatalog, StaticKeyNameCatalog — exposes key names for the binding-editor picker (Interop overrides with SendInputKeyNameCatalog)
   Configuration/    AppSettings, ISettingsService, JSON-backed settings store
   Devices/          IPhysicalDevice, IVirtualDevice, DeviceManager, device-info types
   Events/           InputEvent, EventPipeline, IEventProcessor, flat binding lookup
@@ -375,7 +376,7 @@ Actions are **statically registered** (no runtime plugin discovery).
 | `"buttons-to-axes"` | `ButtonsToAxesDescriptor` | `vjoyId` (uint, default 1), `xAxisIndex` (int, default 1), `yAxisIndex` (int, default 2), `upButtonId`, `downButtonId`, `leftButtonId`, `rightButtonId` (int) |
 | `"hat-to-axis"` | `HatToAxisDescriptor` | `vjoyId` (uint, default 1), `xAxisIndex` (int, default 1, 0=disabled), `yAxisIndex` (int, default 2, 0=disabled) |
 | `"macro"` | `MacroActionDescriptor` | `keys` (comma-separated), `onPress` (bool, default true) |
-| `"map-to-keyboard"` | `MapToKeyboardActionDescriptor` | `keys` (comma-separated key names), `behavior` ("Hold"/"Toggle"/"PressOnly"/"ReleaseOnly", default "Hold") |
+| `"map-to-keyboard"` | `MapToKeyboardActionDescriptor` | `keys` (comma-separated key names; see picker UI in binding editor — supports arrows, modifiers, F-keys, letters, digits, etc. via `IKeyNameCatalog`), `behavior` ("Hold"/"Toggle"/"PressOnly"/"ReleaseOnly", default "Hold") |
 
 ### Multi-Button to Virtual Output Mapping
 
