@@ -296,7 +296,7 @@
                             <ItemsControl ItemsSource="{Binding MapToKeyboardKeyChips}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
-                                        <WrapPanel Orientation="Horizontal" ItemWidth="NaN" ItemHeight="NaN"/>
+                                        <WrapPanel Orientation="Horizontal"/>
                                     </ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>

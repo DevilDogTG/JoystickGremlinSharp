@@ -31,7 +31,7 @@ namespace JoystickGremlin.Core.Actions.Keyboard;
 /// per-config state so four bindings cooperate as a single D-pad.</para>
 /// <para>Empty key names disable that direction (no key issued).</para>
 /// </remarks>
-public sealed class MapToArrowKeysActionDescriptor : IActionDescriptor
+public sealed class MapToArrowKeysActionDescriptor : IActionDescriptor, IResettableActionDescriptor
 {
     private readonly IKeyboardSimulator _keyboard;
     private readonly ILogger<MapToArrowKeysActionDescriptor> _logger;
@@ -67,6 +67,8 @@ public sealed class MapToArrowKeysActionDescriptor : IActionDescriptor
         var leftKey  = configuration?["leftKey"]?.GetValue<string>()  ?? "Left";
         var rightKey = configuration?["rightKey"]?.GetValue<string>() ?? "Right";
 
+        // -1 = unconfigured sentinel. Physical button identifiers are always >= 1, so an
+        // unconfigured button can never match an incoming event in HandleButton.
         var upBtn    = configuration?["upButtonId"]?.GetValue<int>()    ?? -1;
         var downBtn  = configuration?["downButtonId"]?.GetValue<int>()  ?? -1;
         var leftBtn  = configuration?["leftButtonId"]?.GetValue<int>()  ?? -1;
@@ -80,13 +82,27 @@ public sealed class MapToArrowKeysActionDescriptor : IActionDescriptor
             _logger);
     }
 
+    /// <summary>
+    /// Clears shared button state across all functors. Called by the event pipeline when the
+    /// profile changes or the pipeline stops so a stuck logical direction from a previous
+    /// profile cannot leak into the next.
+    /// </summary>
+    public void ResetState()
+    {
+        lock (_stateLock)
+            _sharedButtonStates.Clear();
+    }
+
     // ─── Public helpers (visible for unit tests) ─────────────────────────────
 
     /// <summary>
     /// Resolves a hat angle to an 8-way direction set (Up/Down/Left/Right flags).
     /// </summary>
     /// <param name="hatValue">
-    /// Hat value: <c>-1</c> = center; <c>0–359</c> = degrees; <c>0–35999</c> = centidegrees.
+    /// Hat value: <c>-1</c> = center; <c>0–359</c> = degrees (DILL); <c>0–35999</c> = centidegrees (vJoy).
+    /// Values <c>&gt;= 360</c> are interpreted as centidegrees and divided by 100.
+    /// A DILL reading of exactly <c>360</c> (rare wrap-around) is therefore treated as 3.6°,
+    /// which still resolves to <see cref="Direction.Up"/>; no behavioral impact.
     /// </param>
     /// <returns>The set of cardinal directions to be held for this hat position.</returns>
     public static Direction ResolveHatDirection(double hatValue)
