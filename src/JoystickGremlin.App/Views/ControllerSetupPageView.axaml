@@ -663,6 +663,43 @@
                                                Text="Maps hat/POV direction to X/Y axis values. 0°=North(Y+), 90°=East(X+). Diagonals output ~0.707 on each axis. Set an index to 0 to disable that axis."/>
                                 </StackPanel>
 
+                                <StackPanel Spacing="6" IsVisible="{Binding BindingEditor.ShowMapToArrowKeysConfig}">
+                                    <TextBlock Text="Map hat directions to keyboard keys (diagonals press both adjacent keys)"
+                                               TextWrapping="Wrap"/>
+
+                                    <Grid ColumnDefinitions="80,*" RowDefinitions="Auto,Auto,Auto,Auto"
+                                          RowSpacing="6" ColumnSpacing="8">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="↑ Up"    VerticalAlignment="Center"/>
+                                        <AutoCompleteBox Grid.Row="0" Grid.Column="1" Width="220"
+                                                         HorizontalAlignment="Left"
+                                                         ItemsSource="{Binding BindingEditor.AvailableKeyNames}"
+                                                         Text="{Binding BindingEditor.EditMapToArrowKeysUpKey, Mode=TwoWay}"/>
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="↓ Down"  VerticalAlignment="Center"/>
+                                        <AutoCompleteBox Grid.Row="1" Grid.Column="1" Width="220"
+                                                         HorizontalAlignment="Left"
+                                                         ItemsSource="{Binding BindingEditor.AvailableKeyNames}"
+                                                         Text="{Binding BindingEditor.EditMapToArrowKeysDownKey, Mode=TwoWay}"/>
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="← Left"  VerticalAlignment="Center"/>
+                                        <AutoCompleteBox Grid.Row="2" Grid.Column="1" Width="220"
+                                                         HorizontalAlignment="Left"
+                                                         ItemsSource="{Binding BindingEditor.AvailableKeyNames}"
+                                                         Text="{Binding BindingEditor.EditMapToArrowKeysLeftKey, Mode=TwoWay}"/>
+
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="→ Right" VerticalAlignment="Center"/>
+                                        <AutoCompleteBox Grid.Row="3" Grid.Column="1" Width="220"
+                                                         HorizontalAlignment="Left"
+                                                         ItemsSource="{Binding BindingEditor.AvailableKeyNames}"
+                                                         Text="{Binding BindingEditor.EditMapToArrowKeysRightKey, Mode=TwoWay}"/>
+                                    </Grid>
+
+                                    <TextBlock TextWrapping="Wrap"
+                                               FontSize="11"
+                                               Opacity="0.65"
+                                               Text="Leave a key blank to disable that direction. Defaults are arrow keys."/>
+                                </StackPanel>
+
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
