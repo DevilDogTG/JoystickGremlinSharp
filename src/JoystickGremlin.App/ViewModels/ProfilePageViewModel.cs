@@ -23,6 +23,7 @@ public sealed class ProfilePageViewModel : ViewModelBase, IDisposable
     private ProfileEntry? _selectedEntry;
     private ProfileTreeNode? _selectedNode;
     private string _newProfileName = string.Empty;
+    private string _newCategoryName = string.Empty;
     private string? _selectedCategory;
     private string? _preferredSelectedCategory;
     private string? _preferredSelectedName;
@@ -39,11 +40,13 @@ public sealed class ProfilePageViewModel : ViewModelBase, IDisposable
 
         var hasSelection = this.WhenAnyValue(x => x.SelectedEntry).Select(e => e is not null);
         var hasName      = this.WhenAnyValue(x => x.NewProfileName).Select(n => !string.IsNullOrWhiteSpace(n));
+        var hasNewCategory = this.WhenAnyValue(x => x.NewCategoryName).Select(n => !string.IsNullOrWhiteSpace(n));
 
         SubmitProfileCommand     = ReactiveCommand.CreateFromTask(SubmitProfileAsync, hasName);
         DeleteProfileCommand     = ReactiveCommand.CreateFromTask(DeleteProfileAsync, hasSelection);
         OpenProfileFolderCommand = ReactiveCommand.Create(OpenProfileFolder);
         RefreshCommand           = ReactiveCommand.CreateFromTask(() => _profileLibrary.ScanAsync());
+        CreateCategoryCommand    = ReactiveCommand.CreateFromTask(CreateCategoryAsync, hasNewCategory);
 
         _profileLibrary.LibraryChanged += OnLibraryChanged;
     }
@@ -77,6 +80,13 @@ public sealed class ProfilePageViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _newProfileName, value);
     }
 
+    /// <summary>Gets or sets the name typed into the New Folder text box.</summary>
+    public string NewCategoryName
+    {
+        get => _newCategoryName;
+        set => this.RaiseAndSetIfChanged(ref _newCategoryName, value);
+    }
+
     /// <summary>Gets or sets the optional category (subfolder) for new profiles.</summary>
     public string? SelectedCategory
     {
@@ -107,6 +117,9 @@ public sealed class ProfilePageViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the command that rescans the profiles folder and refreshes the library.</summary>
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
+
+    /// <summary>Gets the command that creates a new empty category (subfolder).</summary>
+    public ReactiveCommand<Unit, Unit> CreateCategoryCommand { get; }
 
     /// <summary>
     /// Scans the profile library and populates <see cref="ProfileEntries"/>.
@@ -139,6 +152,23 @@ public sealed class ProfilePageViewModel : ViewModelBase, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to create profile '{Name}'", NewProfileName);
+        }
+    }
+
+    private async Task CreateCategoryAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NewCategoryName)) return;
+        var name = NewCategoryName.Trim();
+        try
+        {
+            _preferredSelectedCategory = name;
+            _preferredSelectedName = null;
+            await _profileLibrary.CreateCategoryAsync(name);
+            NewCategoryName = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create category '{Name}'", name);
         }
     }
 
@@ -203,24 +233,46 @@ public sealed class ProfilePageViewModel : ViewModelBase, IDisposable
         foreach (var entry in _profileLibrary.Entries.Where(e => e.Category is null))
             ProfileTree.Add(new ProfileTreeNode(entry.Name, entry));
 
-        foreach (var categoryGroup in _profileLibrary.Entries
-                     .Where(e => e.Category is not null)
-                     .GroupBy(e => e.Category, StringComparer.OrdinalIgnoreCase)
-                     .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+        var groupedCategories = _profileLibrary.Entries
+            .Where(e => e.Category is not null)
+            .GroupBy(e => e.Category!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, StringComparer.OrdinalIgnoreCase);
+
+        // Merge non-empty + empty categories into a single ordered list.
+        var allCategoryNames = groupedCategories.Keys
+            .Concat(_profileLibrary.EmptyCategories)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var category in allCategoryNames)
         {
-            var categoryNode = new ProfileTreeNode(categoryGroup.Key!);
-            foreach (var entry in categoryGroup.OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase))
-                categoryNode.Children.Add(new ProfileTreeNode(entry.Name, entry));
+            var categoryNode = new ProfileTreeNode(category);
+            if (groupedCategories.TryGetValue(category, out var profilesInCategory))
+            {
+                foreach (var entry in profilesInCategory.OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase))
+                    categoryNode.Children.Add(new ProfileTreeNode(entry.Name, entry));
+            }
 
             ProfileTree.Add(categoryNode);
         }
 
         SelectedNode = FindNodeByEntry(ProfileTree, _preferredSelectedCategory, _preferredSelectedName)
+            ?? FindNodeByCategory(ProfileTree, _preferredSelectedCategory)
             ?? FindNodeByPath(ProfileTree, selectedFilePath)
             ?? ProfileTree.SelectMany(FlattenNodes).FirstOrDefault(node => node.Entry is not null);
 
         _preferredSelectedCategory = null;
         _preferredSelectedName = null;
+    }
+
+    private static ProfileTreeNode? FindNodeByCategory(IEnumerable<ProfileTreeNode> nodes, string? category)
+    {
+        if (string.IsNullOrWhiteSpace(category))
+            return null;
+
+        return nodes.FirstOrDefault(node =>
+            node.Entry is null &&
+            string.Equals(node.Label, category, StringComparison.OrdinalIgnoreCase));
     }
 
     private static ProfileTreeNode? FindNodeByPath(IEnumerable<ProfileTreeNode> nodes, string? filePath)
@@ -253,8 +305,9 @@ public sealed class ProfilePageViewModel : ViewModelBase, IDisposable
             NewProfileName = selectedNode.Entry.Name;
             SelectedCategory = selectedNode.Entry.Category;
         }
-        else if (selectedNode?.Entry is null && selectedNode is not null && selectedNode.Children.Count > 0)
+        else if (selectedNode is not null && selectedNode.Entry is null)
         {
+            // Category node (with or without children): pre-fill the category so a new profile lands here.
             NewProfileName = string.Empty;
             SelectedCategory = selectedNode.Label;
         }
