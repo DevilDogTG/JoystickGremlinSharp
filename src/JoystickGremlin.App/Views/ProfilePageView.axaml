@@ -109,10 +109,12 @@
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                             <TextBox Grid.Column="0"
                                      Text="{Binding NewCategoryName}"
-                                     PlaceholderText="Folder name"/>
+                                     PlaceholderText="Folder name"
+                                     AutomationProperties.Name="New category name"/>
                             <Button Grid.Column="1"
                                     Content="+ Folder"
-                                    Command="{Binding CreateCategoryCommand}"/>
+                                    Command="{Binding CreateCategoryCommand}"
+                                    AutomationProperties.Name="Create new folder"/>
                         </Grid>
                     </StackPanel>
                 </Border>

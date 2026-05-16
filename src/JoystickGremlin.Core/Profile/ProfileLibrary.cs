@@ -15,8 +15,8 @@ public sealed class ProfileLibrary : IProfileLibrary, IDisposable
     private readonly IProfileRepository _profileRepository;
     private readonly ILogger<ProfileLibrary> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private List<ProfileEntry> _entries = [];
-    private List<string> _emptyCategories = [];
+    private volatile IReadOnlyList<ProfileEntry> _entries = Array.Empty<ProfileEntry>();
+    private volatile IReadOnlyList<string> _emptyCategories = Array.Empty<string>();
 
     private static readonly string DefaultFolderPath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -113,10 +113,11 @@ public sealed class ProfileLibrary : IProfileLibrary, IDisposable
                 throw new ProfileException($"Category name '{name}' is invalid.");
 
             var folder = Path.Combine(ProfilesFolder, sanitized);
-            if (Directory.Exists(folder))
+            var existedBefore = Directory.Exists(folder);
+            Directory.CreateDirectory(folder);
+            if (existedBefore)
                 throw new ProfileException($"Category '{sanitized}' already exists.");
 
-            Directory.CreateDirectory(folder);
             _logger.LogInformation("Created profile category: {Folder}", folder);
             ScanCore();
         }
@@ -187,8 +188,8 @@ public sealed class ProfileLibrary : IProfileLibrary, IDisposable
 
         if (!Directory.Exists(folder))
         {
-            _entries = [];
-            _emptyCategories = [];
+            _entries = Array.Empty<ProfileEntry>();
+            _emptyCategories = Array.Empty<string>();
             LibraryChanged?.Invoke(this, EventArgs.Empty);
             return;
         }
@@ -224,8 +225,8 @@ public sealed class ProfileLibrary : IProfileLibrary, IDisposable
             }
         }
 
-        _entries = found;
-        _emptyCategories = emptyCategories;
+        _entries = found.AsReadOnly();
+        _emptyCategories = emptyCategories.AsReadOnly();
         _logger.LogTrace("Found {Count} profiles, {EmptyCount} empty categories",
             _entries.Count, _emptyCategories.Count);
         LibraryChanged?.Invoke(this, EventArgs.Empty);

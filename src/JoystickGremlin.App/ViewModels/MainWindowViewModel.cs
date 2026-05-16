@@ -214,22 +214,36 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private async Task LoadProfileEntryAsync(ProfileEntry entry)
     {
         ProfileModel? profile = null;
+        bool initializedEmpty = false;
         try
         {
             profile = await _profileRepository.LoadAsync(entry.FilePath);
             _logger.LogInformation("Loaded profile {ProfileName} from {Path}", entry.Name, entry.FilePath);
         }
-        catch (Exception ex)
+        catch (System.Text.Json.JsonException ex)
         {
             _logger.LogWarning(ex,
-                "Profile file at {Path} could not be loaded; initializing as a new empty profile. " +
+                "Profile file at {Path} contains invalid JSON; initializing as a new empty profile. " +
                 "Saving will overwrite the existing file.", entry.FilePath);
+            initializedEmpty = true;
+        }
+        catch (Exception ex)
+        {
+            // I/O error (file locked, permissions, network drive disconnected). Do NOT switch
+            // — replacing the active profile with an empty one would risk overwriting a valid
+            // file on the next save.
+            _logger.LogError(ex,
+                "Failed to load profile from {Path} due to I/O error; keeping current profile active.",
+                entry.FilePath);
+            return;
         }
 
-        // Always update profile state so the editor reflects the user's selection. If the file
-        // could not be read (e.g. a manually-created profile with malformed JSON), surface an
-        // empty profile pointing at that path so the user can populate and save it.
-        profile ??= new ProfileModel { Name = entry.Name };
+        if (initializedEmpty)
+            profile = new ProfileModel { Name = entry.Name };
+
+        if (profile is null)
+            return;
+
         _profileState.SetProfile(profile, entry.FilePath);
 
         try
