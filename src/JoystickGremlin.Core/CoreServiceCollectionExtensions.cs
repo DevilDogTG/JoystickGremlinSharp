@@ -45,6 +45,7 @@ public static class CoreServiceCollectionExtensions
         // Built-in macro and keyboard-mapping descriptors
         services.AddSingleton<IActionDescriptor, MacroActionDescriptor>();
         services.AddSingleton<IActionDescriptor, MapToKeyboardActionDescriptor>();
+        services.AddSingleton<IActionDescriptor, MapToArrowKeysActionDescriptor>();
 
         // Keyboard simulator — NullKeyboardSimulator by default; override in App or Interop for real input.
         services.TryAddSingleton<IKeyboardSimulator, NullKeyboardSimulator>();
