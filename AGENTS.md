@@ -377,6 +377,7 @@ Actions are **statically registered** (no runtime plugin discovery).
 | `"hat-to-axis"` | `HatToAxisDescriptor` | `vjoyId` (uint, default 1), `xAxisIndex` (int, default 1, 0=disabled), `yAxisIndex` (int, default 2, 0=disabled) |
 | `"macro"` | `MacroActionDescriptor` | `keys` (comma-separated), `onPress` (bool, default true) |
 | `"map-to-keyboard"` | `MapToKeyboardActionDescriptor` | `keys` (comma-separated key names; see picker UI in binding editor — supports arrows, modifiers, F-keys, letters, digits, etc. via `IKeyNameCatalog`), `behavior` ("Hold"/"Toggle"/"PressOnly"/"ReleaseOnly", default "Hold") |
+| `"map-to-arrow-keys"` | `MapToArrowKeysActionDescriptor` | `upKey`/`downKey`/`leftKey`/`rightKey` (key names, default `Up`/`Down`/`Left`/`Right`). Hat mode: auto-detected on Hat inputs, resolves 8-way sectors (diagonals press both adjacent keys, centre releases all). Buttons mode (engine-only, no UI in v1): set `upButtonId`/`downButtonId`/`leftButtonId`/`rightButtonId` and bind 4 functors with the same key tuple — shared state keyed by `upKey|downKey|leftKey|rightKey`. Empty key disables that direction. |
 
 ### Multi-Button to Virtual Output Mapping
 
