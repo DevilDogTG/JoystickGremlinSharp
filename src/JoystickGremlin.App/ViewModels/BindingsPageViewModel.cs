@@ -56,6 +56,10 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     private string _editMacroKeys = string.Empty;
     private string _editMapToKeyboardKeys = string.Empty;
     private string _editMapToKeyboardBehavior = "Hold";
+    private string _editMapToArrowKeysUpKey    = "Up";
+    private string _editMapToArrowKeysDownKey  = "Down";
+    private string _editMapToArrowKeysLeftKey  = "Left";
+    private string _editMapToArrowKeysRightKey = "Right";
     private double _editVJoyButtonThreshold = 0.5;
 
     /// <summary>
@@ -284,6 +288,34 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _editMapToKeyboardBehavior, value);
     }
 
+    /// <summary>Gets or sets the key name fired for the Up direction (map-to-arrow-keys action).</summary>
+    public string EditMapToArrowKeysUpKey
+    {
+        get => _editMapToArrowKeysUpKey;
+        set => this.RaiseAndSetIfChanged(ref _editMapToArrowKeysUpKey, value ?? string.Empty);
+    }
+
+    /// <summary>Gets or sets the key name fired for the Down direction (map-to-arrow-keys action).</summary>
+    public string EditMapToArrowKeysDownKey
+    {
+        get => _editMapToArrowKeysDownKey;
+        set => this.RaiseAndSetIfChanged(ref _editMapToArrowKeysDownKey, value ?? string.Empty);
+    }
+
+    /// <summary>Gets or sets the key name fired for the Left direction (map-to-arrow-keys action).</summary>
+    public string EditMapToArrowKeysLeftKey
+    {
+        get => _editMapToArrowKeysLeftKey;
+        set => this.RaiseAndSetIfChanged(ref _editMapToArrowKeysLeftKey, value ?? string.Empty);
+    }
+
+    /// <summary>Gets or sets the key name fired for the Right direction (map-to-arrow-keys action).</summary>
+    public string EditMapToArrowKeysRightKey
+    {
+        get => _editMapToArrowKeysRightKey;
+        set => this.RaiseAndSetIfChanged(ref _editMapToArrowKeysRightKey, value ?? string.Empty);
+    }
+
     /// <summary>Gets the available behavior options for the map-to-keyboard action.</summary>
     public static IReadOnlyList<string> MapToKeyboardBehaviors { get; } =
         ["Hold", "Toggle", "PressOnly", "ReleaseOnly"];
@@ -324,6 +356,9 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets whether the hat-to-axis config section should be shown.</summary>
     public bool ShowHatToAxisConfig => SelectedBoundAction?.IsHatToAxis ?? false;
+
+    /// <summary>Gets whether the map-to-arrow-keys config section should be shown.</summary>
+    public bool ShowMapToArrowKeysConfig => SelectedBoundAction?.IsMapToArrowKeys ?? false;
 
     /// <summary>Gets whether any config section is visible (i.e. an action is selected).</summary>
     public bool ShowConfigPanel => SelectedBoundAction is not null;
@@ -439,6 +474,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         this.RaisePropertyChanged(nameof(ShowButtonsToHatConfig));
         this.RaisePropertyChanged(nameof(ShowButtonsToAxesConfig));
         this.RaisePropertyChanged(nameof(ShowHatToAxisConfig));
+        this.RaisePropertyChanged(nameof(ShowMapToArrowKeysConfig));
         this.RaisePropertyChanged(nameof(ShowConfigPanel));
 
         if (vm is null) return;
@@ -487,6 +523,12 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
             case MapToKeyboardActionDescriptor.ActionTag:
                 EditMapToKeyboardKeys     = cfg?["keys"]?.GetValue<string>() ?? string.Empty;
                 EditMapToKeyboardBehavior = cfg?["behavior"]?.GetValue<string>() ?? "Hold";
+                break;
+            case MapToArrowKeysActionDescriptor.ActionTag:
+                EditMapToArrowKeysUpKey    = cfg?["upKey"]?.GetValue<string>()    ?? "Up";
+                EditMapToArrowKeysDownKey  = cfg?["downKey"]?.GetValue<string>()  ?? "Down";
+                EditMapToArrowKeysLeftKey  = cfg?["leftKey"]?.GetValue<string>()  ?? "Left";
+                EditMapToArrowKeysRightKey = cfg?["rightKey"]?.GetValue<string>() ?? "Right";
                 break;
         }
     }
@@ -564,6 +606,13 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
             },
             MacroActionDescriptor.ActionTag         => new JsonObject { ["keys"] = string.Empty, ["onPress"] = true },
             MapToKeyboardActionDescriptor.ActionTag => new JsonObject { ["keys"] = string.Empty, ["behavior"] = "Hold" },
+            MapToArrowKeysActionDescriptor.ActionTag => new JsonObject
+            {
+                ["upKey"]    = "Up",
+                ["downKey"]  = "Down",
+                ["leftKey"]  = "Left",
+                ["rightKey"] = "Right",
+            },
             HatToAxisDescriptor.ActionTag           => new JsonObject { ["vjoyId"] = 1, ["xAxisIndex"] = 1, ["yAxisIndex"] = 2 },
             _ => null,
         };
@@ -675,6 +724,13 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
             {
                 ["keys"]     = EditMapToKeyboardKeys,
                 ["behavior"] = EditMapToKeyboardBehavior,
+            },
+            MapToArrowKeysActionDescriptor.ActionTag => new JsonObject
+            {
+                ["upKey"]    = EditMapToArrowKeysUpKey,
+                ["downKey"]  = EditMapToArrowKeysDownKey,
+                ["leftKey"]  = EditMapToArrowKeysLeftKey,
+                ["rightKey"] = EditMapToArrowKeysRightKey,
             },
             HatToAxisDescriptor.ActionTag => new JsonObject
             {
@@ -806,7 +862,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         actionTag is ButtonsToHatDescriptor.ActionTag or ButtonsToAxesDescriptor.ActionTag;
 
     private static bool IsHatOnlyAction(string actionTag) =>
-        actionTag is HatToAxisDescriptor.ActionTag;
+        actionTag is HatToAxisDescriptor.ActionTag or MapToArrowKeysActionDescriptor.ActionTag;
 
     private static string GetOrCreateMappingId(JsonObject? configuration)
     {
