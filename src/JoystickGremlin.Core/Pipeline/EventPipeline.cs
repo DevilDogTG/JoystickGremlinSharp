@@ -73,6 +73,7 @@ public sealed class EventPipeline : IEventPipeline
         IsRunning = false;
         _profile = null;
         _functorCache.Clear();
+        ResetStatefulDescriptors();
 
         _logger.LogTrace("Event pipeline stopped");
     }
@@ -92,11 +93,33 @@ public sealed class EventPipeline : IEventPipeline
     {
         _profile = profile;
         _functorCache.Clear();
+        ResetStatefulDescriptors();
 
         _logger.LogTrace(
             "Event pipeline refreshed action functor cache after profile change; running={IsRunning}, profile={ProfileName}",
             IsRunning,
             profile?.Name ?? "(null)");
+    }
+
+    private void ResetStatefulDescriptors()
+    {
+        var descriptors = _actionRegistry.GetAll();
+        if (descriptors is null) return;
+
+        foreach (var descriptor in descriptors)
+        {
+            if (descriptor is IResettableActionDescriptor resettable)
+            {
+                try
+                {
+                    resettable.ResetState();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "ResetState failed for action descriptor '{Tag}'", descriptor.Tag);
+                }
+            }
+        }
     }
 
     private void OnInputReceived(object? sender, InputEvent inputEvent)

@@ -266,6 +266,31 @@ public sealed class MapToArrowKeysActionDescriptorTests
         kb.Verify(k => k.KeyDown("W"),  Times.Once);
     }
 
+    // ── ResetState ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ResetState_ClearsSharedButtonState_AcrossFunctors()
+    {
+        var d = MakeDescriptor(out var kb);
+        var cfg = MakeButtonsConfig(up: 10, down: 11, left: 12, right: 13);
+
+        var f1 = d.CreateFunctor(cfg);
+        await f1.ExecuteAsync(Button(10, pressed: true));
+        kb.Verify(k => k.KeyDown("Up"), Times.Once);
+
+        // Reset clears descriptor-level state. A new functor with the same config
+        // should start fresh: a release of Up must NOT emit a stale KeyUp, since
+        // the state has been wiped.
+        d.ResetState();
+
+        var f2 = d.CreateFunctor(cfg);
+        await f2.ExecuteAsync(Button(10, pressed: false));
+
+        // No additional Up press; no Up release either (state was already clean after reset).
+        kb.Verify(k => k.KeyDown("Up"), Times.Once);
+        kb.Verify(k => k.KeyUp("Up"),   Times.Never);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static MapToArrowKeysActionDescriptor MakeDescriptor(out Mock<IKeyboardSimulator> keyboard)

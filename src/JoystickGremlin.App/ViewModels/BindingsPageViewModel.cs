@@ -292,28 +292,28 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     public string EditMapToArrowKeysUpKey
     {
         get => _editMapToArrowKeysUpKey;
-        set => this.RaiseAndSetIfChanged(ref _editMapToArrowKeysUpKey, value ?? string.Empty);
+        set => this.RaiseAndSetIfChanged(ref _editMapToArrowKeysUpKey, (value ?? string.Empty).Trim());
     }
 
     /// <summary>Gets or sets the key name fired for the Down direction (map-to-arrow-keys action).</summary>
     public string EditMapToArrowKeysDownKey
     {
         get => _editMapToArrowKeysDownKey;
-        set => this.RaiseAndSetIfChanged(ref _editMapToArrowKeysDownKey, value ?? string.Empty);
+        set => this.RaiseAndSetIfChanged(ref _editMapToArrowKeysDownKey, (value ?? string.Empty).Trim());
     }
 
     /// <summary>Gets or sets the key name fired for the Left direction (map-to-arrow-keys action).</summary>
     public string EditMapToArrowKeysLeftKey
     {
         get => _editMapToArrowKeysLeftKey;
-        set => this.RaiseAndSetIfChanged(ref _editMapToArrowKeysLeftKey, value ?? string.Empty);
+        set => this.RaiseAndSetIfChanged(ref _editMapToArrowKeysLeftKey, (value ?? string.Empty).Trim());
     }
 
     /// <summary>Gets or sets the key name fired for the Right direction (map-to-arrow-keys action).</summary>
     public string EditMapToArrowKeysRightKey
     {
         get => _editMapToArrowKeysRightKey;
-        set => this.RaiseAndSetIfChanged(ref _editMapToArrowKeysRightKey, value ?? string.Empty);
+        set => this.RaiseAndSetIfChanged(ref _editMapToArrowKeysRightKey, (value ?? string.Empty).Trim());
     }
 
     /// <summary>Gets the available behavior options for the map-to-keyboard action.</summary>
