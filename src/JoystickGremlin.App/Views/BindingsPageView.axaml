@@ -282,9 +282,44 @@
 
                         <!-- Map to Keyboard config -->
                         <StackPanel Spacing="6" IsVisible="{Binding ShowMapToKeyboardConfig}">
-                            <TextBlock Text="Keys (comma-separated, modifiers first)"/>
-                            <TextBox Text="{Binding EditMapToKeyboardKeys}"
-                                     PlaceholderText="e.g. LShift,A"
+                            <TextBlock Text="Keys (modifiers first by convention)"/>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <AutoCompleteBox ItemsSource="{Binding AvailableKeyNames}"
+                                                 SelectedItem="{Binding SelectedKeyToAdd}"
+                                                 Text="{Binding SelectedKeyToAdd, Mode=TwoWay}"
+                                                 FilterMode="ContainsOrdinal"
+                                                 MinimumPrefixLength="0"
+                                                 Width="220"/>
+                                <Button Content="+ Add"
+                                        Command="{Binding AddKeyToMapToKeyboardCommand}"/>
+                            </StackPanel>
+                            <ItemsControl ItemsSource="{Binding MapToKeyboardKeyChips}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal" ItemWidth="NaN" ItemHeight="NaN"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                                                CornerRadius="10"
+                                                Padding="6,2"
+                                                Margin="0,0,4,4">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="{Binding}" VerticalAlignment="Center"/>
+                                                <Button Content="✕"
+                                                        Padding="4,0"
+                                                        FontSize="10"
+                                                        Command="{Binding $parent[ItemsControl].((vm:BindingsPageViewModel)DataContext).RemoveKeyFromMapToKeyboardCommand}"
+                                                        CommandParameter="{Binding}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="Current (comma-separated):"/>
+                            <TextBox Text="{Binding EditMapToKeyboardKeys, Mode=OneWay}"
+                                     IsReadOnly="True"
                                      Width="220"
                                      HorizontalAlignment="Left"/>
                             <TextBlock Text="Behavior"/>

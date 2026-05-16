@@ -28,8 +28,11 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     private readonly IDeviceManager _deviceManager;
     private readonly IActionRegistry _actionRegistry;
     private readonly IProfileState _profileState;
+    private readonly IKeyNameCatalog _keyNameCatalog;
     private readonly ILogger<BindingsPageViewModel> _logger;
     private readonly BehaviorSubject<bool> _hasProfileSubject;
+    private string? _selectedKeyToAdd;
+    private bool _syncingKeyChips;
 
     // Selection state
     private DeviceViewModel? _selectedDevice;
@@ -62,18 +65,22 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         IDeviceManager deviceManager,
         IActionRegistry actionRegistry,
         IProfileState profileState,
+        IKeyNameCatalog keyNameCatalog,
         ILogger<BindingsPageViewModel> logger)
     {
-        _deviceManager  = deviceManager;
-        _actionRegistry = actionRegistry;
-        _profileState   = profileState;
-        _logger         = logger;
+        _deviceManager   = deviceManager;
+        _actionRegistry  = actionRegistry;
+        _profileState    = profileState;
+        _keyNameCatalog  = keyNameCatalog;
+        _logger          = logger;
         _hasProfileSubject = new BehaviorSubject<bool>(_profileState.CurrentProfile is not null);
 
-        Devices           = new ObservableCollection<DeviceViewModel>();
-        AvailableInputs   = new ObservableCollection<InputDescriptorViewModel>();
-        BoundActions      = new ObservableCollection<BoundActionViewModel>();
+        Devices              = new ObservableCollection<DeviceViewModel>();
+        AvailableInputs      = new ObservableCollection<InputDescriptorViewModel>();
+        BoundActions         = new ObservableCollection<BoundActionViewModel>();
         AvailableActionTypes = new ObservableCollection<IActionDescriptor>();
+        AvailableKeyNames    = _keyNameCatalog.AvailableKeys;
+        MapToKeyboardKeyChips = new ObservableCollection<string>();
 
         var hasInput      = this.WhenAnyValue(x => x.SelectedInput).Select(i => i is not null);
         var hasSelection  = this.WhenAnyValue(x => x.SelectedBoundAction).Select(a => a is not null);
@@ -85,6 +92,11 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
         MoveUpCommand       = ReactiveCommand.Create(MoveUp, hasSelection);
         MoveDownCommand     = ReactiveCommand.Create(MoveDown, hasSelection);
         SaveActionConfigCommand = ReactiveCommand.Create(SaveActionConfig, hasSelection);
+
+        var canAddKey = this.WhenAnyValue(x => x.SelectedKeyToAdd)
+            .Select(k => !string.IsNullOrWhiteSpace(k));
+        AddKeyToMapToKeyboardCommand = ReactiveCommand.Create(AddSelectedKeyToMapToKeyboard, canAddKey);
+        RemoveKeyFromMapToKeyboardCommand = ReactiveCommand.Create<string>(RemoveKeyFromMapToKeyboard);
 
         // Rebuild inputs when device selection changes
         _ = this.WhenAnyValue(x => x.SelectedDevice)
@@ -245,7 +257,24 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     public string EditMapToKeyboardKeys
     {
         get => _editMapToKeyboardKeys;
-        set => this.RaiseAndSetIfChanged(ref _editMapToKeyboardKeys, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _editMapToKeyboardKeys, value);
+            SyncKeyChipsFromString();
+        }
+    }
+
+    /// <summary>Gets the full catalog of key names available for the map-to-keyboard picker.</summary>
+    public IReadOnlyList<string> AvailableKeyNames { get; }
+
+    /// <summary>Gets the chip list reflecting the current keys parsed from <see cref="EditMapToKeyboardKeys"/>.</summary>
+    public ObservableCollection<string> MapToKeyboardKeyChips { get; }
+
+    /// <summary>Gets or sets the key name currently chosen in the picker (not yet added to the chip list).</summary>
+    public string? SelectedKeyToAdd
+    {
+        get => _selectedKeyToAdd;
+        set => this.RaiseAndSetIfChanged(ref _selectedKeyToAdd, value);
     }
 
     /// <summary>Gets or sets the behavior string for the map-to-keyboard action (Hold/Toggle/PressOnly/ReleaseOnly).</summary>
@@ -315,6 +344,12 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the command that saves the current config form into the selected action.</summary>
     public ReactiveCommand<Unit, Unit> SaveActionConfigCommand { get; }
+
+    /// <summary>Gets the command that appends <see cref="SelectedKeyToAdd"/> to <see cref="EditMapToKeyboardKeys"/>.</summary>
+    public ReactiveCommand<Unit, Unit> AddKeyToMapToKeyboardCommand { get; }
+
+    /// <summary>Gets the command that removes a key (chip) from <see cref="EditMapToKeyboardKeys"/>.</summary>
+    public ReactiveCommand<string, Unit> RemoveKeyFromMapToKeyboardCommand { get; }
 
     // ─── Public Methods ─────────────────────────────────────────────────────────
 
@@ -867,6 +902,55 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
             this.RaisePropertyChanged(nameof(HasProfile));
             RebuildBoundActions();
         });
+    }
+
+    // ─── Map-to-Keyboard key picker helpers ─────────────────────────────────────
+
+    private static string[] ParseKeyList(string raw) =>
+        string.IsNullOrWhiteSpace(raw)
+            ? []
+            : raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private void SyncKeyChipsFromString()
+    {
+        if (_syncingKeyChips) return;
+
+        _syncingKeyChips = true;
+        try
+        {
+            MapToKeyboardKeyChips.Clear();
+            foreach (var key in ParseKeyList(_editMapToKeyboardKeys))
+                MapToKeyboardKeyChips.Add(key);
+        }
+        finally
+        {
+            _syncingKeyChips = false;
+        }
+    }
+
+    private void AddSelectedKeyToMapToKeyboard()
+    {
+        var key = SelectedKeyToAdd?.Trim();
+        if (string.IsNullOrEmpty(key)) return;
+
+        var current = ParseKeyList(_editMapToKeyboardKeys).ToList();
+        if (current.Any(k => string.Equals(k, key, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        current.Add(key);
+        EditMapToKeyboardKeys = string.Join(",", current);
+        SelectedKeyToAdd = null;
+    }
+
+    private void RemoveKeyFromMapToKeyboard(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return;
+
+        var current = ParseKeyList(_editMapToKeyboardKeys)
+            .Where(k => !string.Equals(k, key, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        EditMapToKeyboardKeys = string.Join(",", current);
     }
 
     /// <inheritdoc/>
