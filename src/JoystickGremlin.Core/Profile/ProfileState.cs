@@ -20,6 +20,9 @@ public sealed class ProfileState : IProfileState
     public event EventHandler<Profile?>? ProfileChanged;
 
     /// <inheritdoc/>
+    public event EventHandler<Profile?>? ProfileModified;
+
+    /// <inheritdoc/>
     public event EventHandler<string?>? FilePathChanged;
 
     /// <inheritdoc/>
@@ -43,7 +46,7 @@ public sealed class ProfileState : IProfileState
     }
 
     /// <inheritdoc/>
-    public void NotifyProfileModified() => ProfileChanged?.Invoke(this, _currentProfile);
+    public void NotifyProfileModified() => ProfileModified?.Invoke(this, _currentProfile);
 
     /// <inheritdoc/>
     public void ClearProfile()

@@ -14,8 +14,21 @@ public interface IProfileState
     /// <summary>Gets the file path of the current profile, or <c>null</c> if unsaved.</summary>
     string? FilePath { get; }
 
-    /// <summary>Raised when a new profile is set or cleared.</summary>
+    /// <summary>
+    /// Raised when the active profile identity changes (load, swap, or clear).
+    /// In-place mutations of an already-loaded profile raise <see cref="ProfileModified"/>
+    /// instead — UI subscribers that do expensive rebuilds (e.g. re-creating input rows
+    /// or device lists) should listen here, not on <see cref="ProfileModified"/>.
+    /// </summary>
     event EventHandler<Profile?>? ProfileChanged;
+
+    /// <summary>
+    /// Raised when the currently active profile's contents are modified in place
+    /// (e.g. a binding/action is added, removed, or reordered) via
+    /// <see cref="NotifyProfileModified"/>. The profile reference is unchanged;
+    /// subscribers should perform incremental refreshes only.
+    /// </summary>
+    event EventHandler<Profile?>? ProfileModified;
 
     /// <summary>Raised when the file path changes (open, save-as, or clear).</summary>
     event EventHandler<string?>? FilePathChanged;
@@ -33,8 +46,9 @@ public interface IProfileState
     void UpdateFilePath(string? filePath);
 
     /// <summary>
-    /// Fires <see cref="ProfileChanged"/> with the current profile so subscribers
-    /// can refresh without a full <see cref="SetProfile"/> call (e.g. after mode edits).
+    /// Fires <see cref="ProfileModified"/> with the current profile so subscribers
+    /// can perform incremental refreshes after in-place edits (e.g. binding/action
+    /// add, remove, reorder, config change). The profile reference is unchanged.
     /// </summary>
     void NotifyProfileModified();
 

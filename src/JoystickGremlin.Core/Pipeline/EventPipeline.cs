@@ -43,6 +43,7 @@ public sealed class EventPipeline : IEventPipeline
         _logger          = logger;
 
         _profileState.ProfileChanged += OnProfileChanged;
+        _profileState.ProfileModified += OnProfileChanged;
     }
 
     /// <inheritdoc/>
@@ -86,6 +87,7 @@ public sealed class EventPipeline : IEventPipeline
 
         Stop();
         _profileState.ProfileChanged -= OnProfileChanged;
+        _profileState.ProfileModified -= OnProfileChanged;
         _disposed = true;
     }
 

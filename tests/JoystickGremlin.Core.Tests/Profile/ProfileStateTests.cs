@@ -85,17 +85,34 @@ public sealed class ProfileStateTests
     // ── NotifyProfileModified ────────────────────────────────────────────────
 
     [Fact]
-    public void NotifyProfileModified_RaisesProfileChangedWithCurrentProfile()
+    public void NotifyProfileModified_RaisesProfileModifiedWithCurrentProfile()
     {
         var profile = new JoystickGremlin.Core.Profile.Profile { Name = "Test" };
         _sut.SetProfile(profile);
 
         JoystickGremlin.Core.Profile.Profile? received = null;
-        _sut.ProfileChanged += (_, p) => received = p;
+        _sut.ProfileModified += (_, p) => received = p;
 
         _sut.NotifyProfileModified();
 
         received.Should().BeSameAs(profile);
+    }
+
+    [Fact]
+    public void NotifyProfileModified_DoesNotRaiseProfileChanged()
+    {
+        var profile = new JoystickGremlin.Core.Profile.Profile { Name = "Test" };
+        _sut.SetProfile(profile);
+
+        var changedRaisedCount = 0;
+        _sut.ProfileChanged += (_, _) => changedRaisedCount++;
+
+        _sut.NotifyProfileModified();
+
+        changedRaisedCount.Should().Be(
+            0,
+            "in-place modifications must not re-fire identity-change subscribers "
+            + "(would cause expensive UI rebuilds and clobber selection state)");
     }
 
     // ── ClearProfile ─────────────────────────────────────────────────────────
