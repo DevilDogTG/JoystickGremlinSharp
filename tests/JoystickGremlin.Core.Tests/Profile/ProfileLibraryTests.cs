@@ -116,6 +116,62 @@ public sealed class ProfileLibraryTests : IDisposable
         await act.Should().ThrowAsync<ProfileException>();
     }
 
+    // ── EmptyCategories / CreateCategoryAsync ──────────────────────────────
+
+    [Fact]
+    public async Task ScanAsync_EmptySubfolder_IsListedInEmptyCategories()
+    {
+        Directory.CreateDirectory(Path.Combine(_tempDir, "Drifting"));
+
+        await _sut.ScanAsync();
+
+        _sut.Entries.Should().BeEmpty();
+        _sut.EmptyCategories.Should().Contain("Drifting");
+    }
+
+    [Fact]
+    public async Task ScanAsync_SubfolderWithProfile_NotListedAsEmpty()
+    {
+        var sub = Path.Combine(_tempDir, "Rally");
+        Directory.CreateDirectory(sub);
+        await File.WriteAllTextAsync(Path.Combine(sub, "Gravel.json"), "{}");
+
+        await _sut.ScanAsync();
+
+        _sut.EmptyCategories.Should().NotContain("Rally");
+        _sut.Entries.Should().ContainSingle(e => e.Category == "Rally");
+    }
+
+    [Fact]
+    public async Task CreateCategoryAsync_NewName_CreatesFolderAndAppearsInEmptyCategories()
+    {
+        await _sut.CreateCategoryAsync("Touring");
+
+        Directory.Exists(Path.Combine(_tempDir, "Touring")).Should().BeTrue();
+        _sut.EmptyCategories.Should().Contain("Touring");
+    }
+
+    [Fact]
+    public async Task CreateCategoryAsync_ExistingFolder_ThrowsProfileException()
+    {
+        Directory.CreateDirectory(Path.Combine(_tempDir, "Already"));
+
+        var act = async () => await _sut.CreateCategoryAsync("Already");
+
+        await act.Should().ThrowAsync<ProfileException>();
+    }
+
+    [Fact]
+    public async Task CreateProfileAsync_IntoExistingEmptyCategory_RemovesItFromEmptyList()
+    {
+        await _sut.CreateCategoryAsync("Karts");
+
+        await _sut.CreateProfileAsync("First", "Karts");
+
+        _sut.EmptyCategories.Should().NotContain("Karts");
+        _sut.Entries.Should().ContainSingle(e => e.Category == "Karts" && e.Name == "First");
+    }
+
     // ── DeleteProfileAsync ─────────────────────────────────────────────────
 
     [Fact]

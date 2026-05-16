@@ -16,6 +16,7 @@ public sealed class ProfileLibrary : IProfileLibrary, IDisposable
     private readonly ILogger<ProfileLibrary> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private List<ProfileEntry> _entries = [];
+    private List<string> _emptyCategories = [];
 
     private static readonly string DefaultFolderPath =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -46,6 +47,9 @@ public sealed class ProfileLibrary : IProfileLibrary, IDisposable
 
     /// <inheritdoc/>
     public IReadOnlyList<ProfileEntry> Entries => _entries;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> EmptyCategories => _emptyCategories;
 
     /// <inheritdoc/>
     public event EventHandler? LibraryChanged;
@@ -89,6 +93,32 @@ public sealed class ProfileLibrary : IProfileLibrary, IDisposable
 
             ScanCore();
             return filePath;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task CreateCategoryAsync(string name, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            var sanitized = SanitizeName(name);
+            if (string.IsNullOrWhiteSpace(sanitized))
+                throw new ProfileException($"Category name '{name}' is invalid.");
+
+            var folder = Path.Combine(ProfilesFolder, sanitized);
+            if (Directory.Exists(folder))
+                throw new ProfileException($"Category '{sanitized}' already exists.");
+
+            Directory.CreateDirectory(folder);
+            _logger.LogInformation("Created profile category: {Folder}", folder);
+            ScanCore();
         }
         finally
         {
@@ -158,11 +188,13 @@ public sealed class ProfileLibrary : IProfileLibrary, IDisposable
         if (!Directory.Exists(folder))
         {
             _entries = [];
+            _emptyCategories = [];
             LibraryChanged?.Invoke(this, EventArgs.Empty);
             return;
         }
 
         var found = new List<ProfileEntry>();
+        var emptyCategories = new List<string>();
 
         foreach (var file in Directory.GetFiles(folder, "*.json", SearchOption.TopDirectoryOnly)
                                       .OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
@@ -175,8 +207,17 @@ public sealed class ProfileLibrary : IProfileLibrary, IDisposable
                                         .OrderBy(d => d, StringComparer.OrdinalIgnoreCase))
         {
             var category = Path.GetFileName(subdir);
-            foreach (var file in Directory.GetFiles(subdir, "*.json", SearchOption.TopDirectoryOnly)
-                                          .OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+            var files = Directory.GetFiles(subdir, "*.json", SearchOption.TopDirectoryOnly)
+                                 .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                                 .ToList();
+
+            if (files.Count == 0)
+            {
+                emptyCategories.Add(category);
+                continue;
+            }
+
+            foreach (var file in files)
             {
                 var name = Path.GetFileNameWithoutExtension(file);
                 found.Add(new ProfileEntry(name, category, file));
@@ -184,7 +225,9 @@ public sealed class ProfileLibrary : IProfileLibrary, IDisposable
         }
 
         _entries = found;
-        _logger.LogTrace("Found {Count} profiles", _entries.Count);
+        _emptyCategories = emptyCategories;
+        _logger.LogTrace("Found {Count} profiles, {EmptyCount} empty categories",
+            _entries.Count, _emptyCategories.Count);
         LibraryChanged?.Invoke(this, EventArgs.Empty);
     }
 

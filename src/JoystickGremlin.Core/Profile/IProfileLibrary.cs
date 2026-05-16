@@ -14,6 +14,12 @@ public interface IProfileLibrary
     /// <summary>Gets the currently discovered profile entries.</summary>
     IReadOnlyList<ProfileEntry> Entries { get; }
 
+    /// <summary>
+    /// Gets the names of subfolders (categories) that exist on disk but contain no profile files.
+    /// Surfaced separately so the UI can show them as targets for new profiles.
+    /// </summary>
+    IReadOnlyList<string> EmptyCategories { get; }
+
     /// <summary>Raised when the library entries change (after a scan or file operation).</summary>
     event EventHandler? LibraryChanged;
 
@@ -28,6 +34,13 @@ public interface IProfileLibrary
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The file path of the newly created profile.</returns>
     Task<string> CreateProfileAsync(string name, string? category = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a new empty category (subfolder) under the profiles folder and rescans.
+    /// </summary>
+    /// <param name="name">The category name (used as the subfolder name, sanitised).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task CreateCategoryAsync(string name, CancellationToken cancellationToken = default);
 
     /// <summary>Deletes the profile file at the given path and rescans.</summary>
     Task DeleteProfileAsync(string filePath, CancellationToken cancellationToken = default);
