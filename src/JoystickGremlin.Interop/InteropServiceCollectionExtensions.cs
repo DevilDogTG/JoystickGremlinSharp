@@ -42,6 +42,7 @@ public static class InteropServiceCollectionExtensions
         // Override Core's no-op defaults with real Windows implementations.
         services.AddSingleton<SendInputKeyboardSimulator>();
         services.TryAddSingleton<IKeyboardSimulator>(sp => sp.GetRequiredService<SendInputKeyboardSimulator>());
+        services.TryAddSingleton<IKeyNameCatalog, SendInputKeyNameCatalog>();
         services.TryAddSingleton<IProcessMonitor, WindowsProcessMonitor>();
         services.TryAddSingleton<IStartupService, WindowsStartupService>();
 
