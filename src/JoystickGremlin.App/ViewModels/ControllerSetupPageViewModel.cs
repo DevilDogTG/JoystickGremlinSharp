@@ -70,6 +70,7 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         _deviceManager.DeviceDisconnected += OnDeviceDisconnected;
         _deviceManager.InputReceived += OnInputReceived;
         _profileState.ProfileChanged += OnProfileChanged;
+        _profileState.ProfileModified += OnProfileModified;
 
         _subscriptions.Add(this.WhenAnyValue(x => x.SelectedDevice)
             .Subscribe(OnSelectedDeviceChanged));
@@ -416,6 +417,29 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         });
     }
 
+    /// <summary>
+    /// Lightweight handler for in-place profile mutations (binding added/removed/
+    /// reordered, config saved). Refreshes the per-row "BoundActions" summary text
+    /// without rebuilding <see cref="InputRows"/> — rebuilding would re-create
+    /// <see cref="UnifiedInputRowViewModel"/> instances, cascade through
+    /// <see cref="SyncBindingEditorSelection"/>, and clobber the user's just-added
+    /// action selection in the binding editor.
+    /// </summary>
+    private void OnProfileModified(object? sender, Profile? profile)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (SelectedDevice is null)
+                return;
+
+            var deviceGuid = SelectedDevice.Device.Guid;
+            foreach (var row in InputRows)
+            {
+                row.BoundActions = BuildBoundActionsSummary(deviceGuid, row.InputType, row.Identifier);
+            }
+        });
+    }
+
     private void DisposeInputRows()
     {
         foreach (var row in InputRows)
@@ -437,6 +461,7 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
         _deviceManager.DeviceDisconnected -= OnDeviceDisconnected;
         _deviceManager.InputReceived -= OnInputReceived;
         _profileState.ProfileChanged -= OnProfileChanged;
+        _profileState.ProfileModified -= OnProfileModified;
 
         _subscriptions.Dispose();
         DisposeInputRows();
