@@ -285,7 +285,6 @@
                             <TextBlock Text="Keys (modifiers first by convention)"/>
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <AutoCompleteBox ItemsSource="{Binding AvailableKeyNames}"
-                                                 SelectedItem="{Binding SelectedKeyToAdd}"
                                                  Text="{Binding SelectedKeyToAdd, Mode=TwoWay}"
                                                  FilterMode="ContainsOrdinal"
                                                  MinimumPrefixLength="0"
