@@ -49,6 +49,9 @@ public static class CoreServiceCollectionExtensions
         // Keyboard simulator — NullKeyboardSimulator by default; override in App or Interop for real input.
         services.TryAddSingleton<IKeyboardSimulator, NullKeyboardSimulator>();
 
+        // Key-name catalog — minimal StaticKeyNameCatalog by default; Interop registers a full catalog.
+        services.TryAddSingleton<IKeyNameCatalog, StaticKeyNameCatalog>();
+
         // Process monitor — NullProcessMonitor by default; override in Interop for real window tracking.
         services.TryAddSingleton<IProcessMonitor, NullProcessMonitor>();
 
