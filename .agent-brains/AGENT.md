@@ -2,6 +2,7 @@
 version: 1.0
 profiles:
   - base-developer
+  - charp-developer
 strict_override: false
 ---
 
