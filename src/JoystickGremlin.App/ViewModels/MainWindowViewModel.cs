@@ -213,17 +213,33 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private async Task LoadProfileEntryAsync(ProfileEntry entry)
     {
+        ProfileModel? profile = null;
         try
         {
-            var profile = await _profileRepository.LoadAsync(entry.FilePath);
-            _profileState.SetProfile(profile, entry.FilePath);
-            _settingsService.Settings.ActiveProfilePath = entry.FilePath;
-            await _settingsService.SaveAsync();
+            profile = await _profileRepository.LoadAsync(entry.FilePath);
             _logger.LogInformation("Loaded profile {ProfileName} from {Path}", entry.Name, entry.FilePath);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load profile from {Path}", entry.FilePath);
+            _logger.LogWarning(ex,
+                "Profile file at {Path} could not be loaded; initializing as a new empty profile. " +
+                "Saving will overwrite the existing file.", entry.FilePath);
+        }
+
+        // Always update profile state so the editor reflects the user's selection. If the file
+        // could not be read (e.g. a manually-created profile with malformed JSON), surface an
+        // empty profile pointing at that path so the user can populate and save it.
+        profile ??= new ProfileModel { Name = entry.Name };
+        _profileState.SetProfile(profile, entry.FilePath);
+
+        try
+        {
+            _settingsService.Settings.ActiveProfilePath = entry.FilePath;
+            await _settingsService.SaveAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to persist active profile path");
         }
     }
 
