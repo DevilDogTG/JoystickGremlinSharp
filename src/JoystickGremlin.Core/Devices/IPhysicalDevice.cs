@@ -21,4 +21,12 @@ public interface IPhysicalDevice
 
     /// <summary>Gets the number of hat switches on the device.</summary>
     int HatCount { get; }
+
+    /// <summary>
+    /// Gets the Windows Device Instance ID (e.g.
+    /// <c>HID\VID_054C&amp;PID_05C4\6&amp;1A2B3C4D&amp;0&amp;0000</c>), or <c>null</c>
+    /// if it cannot be determined.
+    /// Used to correlate this device with HidHide's block list.
+    /// </summary>
+    string? InstanceId { get; }
 }
