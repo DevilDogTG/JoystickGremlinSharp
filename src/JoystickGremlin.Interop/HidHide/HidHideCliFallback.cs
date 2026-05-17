@@ -68,7 +68,8 @@ internal sealed class HidHideCliFallback
                 FileName = cliPath,
                 Arguments = args,
                 UseShellExecute = false,
-                RedirectStandardOutput = true,
+                // Do NOT redirect stdout — reading it is unnecessary and leaving it unread
+                // while redirected can deadlock the process if its stdout buffer fills.
                 RedirectStandardError = true,
                 CreateNoWindow = true,
             }
