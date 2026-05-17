@@ -4,9 +4,11 @@ using JoystickGremlin.Core.Actions.Keyboard;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.ForceFeedback;
+using JoystickGremlin.Core.HidHide;
 using JoystickGremlin.Core.ProcessMonitor;
 using JoystickGremlin.Core.Startup;
 using JoystickGremlin.Interop.Dill;
+using JoystickGremlin.Interop.HidHide;
 using JoystickGremlin.Interop.Keyboard;
 using JoystickGremlin.Interop.Moza;
 using JoystickGremlin.Interop.ProcessMonitor;
@@ -57,6 +59,12 @@ public static class InteropServiceCollectionExtensions
                 sp.GetRequiredService<VJoyFfbSource>(),
                 sp.GetRequiredService<MozaFfbSink>(),
                 sp.GetRequiredService<ILogger<ForceFeedbackBridge>>()));
+
+        // HidHide — register real IOCTL controller (overrides Core's NullHidHideController).
+        services.AddSingleton<HidHideCliFallback>();
+        services.AddSingleton<Nefarius.Drivers.HidHide.IHidHideControlService>(
+            _ => new Nefarius.Drivers.HidHide.HidHideControlService());
+        services.TryAddSingleton<IHidHideController, NefariusHidHideController>();
 
         return services;
     }

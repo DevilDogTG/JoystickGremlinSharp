@@ -25,6 +25,9 @@ public sealed class DillDevice : IPhysicalDevice
     /// <inheritdoc/>
     public int HatCount { get; }
 
+    /// <inheritdoc/>
+    public string? InstanceId { get; }
+
     /// <summary>Gets the USB vendor identifier of the device.</summary>
     public uint VendorId { get; }
 
@@ -42,7 +45,7 @@ public sealed class DillDevice : IPhysicalDevice
     /// </summary>
     internal IReadOnlyList<AxisMapping> AxisMappings { get; }
 
-    internal DillDevice(NativeDeviceSummary native)
+    internal DillDevice(NativeDeviceSummary native, IReadOnlyDictionary<(uint vid, uint pid), string>? instanceIdMap = null)
     {
         Guid = DillGuidConverter.ToGuid(native.DeviceGuid);
         Name = native.Name ?? string.Empty;
@@ -50,6 +53,11 @@ public sealed class DillDevice : IPhysicalDevice
         HatCount = (int)native.HatCount;
         VendorId = native.VendorId;
         ProductId = native.ProductId;
+
+        if (instanceIdMap is not null && instanceIdMap.TryGetValue((VendorId, ProductId), out var instanceId))
+            InstanceId = instanceId;
+        else
+            InstanceId = null;
 
         var mappings = new List<AxisMapping>();
         var axisMap = native.AxisMap ?? [];

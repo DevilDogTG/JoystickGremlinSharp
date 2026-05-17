@@ -34,6 +34,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly ControllerSetupPageViewModel _controllerSetupPage;
     private readonly SettingsPageViewModel _settingsPage;
     private readonly VirtualDevicesPageViewModel _virtualDevicesPage;
+    private readonly HidHidePageViewModel _hidHidePage;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly CompositeDisposable _subscriptions = [];
 
@@ -53,6 +54,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         SettingsPageViewModel settingsPage,
         VirtualDevicesPageViewModel virtualDevicesPage,
         AboutPageViewModel aboutPage,
+        HidHidePageViewModel hidHidePage,
         IEventPipeline eventPipeline,
         IProfileRepository profileRepository,
         IProfileState profileState,
@@ -72,6 +74,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _controllerSetupPage = controllerSetupPage;
         _settingsPage = settingsPage;
         _virtualDevicesPage = virtualDevicesPage;
+        _hidHidePage = hidHidePage;
         _logger = logger;
 
         var navItems = new[]
@@ -80,6 +83,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             new NavItemViewModel { Title = "Virtual Devices",  Icon = "🕹️", Page = virtualDevicesPage },
             new NavItemViewModel { Title = "Profile",          Icon = "📋", Page = profilePage         },
             new NavItemViewModel { Title = "Settings",         Icon = "⚙️", Page = settingsPage        },
+            new NavItemViewModel { Title = "HidHide",          Icon = "🙈", Page = hidHidePage         },
             new NavItemViewModel { Title = "About",            Icon = "ℹ️", Page = aboutPage           },
         };
 
@@ -189,6 +193,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
         await _settingsService.LoadAsync();
         _settingsPage.LoadFromSettings();
+        await _hidHidePage.LoadFromSettingsAsync();
         // IsLiveInputRefreshEnabled is kept in sync via the WhenAnyValue subscription
         // on _settingsPage set up in the constructor; no explicit sync needed here.
 

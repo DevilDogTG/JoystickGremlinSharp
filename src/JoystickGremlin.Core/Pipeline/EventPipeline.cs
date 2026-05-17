@@ -50,6 +50,12 @@ public sealed class EventPipeline : IEventPipeline
     public bool IsRunning { get; private set; }
 
     /// <inheritdoc/>
+    public event EventHandler? Started;
+
+    /// <inheritdoc/>
+    public event EventHandler? Stopped;
+
+    /// <inheritdoc/>
     public void Start(ProfileModel profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
@@ -62,6 +68,7 @@ public sealed class EventPipeline : IEventPipeline
         IsRunning = true;
 
         _logger.LogTrace("Event pipeline started for profile '{Profile}'", profile.Name);
+        Started?.Invoke(this, EventArgs.Empty);
     }
 
     /// <inheritdoc/>
@@ -77,6 +84,7 @@ public sealed class EventPipeline : IEventPipeline
         ResetStatefulDescriptors();
 
         _logger.LogTrace("Event pipeline stopped");
+        Stopped?.Invoke(this, EventArgs.Empty);
     }
 
     /// <inheritdoc/>

@@ -124,10 +124,13 @@ public sealed class DillDeviceManager : IDeviceManager
         _virtualDeviceGuids.Clear();
         uint count = DillNative.get_device_count();
         _logger.LogInformation("Refreshing physical devices from DILL; reported device count {DeviceCount}", count);
+
+        var instanceIdMap = HidInstanceIdResolver.BuildInstanceIdMap();
+
         for (uint i = 0; i < count; i++)
         {
             var summary = DillNative.get_device_information_by_index(i);
-            var device = new DillDevice(summary);
+            var device = new DillDevice(summary, instanceIdMap);
             if (device.IsVirtual)
             {
                 _virtualDeviceGuids.Add(device.Guid);
@@ -212,7 +215,12 @@ public sealed class DillDeviceManager : IDeviceManager
         if (_disposed)
             return;
 
-        var device = new DillDevice(data);
+        // For newly connected devices, resolve the InstanceId fresh from the registry.
+        var instanceIdMap = actionType == 1
+            ? HidInstanceIdResolver.BuildInstanceIdMap()
+            : null;
+
+        var device = new DillDevice(data, instanceIdMap);
 
         if (device.IsVirtual)
         {

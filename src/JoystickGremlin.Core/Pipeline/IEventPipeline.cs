@@ -24,4 +24,14 @@ public interface IEventPipeline : IDisposable
 
     /// <summary>Gets a value indicating whether the pipeline is currently running.</summary>
     bool IsRunning { get; }
+
+    /// <summary>
+    /// Raised after the pipeline transitions to the running state (immediately after <see cref="Start"/> succeeds).
+    /// </summary>
+    event EventHandler? Started;
+
+    /// <summary>
+    /// Raised after the pipeline transitions to the stopped state (immediately after <see cref="Stop"/> completes).
+    /// </summary>
+    event EventHandler? Stopped;
 }
