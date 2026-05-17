@@ -232,12 +232,18 @@ public sealed class HidHideManager : IHidHideManager
         _pipeline.Started -= OnPipelineStarted;
         _pipeline.Stopped -= OnPipelineStopped;
 
-        // Synchronous revert on dispose — best-effort (fire-and-wait with short timeout)
+        // Synchronous revert on dispose — best-effort with short timeout to avoid
+        // blocking the UI thread indefinitely if the semaphore is held.
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
         try
         {
-            RevertAsync(CancellationToken.None)
+            RevertAsync(cts.Token)
                 .GetAwaiter()
                 .GetResult();
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("HidHide: RevertAsync timed out during Dispose");
         }
         catch (Exception ex)
         {
