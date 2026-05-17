@@ -47,7 +47,7 @@ public sealed class HidHidePageViewModel : ViewModelBase, IDisposable
         DeviceRows = [];
         StaleDeviceRows = [];
         OwnExePath = Environment.ProcessPath ?? System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "(unknown)";
-        StatusText = FormatStatus(_hidHideManager.Status);
+        StatusText = FormatStatus(_hidHideManager.Status, _hidHideManager.LastError);
 
         RefreshCommand   = ReactiveCommand.CreateFromTask(RefreshAsync);
         ApplyNowCommand  = ReactiveCommand.CreateFromTask(ApplyNowAsync);
@@ -297,17 +297,19 @@ public sealed class HidHidePageViewModel : ViewModelBase, IDisposable
 
     private void UpdateStatusText()
     {
-        StatusText = FormatStatus(_hidHideManager.Status);
+        StatusText = FormatStatus(_hidHideManager.Status, _hidHideManager.LastError);
         this.RaisePropertyChanged(nameof(StatusText));
     }
 
-    private static string FormatStatus(HidHideStatus status) => status switch
+    private static string FormatStatus(HidHideStatus status, string? lastError = null) => status switch
     {
         HidHideStatus.Disabled     => "Disabled — Enable HidHide integration above to activate",
         HidHideStatus.NotInstalled => "Not installed — HidHide driver not found",
         HidHideStatus.Ready        => "Ready — HidHide is installed and configured",
         HidHideStatus.Active       => "Active — Devices are currently hidden",
-        HidHideStatus.Error        => "Error — Check logs for details",
+        HidHideStatus.Error        => string.IsNullOrEmpty(lastError)
+                                        ? "Error — Check logs for details"
+                                        : $"Error: {lastError}",
         _                          => status.ToString()
     };
 }
