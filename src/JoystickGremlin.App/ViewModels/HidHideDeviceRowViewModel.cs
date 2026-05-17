@@ -16,10 +16,12 @@ public sealed class HidHideDeviceRowViewModel : ReactiveObject
     /// </summary>
     /// <param name="instanceId">The Windows Device Instance ID.</param>
     /// <param name="friendlyName">A human-readable device name.</param>
-    public HidHideDeviceRowViewModel(string instanceId, string friendlyName)
+    /// <param name="isHidden">Initial hidden state; set directly to avoid raising <see cref="HideChanged"/> during construction.</param>
+    public HidHideDeviceRowViewModel(string instanceId, string friendlyName, bool isHidden = false)
     {
         InstanceId = instanceId;
         FriendlyName = friendlyName;
+        _isHidden = isHidden;  // bypass property setter so HideChanged is not raised on construction
     }
 
     /// <summary>Gets the Windows Device Instance ID (e.g. <c>HID\VID_054C&amp;PID_05C4\…</c>).</summary>

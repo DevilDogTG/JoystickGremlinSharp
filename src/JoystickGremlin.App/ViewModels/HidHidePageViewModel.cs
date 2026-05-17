@@ -28,6 +28,7 @@ public sealed class HidHidePageViewModel : ViewModelBase, IDisposable
     private bool _enableHidHide;
     private bool _autoHideOnPipelineRun;
     private bool _loading;
+    private IDisposable? _settingsSubscription;
 
     /// <summary>
     /// Initializes a new instance of <see cref="HidHidePageViewModel"/>.
@@ -55,7 +56,7 @@ public sealed class HidHidePageViewModel : ViewModelBase, IDisposable
         _hidHideManager.StatusChanged += OnStatusChanged;
 
         // Auto-save settings when Enable or AutoHide properties change (debounced 500 ms).
-        this.WhenAnyValue(x => x.EnableHidHide, x => x.AutoHideOnPipelineRun, (_, _) => Unit.Default)
+        _settingsSubscription = this.WhenAnyValue(x => x.EnableHidHide, x => x.AutoHideOnPipelineRun, (_, _) => Unit.Default)
             .Skip(1)
             .Throttle(TimeSpan.FromMilliseconds(500), AvaloniaScheduler.Instance)
             .Subscribe(unit =>
@@ -139,6 +140,7 @@ public sealed class HidHidePageViewModel : ViewModelBase, IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
+        _settingsSubscription?.Dispose();
         _hidHideManager.StatusChanged -= OnStatusChanged;
         RefreshCommand.Dispose();
         ApplyNowCommand.Dispose();
@@ -179,10 +181,7 @@ public sealed class HidHidePageViewModel : ViewModelBase, IDisposable
             {
                 var isHidden = settings.HiddenDeviceInstanceIds.Contains(
                     d.InstanceId!, StringComparer.OrdinalIgnoreCase);
-                var row = new HidHideDeviceRowViewModel(d.InstanceId!, d.Name)
-                {
-                    IsHidden = isHidden
-                };
+                var row = new HidHideDeviceRowViewModel(d.InstanceId!, d.Name, isHidden: isHidden);
                 row.HideChanged += OnDeviceHideChanged;
                 return row;
             })
@@ -197,9 +196,8 @@ public sealed class HidHidePageViewModel : ViewModelBase, IDisposable
             .Where(e => !connectedIds.Contains(e.InstanceId))
             .Select(e =>
             {
-                var row = new HidHideDeviceRowViewModel(e.InstanceId, e.FriendlyName)
+                var row = new HidHideDeviceRowViewModel(e.InstanceId, e.FriendlyName, isHidden: true)
                 {
-                    IsHidden = true,
                     IsStale = true
                 };
                 row.RemoveStaleRequested += OnRemoveStaleDevice;
