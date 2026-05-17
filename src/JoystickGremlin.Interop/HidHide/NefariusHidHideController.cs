@@ -30,12 +30,6 @@ internal sealed class NefariusHidHideController : IHidHideController
     /// <inheritdoc/>
     public bool IsInstalled => TryGet(() => _service.IsInstalled, fallback: false);
 
-    /// <summary>
-    /// Returns <see langword="true"/> when the HidHide device interface is fully accessible via IOCTL.
-    /// When <see langword="false"/>, write operations bypass IOCTL and go directly to the CLI fallback.
-    /// </summary>
-    private bool IsIoctlOperational => TryGet(() => _service.IsOperational, fallback: false);
-
     /// <inheritdoc/>
     public bool IsActive
     {
@@ -98,32 +92,18 @@ internal sealed class NefariusHidHideController : IHidHideController
 
     private void TrySet(Action ioctl, Action cliFallback)
     {
-        // If the HidHide device interface is not reachable via IOCTL (e.g. driver installed but
-        // device node not yet enumerated, or interface GUID resolution failed), bypass IOCTL
-        // entirely and go straight to the CLI tool which communicates via a separate path.
-        if (!IsIoctlOperational)
-        {
-            _logger.LogDebug("HidHide IOCTL not operational — using CLI directly");
-            cliFallback();
-            return;
-        }
-
+        // Always use the CLI tool for write operations — it reliably communicates with
+        // the HidHide driver on all installation configurations, including machines where
+        // the IOCTL device interface GUID is not accessible or silently no-ops.
+        _ = ioctl; // kept for signature parity; not invoked
         try
         {
-            ioctl();
+            cliFallback();
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "HidHide IOCTL write failed, falling back to CLI");
-            try
-            {
-                cliFallback();
-            }
-            catch (Exception cliEx)
-            {
-                _logger.LogError(cliEx, "HidHide CLI fallback also failed");
-                throw;
-            }
+            _logger.LogError(ex, "HidHide CLI write failed");
+            throw;
         }
     }
 }
