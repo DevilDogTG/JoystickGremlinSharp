@@ -12,7 +12,16 @@ namespace JoystickGremlin.Interop.HidHide;
 internal sealed class HidHideCliFallback
 {
     private const string HidHideUninstallKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\HidHide";
+    private const string HidHideWow64UninstallKey = @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\HidHide";
     private const string HidHideCliExeName = "HidHideCLI.exe";
+
+    // Common install paths used when the uninstall registry key is absent
+    private static readonly string[] CommonInstallDirs =
+    [
+        @"C:\Program Files\Nefarius Software Solutions\HidHide",
+        @"C:\Program Files\Nefarius Software Solutions e.U\HidHide",
+        @"C:\Program Files\Nefarius\HidHide",
+    ];
 
     private readonly ILogger<HidHideCliFallback> _logger;
     private string? _cachedCliPath;
@@ -113,6 +122,26 @@ internal sealed class HidHideCliFallback
             }
         }
 
+        // Try well-known install paths (handles missing/orphaned uninstall registry key)
+        foreach (var dir in CommonInstallDirs)
+        {
+            var candidate = Path.Combine(dir, "x64", HidHideCliExeName);
+            if (File.Exists(candidate))
+            {
+                _logger.LogDebug("HidHide CLI found at common path: {Path}", candidate);
+                _cachedCliPath = candidate;
+                return candidate;
+            }
+
+            candidate = Path.Combine(dir, HidHideCliExeName);
+            if (File.Exists(candidate))
+            {
+                _logger.LogDebug("HidHide CLI found at common path: {Path}", candidate);
+                _cachedCliPath = candidate;
+                return candidate;
+            }
+        }
+
         // Try PATH resolution
         var fromPath = FindInPath(HidHideCliExeName);
         if (fromPath is not null)
@@ -121,7 +150,7 @@ internal sealed class HidHideCliFallback
             return fromPath;
         }
 
-        _logger.LogWarning("HidHideCLI.exe not found in registry install dir or PATH");
+        _logger.LogWarning("HidHideCLI.exe not found in registry install dir, common paths, or PATH");
         return null;
     }
 
@@ -130,7 +159,12 @@ internal sealed class HidHideCliFallback
         try
         {
             using var key = Registry.LocalMachine.OpenSubKey(HidHideUninstallKey, writable: false);
-            return key?.GetValue("InstallLocation") as string;
+            if (key?.GetValue("InstallLocation") is string installLocation)
+                return installLocation;
+
+            // Also try WOW6432Node for 32-bit installer on 64-bit OS
+            using var wow64Key = Registry.LocalMachine.OpenSubKey(HidHideWow64UninstallKey, writable: false);
+            return wow64Key?.GetValue("InstallLocation") as string;
         }
         catch
         {
