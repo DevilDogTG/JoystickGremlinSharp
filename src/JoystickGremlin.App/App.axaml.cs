@@ -11,9 +11,11 @@ using JoystickGremlin.App.Views;
 using JoystickGremlin.Core;
 using JoystickGremlin.Core.Actions;
 using JoystickGremlin.Core.Configuration;
+using JoystickGremlin.Core.HidHide;
 using JoystickGremlin.Core.Profile;
 using JoystickGremlin.Core.Startup;
 using JoystickGremlin.Interop;
+using JoystickGremlin.Interop.HidHide;
 using JoystickGremlin.Interop.VJoy;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -70,6 +72,17 @@ public partial class App : Application
                 if (!vjoyCheck.IsOk)
                 {
                     var dialog = new VJoyWarningDialog(vjoyCheck);
+                    await dialog.ShowDialog(_mainWindow);
+                }
+
+                // Perform HidHide crash-recovery revert and check prerequisite if enabled.
+                var hidHideManager = _services.GetRequiredService<IHidHideManager>();
+                await hidHideManager.InitializeAsync();
+
+                var hidHideSettings = _services.GetRequiredService<ISettingsService>().Settings;
+                if (hidHideSettings.EnableHidHide && !HidHidePrerequisiteChecker.IsInstalled)
+                {
+                    var dialog = new HidHideWarningDialog();
                     await dialog.ShowDialog(_mainWindow);
                 }
 
@@ -197,6 +210,7 @@ public partial class App : Application
         services.AddSingleton<BindingsPageViewModel>();
         services.AddSingleton<VirtualDevicesPageViewModel>();
         services.AddSingleton<AboutPageViewModel>();
+        services.AddSingleton<HidHidePageViewModel>();
 
         // Main window ViewModel — transient; resolved once in OnFrameworkInitializationCompleted.
         services.AddTransient<MainWindowViewModel>();
