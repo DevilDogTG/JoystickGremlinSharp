@@ -54,6 +54,23 @@
                 </StackPanel>
             </Border>
 
+            <!-- ─── Elevation warning ─── -->
+            <Border Background="{StaticResource WarningBackgroundBrush}"
+                    CornerRadius="4"
+                    Padding="10,8"
+                    IsVisible="{Binding IsNotElevated}">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="⚠️ Application is NOT running as Administrator."
+                               Foreground="{StaticResource WarningForegroundBrush}"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"/>
+                    <TextBlock Text="HidHide requires administrator privileges. All hide/unhide operations will fail with 'Access is denied' (0x0005). Close the application and relaunch it with 'Run as administrator'. If launched from Visual Studio, run Visual Studio as administrator."
+                               Foreground="{StaticResource WarningForegroundBrush}"
+                               FontSize="11"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
             <!-- ─── Master toggles ─── -->
             <Border Padding="0,8,0,0"
                     BorderThickness="0,1,0,0"

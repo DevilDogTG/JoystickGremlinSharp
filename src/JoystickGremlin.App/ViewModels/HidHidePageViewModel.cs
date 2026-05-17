@@ -100,8 +100,32 @@ public sealed class HidHidePageViewModel : ViewModelBase, IDisposable
     /// <summary>Gets a value indicating whether hiding is currently applied.</summary>
     public bool IsApplied => _hidHideManager.IsApplied;
 
+    /// <summary>
+    /// Gets whether the current process is running with administrator privileges.
+    /// HidHide driver writes require elevation; if <see langword="false"/>, all hide/unhide
+    /// operations will fail with <c>ERROR_ACCESS_DENIED (0x0005)</c>.
+    /// </summary>
+    public bool IsElevated { get; } = IsProcessElevated();
+
+    /// <summary>Gets the inverse of <see cref="IsElevated"/>, for XAML visibility binding.</summary>
+    public bool IsNotElevated => !IsElevated;
+
     /// <summary>Gets the download link for HidHide.</summary>
     public string DownloadUrl => "https://github.com/nefarius/HidHide/releases/latest";
+
+    private static bool IsProcessElevated()
+    {
+        try
+        {
+            using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+            var principal = new System.Security.Principal.WindowsPrincipal(identity);
+            return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     // ── Commands ──────────────────────────────────────────────────────────────
 
