@@ -11,8 +11,9 @@ This file provides guidance for AI agents working on the JoystickGremlinSharp co
 > **Status**: Phase complete. All core features implemented and released.
 > - Release v10.0.3 published with auto-generated release notes
 > - Workflow: main-first + tag-based release (no merge-back)
-> - 236 tests passing, 0 build warnings
-> - Latest: Modes removed — profiles are now flat (direct `List<InputBinding>`); folder-based profile library with category support via subfolders; legacy mode-based profiles auto-migrated on load
+> - 300 tests passing, 0 build warnings
+> - Latest: HidHide integration — auto-hide physical HID devices from other apps when the pipeline starts; unhide on stop; soft-optional (graceful degradation if driver absent)
+> - Modes removed — profiles are now flat (direct `List<InputBinding>`); folder-based profile library with category support via subfolders; legacy mode-based profiles auto-migrated on load
 > - GitHub Actions permissions must be set to "Allow all actions and reusable workflows"
 >   (Settings → Actions → General) for workflows to run on `main`
 > - Release pipeline requires either `RELEASE_TOKEN` secret (fine-grained PAT: Contents+PRs write)
@@ -44,6 +45,7 @@ vJoy, supporting macros, response curves, and condition-based action pipelines.
 | Logging | Microsoft.Extensions.Logging + Serilog |
 | Serialization | System.Text.Json |
 | Native interop | P/Invoke (`vJoyInterface.dll`, `dill.dll`) |
+| HidHide | `Nefarius.Drivers.HidHide` v3.3+ (IOCTL; optional — CLI fallback) |
 | Testing | xUnit + Moq + FluentAssertions |
 
 
@@ -107,7 +109,7 @@ src/JoystickGremlin.Core/
                       Keyboard/   IKeyboardSimulator, NullKeyboardSimulator (overridable by Interop)
                                   IKeyNameCatalog, StaticKeyNameCatalog — exposes key names for the binding-editor picker (Interop overrides with SendInputKeyNameCatalog)
   Configuration/    AppSettings, ISettingsService, JSON-backed settings store
-  Devices/          IPhysicalDevice, IVirtualDevice, DeviceManager, device-info types
+  Devices/          IPhysicalDevice (+ InstanceId), IVirtualDevice, DeviceManager, device-info types
   Events/           InputEvent, EventPipeline, IEventProcessor, flat binding lookup
   Exceptions/       GremlinException and domain-specific exception types
   ForceFeedback/    FFB domain model and bridge:
@@ -125,6 +127,8 @@ src/JoystickGremlin.Core/
                       ProfileEntry — record(Name, Category, FilePath)
                       LegacyProfileMigrator — migrates old modes-based JSON on load; drops change-mode actions
   Startup/          IStartupService, NullStartupService (overridable by Interop for real registry use)
+  HidHide/          IHidHideController, NullHidHideController, IHidHideManager, HidHideManager,
+                      HidHideStatus enum — soft-optional driver integration (see HidHide Integration section)
   Common/           Extensions, utilities
 ```
 
@@ -150,6 +154,11 @@ src/JoystickGremlin.App/
                       VirtualDevicesPageViewModel — vJoy status/capabilities page; acquire,
                                              release, reset, open vJoy control panel, show live
                                              output tracked by this app
+                      HidHidePageViewModel — HidHide settings page; device picker, master Enable
+                                             and AutoHide toggles, Apply/Revert Now, stale-entry
+                                             management; auto-save debounced 500ms
+                      HidHideDeviceRowViewModel — per-device row with IsHidden checkbox (backing
+                                             field init bypasses HideChanged on construction)
                       BoundActionViewModel  — wraps BoundAction; computes ConfigSummary
                       InputDescriptorViewModel — represents single axis/button/hat slot
   Views/            *.axaml Views, code-behind minimal
@@ -303,6 +312,10 @@ src/JoystickGremlin.Interop/
                     VJoyRegistryHelper.cs — shared helper to read vJoy install dir from registry
                     VJoyPrerequisiteChecker.cs — startup check (no P/Invoke): IsInstalled/IsCompatible
   Dill/             DillNative.cs (DllImport), DillDevice.cs (IPhysicalDevice impl)
+                    HidInstanceIdResolver.cs — registry scan HKLM\SYSTEM\...\Enum\HID to build (VID,PID)→InstanceId map
+  HidHide/          NefariusHidHideController.cs — IOCTL impl via Nefarius NuGet + CLI fallback
+                    HidHideCliFallback.cs — shells to HidHideCLI.exe (fallback only)
+                    HidHidePrerequisiteChecker.cs — startup check: IsInstalled + download link warning
   Startup/          WindowsStartupService.cs (IStartupService — HKCU Run registry)
 ```
 
@@ -358,6 +371,96 @@ to the bundled DLL if the installed path cannot be found.
 
 Windows `INPUT` struct on x64 is **40 bytes**: `DWORD type`(4) + padding(4) + union(32). The union must be forced to 32 bytes via `[StructLayout(LayoutKind.Explicit, Size=32)]`. Without this, `SendInput` silently returns 0 (`ERROR_INVALID_PARAMETER`). See `SendInputKeyboardSimulator.InputUnion`.
 
+
+## HidHide Integration
+
+HidHide is an **optional** Windows kernel-mode driver that hides HID devices from selected processes. The integration allows JoystickGremlinSharp to automatically hide physical joystick devices from games when the event pipeline starts — preventing games from seeing both the real device and the mapped vJoy output simultaneously.
+
+### Driver Requirement (Soft-Optional)
+
+- **Driver**: [HidHide by Nefarius](https://github.com/nefarius/HidHide) — install separately
+- **Download**: https://github.com/nefarius/HidHide/releases
+- The app checks for the driver at startup (`HidHidePrerequisiteChecker`) **only when `EnableHidHide = true`** in settings; shows a warning dialog with the download link if absent
+- **Graceful degradation**: if the driver is not installed, `HidHideStatus.NotInstalled` is reported and all operations are no-ops; the rest of the app continues normally
+
+### AppSettings Fields
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `EnableHidHide` | `bool` | `false` | Master switch — must be `true` for any hiding to occur |
+| `AutoHideOnPipelineRun` | `bool` | `true` | Hide on pipeline start; unhide on pipeline stop |
+| `HiddenDeviceInstanceIds` | `List<string>` | `[]` | Windows instance IDs of devices to block |
+| `HiddenDevices` | `List<HiddenDeviceEntry>` | `[]` | Friendly-name metadata (InstanceId + FriendlyName) for stale-entry display |
+
+### Core Abstractions (`Core/HidHide/`)
+
+```
+IHidHideController   — low-level driver interface (IsInstalled, IsActive, BlockedInstanceIds,
+                        ApplicationPaths, Add/Remove operations, Refresh)
+NullHidHideController — no-op default; registered by Core DI via TryAddSingleton
+IHidHideManager      — orchestrator interface (InitializeAsync, ApplyAsync, RevertAsync,
+                        RefreshAsync, Status, IsApplied, StatusChanged event)
+HidHideManager       — full implementation:
+                        • subscribes to IEventPipeline.Started/Stopped
+                        • auto-applies/reverts when AutoHideOnPipelineRun is true
+                        • idempotency via SemaphoreSlim(1,1)
+                        • crash-recovery: InitializeAsync removes stale blocks from prior crash
+                        • Dispose: RevertAsync with 3-second cancellation timeout
+HidHideStatus        — enum: Disabled / NotInstalled / Ready / Active / Error
+HiddenDeviceEntry    — class { string InstanceId; string FriendlyName } (object initializer)
+```
+
+### Interop Implementations (`Interop/HidHide/`)
+
+```
+NefariusHidHideController — wraps Nefarius.Drivers.HidHide v3.3+ IOCTL service;
+                             falls back to HidHideCliFallback on exception
+HidHideCliFallback        — shells to HidHideCLI.exe via registry/PATH discovery;
+                             DO NOT redirect stdout (only stderr) — unread stdout pipe deadlocks
+HidHidePrerequisiteChecker — IsInstalled check used at startup
+```
+
+### InstanceId Resolution (`Interop/Dill/HidInstanceIdResolver`)
+
+HidHide requires Windows **Device Instance IDs** (e.g. `HID\VID_054C&PID_05C4\...`). DILL provides only VID+PID. `HidInstanceIdResolver.BuildInstanceIdMap()` scans `HKLM\SYSTEM\CurrentControlSet\Enum\HID` and builds a `(VID, PID) → InstanceId` dictionary. Results are cached per `DillDeviceManager.RefreshDevices()` call.
+
+- `IPhysicalDevice.InstanceId` is `string?`; `null` means the InstanceId could not be resolved
+- First-match-wins for duplicate VID/PID (known limitation)
+- Devices without a resolved InstanceId are silently excluded from the HidHide device picker
+
+### DI Wiring
+
+```
+Core:   TryAddSingleton<IHidHideController, NullHidHideController>()  ← fallback
+        AddSingleton<IHidHideManager, HidHideManager>()
+
+Interop: TryAddSingleton<IHidHideController, NefariusHidHideController>()  ← wins (registered first)
+         AddSingleton<HidHideCliFallback>()
+         AddSingleton<Nefarius.Drivers.HidHide.IHidHideControlService>(_ => new HidHideControlService())
+```
+
+`App.axaml.cs` calls `AddInteropServices()` before `AddCoreServices()`, so Interop's real controller wins.
+
+### Pipeline Lifecycle
+
+```
+IEventPipeline.Started  →  OnPipelineStarted  →  ApplyAsync()   (if AutoHideOnPipelineRun)
+IEventPipeline.Stopped  →  OnPipelineStopped  →  RevertAsync()  (if AutoHideOnPipelineRun)
+App exit / Dispose      →  RevertAsync() with 3-second timeout
+App startup             →  InitializeAsync()  →  crash-recovery revert of any stale blocks
+```
+
+### UI Page (`HidHidePageViewModel` / `HidHidePageView.axaml`)
+
+- **Status banner**: shows current `HidHideStatus` with coloured indicator
+- **Driver-missing warning**: shown when `!IsDriverInstalled`; download button opens browser
+- **Enable toggle** (`EnableHidHide`) + **Auto-hide on run toggle** (`AutoHideOnPipelineRun`)
+- **Device picker table**: lists connected DILL devices with resolvable InstanceIds; per-row `IsHidden` checkbox
+- **Stale entries section**: devices in settings but not currently connected; can be removed individually
+- **Own-exe whitelist display**: shows the process path whitelisted in HidHide so JoystickGremlinSharp continues to receive input
+- **Apply Now / Revert Now** buttons for manual control
+- Auto-save: `EnableHidHide` and `AutoHideOnPipelineRun` changes debounced 500ms via `WhenAnyValue`
+- Nav item: 🙈 in `MainWindowViewModel`
 
 ## Action System
 
@@ -736,7 +839,7 @@ dotnet build --configuration Release -warnaserror
 dotnet test
 ```
 
-> Current baseline: **236 tests, 0 failures, 0 build warnings**.
+> Current baseline: **300 tests, 0 failures, 0 build warnings**.
 
 
 
