@@ -30,6 +30,12 @@ internal sealed class NefariusHidHideController : IHidHideController
     /// <inheritdoc/>
     public bool IsInstalled => TryGet(() => _service.IsInstalled, fallback: false);
 
+    /// <summary>
+    /// Returns <see langword="true"/> when the HidHide device interface is fully accessible via IOCTL.
+    /// When <see langword="false"/>, write operations bypass IOCTL and go directly to the CLI fallback.
+    /// </summary>
+    private bool IsIoctlOperational => TryGet(() => _service.IsOperational, fallback: false);
+
     /// <inheritdoc/>
     public bool IsActive
     {
@@ -92,6 +98,16 @@ internal sealed class NefariusHidHideController : IHidHideController
 
     private void TrySet(Action ioctl, Action cliFallback)
     {
+        // If the HidHide device interface is not reachable via IOCTL (e.g. driver installed but
+        // device node not yet enumerated, or interface GUID resolution failed), bypass IOCTL
+        // entirely and go straight to the CLI tool which communicates via a separate path.
+        if (!IsIoctlOperational)
+        {
+            _logger.LogDebug("HidHide IOCTL not operational — using CLI directly");
+            cliFallback();
+            return;
+        }
+
         try
         {
             ioctl();
