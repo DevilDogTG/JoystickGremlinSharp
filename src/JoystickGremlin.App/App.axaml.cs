@@ -196,6 +196,18 @@ public partial class App : Application
 
         Log.Information("Diagnostic logging enabled. Log files are written to {LogFilePath}", logFilePath);
 
+        try
+        {
+            using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+            var principal = new System.Security.Principal.WindowsPrincipal(identity);
+            var isElevated = principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+            Log.Information("Process elevation: IsAdministrator={IsElevated}, User={User}", isElevated, identity.Name);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to determine process elevation status");
+        }
+
         services.AddLogging(builder =>
         {
             builder.ClearProviders();
