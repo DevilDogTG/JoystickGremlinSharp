@@ -20,6 +20,12 @@ public interface IHidHideManager : IDisposable
     /// <summary>Gets the current status of the HidHide integration.</summary>
     HidHideStatus Status { get; }
 
+    /// <summary>
+    /// Gets the error message from the last failed operation, or <see langword="null"/> if no error has occurred.
+    /// Updated whenever <see cref="Status"/> transitions to <see cref="HidHideStatus.Error"/>.
+    /// </summary>
+    string? LastError { get; }
+
     /// <summary>Gets a value indicating whether hiding is currently applied.</summary>
     bool IsApplied { get; }
 

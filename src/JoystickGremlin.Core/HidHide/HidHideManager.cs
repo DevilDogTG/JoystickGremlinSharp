@@ -48,6 +48,9 @@ public sealed class HidHideManager : IHidHideManager
     public HidHideStatus Status { get; private set; } = HidHideStatus.Disabled;
 
     /// <inheritdoc/>
+    public string? LastError { get; private set; }
+
+    /// <inheritdoc/>
     public bool IsApplied { get; private set; }
 
     /// <inheritdoc/>
@@ -148,6 +151,7 @@ public sealed class HidHideManager : IHidHideManager
         catch (Exception ex)
         {
             _logger.LogError(ex, "HidHide: Apply failed");
+            LastError = ex.Message;
             SetStatus(HidHideStatus.Error);
         }
         finally
@@ -203,6 +207,7 @@ public sealed class HidHideManager : IHidHideManager
         catch (Exception ex)
         {
             _logger.LogError(ex, "HidHide: Revert failed");
+            LastError = ex.Message;
             SetStatus(HidHideStatus.Error);
         }
         finally
