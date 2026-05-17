@@ -123,22 +123,20 @@ public sealed class HidHideManager : IHidHideManager
 
             _controller.Refresh();
 
-            // Whitelist our own executable so we continue to receive input
-            if (!string.IsNullOrEmpty(_ownExePath) &&
-                !_controller.ApplicationPaths.Contains(_ownExePath, StringComparer.OrdinalIgnoreCase))
+            // Whitelist our own executable — always call Add; the driver and CLI are idempotent.
+            if (!string.IsNullOrEmpty(_ownExePath))
             {
                 _controller.AddApplicationPath(_ownExePath);
                 _logger.LogInformation("HidHide: whitelisted own executable '{Path}'", _ownExePath);
             }
 
-            // Block configured device instance IDs
+            // Block configured device instance IDs — always call Add; the driver and CLI
+            // both handle duplicates gracefully. Avoids relying on a potentially-stale read
+            // of BlockedInstanceIds when the IOCTL interface is not fully accessible.
             foreach (var instanceId in settings.HiddenDeviceInstanceIds)
             {
-                if (!_controller.BlockedInstanceIds.Contains(instanceId, StringComparer.OrdinalIgnoreCase))
-                {
-                    _controller.AddBlockedInstance(instanceId);
-                    _logger.LogInformation("HidHide: blocking device '{InstanceId}'", instanceId);
-                }
+                _controller.AddBlockedInstance(instanceId);
+                _logger.LogInformation("HidHide: blocking device '{InstanceId}'", instanceId);
             }
 
             // Gate on
@@ -176,25 +174,25 @@ public sealed class HidHideManager : IHidHideManager
 
             _controller.Refresh();
 
-            // Remove only the instance IDs we are responsible for
+            // Remove only the instance IDs we are responsible for.
+            // Always call Remove unconditionally — don't rely on BlockedInstanceIds read
+            // before the remove, which may be stale; the CLI is idempotent for missing entries.
             var settings = _settingsService.Settings;
             foreach (var instanceId in settings.HiddenDeviceInstanceIds)
             {
-                if (_controller.BlockedInstanceIds.Contains(instanceId, StringComparer.OrdinalIgnoreCase))
-                {
-                    _controller.RemoveBlockedInstance(instanceId);
-                    _logger.LogInformation("HidHide: unblocked device '{InstanceId}'", instanceId);
-                }
+                _controller.RemoveBlockedInstance(instanceId);
+                _logger.LogInformation("HidHide: unblocked device '{InstanceId}'", instanceId);
             }
 
-            // Remove own exe from whitelist
-            if (!string.IsNullOrEmpty(_ownExePath) &&
-                _controller.ApplicationPaths.Contains(_ownExePath, StringComparer.OrdinalIgnoreCase))
+            // Remove own exe from whitelist — unconditional; CLI handles duplicates.
+            if (!string.IsNullOrEmpty(_ownExePath))
             {
                 _controller.RemoveApplicationPath(_ownExePath);
             }
 
-            // Only turn the gate off if nothing else is on the block list
+            // Re-read the block list after our removes to avoid disabling the gate when
+            // another application (e.g. HidHide config client) has its own entries present.
+            _controller.Refresh();
             if (_controller.BlockedInstanceIds.Count == 0)
                 _controller.IsActive = false;
 
