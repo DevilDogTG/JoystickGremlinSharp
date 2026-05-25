@@ -188,13 +188,28 @@ public sealed class HidHideManagerTests : IDisposable
     }
 
     [Fact]
-    public async Task RevertAsync_RemovesOwnExeFromWhitelist()
+    public async Task RevertAsync_RetainsOwnExeInWhitelist()
     {
+        // Own exe stays whitelisted through Revert — it is only removed on Dispose (clean exit).
         using var sut = CreateSut();
         await sut.ApplyAsync();
         var addedPath = _controller.ApplicationPaths.FirstOrDefault();
 
         await sut.RevertAsync();
+
+        if (addedPath is not null)
+            _controller.ApplicationPaths.Should().Contain(addedPath);
+    }
+
+    [Fact]
+    public async Task Dispose_RemovesOwnExeFromWhitelist()
+    {
+        // Own exe is removed from the whitelist only on clean app exit (Dispose).
+        var sut = CreateSut();
+        await sut.ApplyAsync();
+        var addedPath = _controller.ApplicationPaths.FirstOrDefault();
+
+        sut.Dispose();
 
         if (addedPath is not null)
             _controller.ApplicationPaths.Should().NotContain(addedPath);
