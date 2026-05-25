@@ -73,7 +73,7 @@ public sealed class HidHideManager : IHidHideManager
             _controller.Refresh();
             var settings = _settingsService.Settings;
 
-            // Remove all instance IDs we might have been responsible for
+            // Crash-recovery: remove device instance IDs we may have left blocked after a crash.
             foreach (var instanceId in settings.HiddenDeviceInstanceIds)
             {
                 if (_controller.BlockedInstanceIds.Contains(instanceId, StringComparer.OrdinalIgnoreCase))
@@ -83,14 +83,6 @@ public sealed class HidHideManager : IHidHideManager
                 }
             }
 
-            // Remove own exe from whitelist if it got stuck
-            if (!string.IsNullOrEmpty(_ownExePath) &&
-                _controller.ApplicationPaths.Contains(_ownExePath, StringComparer.OrdinalIgnoreCase))
-            {
-                _controller.RemoveApplicationPath(_ownExePath);
-                _logger.LogDebug("HidHide startup recovery: removed own exe from whitelist");
-            }
-
             _logger.LogInformation("HidHide startup recovery complete");
         }
         catch (Exception ex)
@@ -98,7 +90,11 @@ public sealed class HidHideManager : IHidHideManager
             _logger.LogWarning(ex, "HidHide startup recovery failed — driver may be unavailable");
         }
 
-        await Task.CompletedTask.ConfigureAwait(false);
+        // Always whitelist own executable so the app can see devices that HidHide may be hiding.
+        // This is independent of EnableHidHide — the whitelist entry is needed whenever HidHide
+        // is installed, regardless of whether this app manages hiding itself.
+        await EnsureWhitelistedAsync(cancellationToken).ConfigureAwait(false);
+
         UpdateStatus();
     }
 
@@ -188,11 +184,8 @@ public sealed class HidHideManager : IHidHideManager
                 _logger.LogInformation("HidHide: unblocked device '{InstanceId}'", instanceId);
             }
 
-            // Remove own exe from whitelist — unconditional; CLI handles duplicates.
-            if (!string.IsNullOrEmpty(_ownExePath))
-            {
-                _controller.RemoveApplicationPath(_ownExePath);
-            }
+            // Keep own exe in the whitelist — we re-add it at startup so games can find
+            // the physical devices through us. The whitelist is cleaned up on Dispose (app exit).
 
             // Re-read the block list after our removes to avoid disabling the gate when
             // another application (e.g. HidHide config client) has its own entries present.
@@ -253,8 +246,41 @@ public sealed class HidHideManager : IHidHideManager
             _logger.LogError(ex, "HidHide: RevertAsync failed during Dispose");
         }
 
+        // Remove own exe from whitelist on clean exit (cleanup).
+        if (!string.IsNullOrEmpty(_ownExePath) && _controller.IsInstalled)
+        {
+            try
+            {
+                _controller.RemoveApplicationPath(_ownExePath);
+                _logger.LogDebug("HidHide: removed own exe from whitelist on exit");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "HidHide: failed to remove own exe from whitelist on exit");
+            }
+        }
+
         _lock.Dispose();
         _disposed = true;
+    }
+
+    // ── Whitelist helper ─────────────────────────────────────────────────────
+
+    private async Task EnsureWhitelistedAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(_ownExePath) || !_controller.IsInstalled)
+            return;
+
+        await Task.CompletedTask.ConfigureAwait(false);
+        try
+        {
+            _controller.AddApplicationPath(_ownExePath);
+            _logger.LogInformation("HidHide: ensured own executable is whitelisted '{Path}'", _ownExePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "HidHide: failed to whitelist own executable at startup");
+        }
     }
 
     // ── Pipeline event handlers ───────────────────────────────────────────────

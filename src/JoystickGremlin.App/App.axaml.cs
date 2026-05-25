@@ -67,24 +67,21 @@ public partial class App : Application
 
                 filePickerService.SetTopLevel(_mainWindow);
 
-                // Check vJoy prerequisite before initialising — show a warning dialog if not met.
-                var vjoyCheck = VJoyPrerequisiteChecker.Check();
-                if (!vjoyCheck.IsOk)
+                // Run both prerequisite checks and show a combined warning if any fail.
+                var vjoyCheck    = VJoyPrerequisiteChecker.Check();
+                var hidHideCheck = HidHidePrerequisiteChecker.Check();
+
+                if (!vjoyCheck.IsOk || !hidHideCheck.IsInstalled)
                 {
-                    var dialog = new VJoyWarningDialog(vjoyCheck);
+                    var dialog = new PrerequisitesWarningDialog(
+                        vjoyCheck.IsOk    ? null : vjoyCheck,
+                        hidHideCheck.IsInstalled ? null : hidHideCheck);
                     await dialog.ShowDialog(_mainWindow);
                 }
 
-                // Perform HidHide crash-recovery revert and check prerequisite if enabled.
+                // Perform HidHide crash-recovery revert and auto-whitelist own executable.
                 var hidHideManager = _services.GetRequiredService<IHidHideManager>();
                 await hidHideManager.InitializeAsync();
-
-                var hidHideSettings = _services.GetRequiredService<ISettingsService>().Settings;
-                if (hidHideSettings.EnableHidHide && !HidHidePrerequisiteChecker.IsInstalled)
-                {
-                    var dialog = new HidHideWarningDialog();
-                    await dialog.ShowDialog(_mainWindow);
-                }
 
                 await mainWindowVm.InitializeAsync();
                 AttachTrayMenu(mainWindowVm);
