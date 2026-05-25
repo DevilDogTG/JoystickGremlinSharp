@@ -122,24 +122,27 @@ public sealed class HidHideManager : IHidHideManager
 
             _controller.Refresh();
 
-            // Whitelist our own executable — always call Add; the driver and CLI are idempotent.
-            if (!string.IsNullOrEmpty(_ownExePath))
+            // Whitelist own executable — read first (no admin); write only if absent.
+            if (!string.IsNullOrEmpty(_ownExePath) &&
+                !_controller.ApplicationPaths.Contains(_ownExePath, StringComparer.OrdinalIgnoreCase))
             {
                 _controller.AddApplicationPath(_ownExePath);
                 _logger.LogInformation("HidHide: whitelisted own executable '{Path}'", _ownExePath);
             }
 
-            // Block configured device instance IDs — always call Add; the driver and CLI
-            // both handle duplicates gracefully. Avoids relying on a potentially-stale read
-            // of BlockedInstanceIds when the IOCTL interface is not fully accessible.
+            // Block configured device instance IDs — read first (no admin); write only if not already blocked.
             foreach (var instanceId in settings.HiddenDeviceInstanceIds)
             {
-                _controller.AddBlockedInstance(instanceId);
-                _logger.LogInformation("HidHide: blocking device '{InstanceId}'", instanceId);
+                if (!_controller.BlockedInstanceIds.Contains(instanceId, StringComparer.OrdinalIgnoreCase))
+                {
+                    _controller.AddBlockedInstance(instanceId);
+                    _logger.LogInformation("HidHide: blocking device '{InstanceId}'", instanceId);
+                }
             }
 
-            // Gate on
-            _controller.IsActive = true;
+            // Gate on — read first; write only if not already active.
+            if (!_controller.IsActive)
+                _controller.IsActive = true;
             IsApplied = true;
             SetStatus(HidHideStatus.Active);
             _logger.LogInformation("HidHide: hiding applied ({Count} device(s))", settings.HiddenDeviceInstanceIds.Count);
@@ -174,14 +177,16 @@ public sealed class HidHideManager : IHidHideManager
 
             _controller.Refresh();
 
-            // Remove only the instance IDs we are responsible for.
-            // Always call Remove unconditionally — don't rely on BlockedInstanceIds read
-            // before the remove, which may be stale; the CLI is idempotent for missing entries.
+            // Remove only the instance IDs we are responsible for — read first (no admin);
+            // write only if the entry is actually present (avoids unnecessary CLI calls).
             var settings = _settingsService.Settings;
             foreach (var instanceId in settings.HiddenDeviceInstanceIds)
             {
-                _controller.RemoveBlockedInstance(instanceId);
-                _logger.LogInformation("HidHide: unblocked device '{InstanceId}'", instanceId);
+                if (_controller.BlockedInstanceIds.Contains(instanceId, StringComparer.OrdinalIgnoreCase))
+                {
+                    _controller.RemoveBlockedInstance(instanceId);
+                    _logger.LogInformation("HidHide: unblocked device '{InstanceId}'", instanceId);
+                }
             }
 
             // Keep own exe in the whitelist — we re-add it at startup so games can find
@@ -246,13 +251,16 @@ public sealed class HidHideManager : IHidHideManager
             _logger.LogError(ex, "HidHide: RevertAsync failed during Dispose");
         }
 
-        // Remove own exe from whitelist on clean exit (cleanup).
+        // Remove own exe from whitelist on clean exit — read first (no admin); write only if present.
         if (!string.IsNullOrEmpty(_ownExePath) && _controller.IsInstalled)
         {
             try
             {
-                _controller.RemoveApplicationPath(_ownExePath);
-                _logger.LogDebug("HidHide: removed own exe from whitelist on exit");
+                if (_controller.ApplicationPaths.Contains(_ownExePath, StringComparer.OrdinalIgnoreCase))
+                {
+                    _controller.RemoveApplicationPath(_ownExePath);
+                    _logger.LogDebug("HidHide: removed own exe from whitelist on exit");
+                }
             }
             catch (Exception ex)
             {
@@ -274,8 +282,17 @@ public sealed class HidHideManager : IHidHideManager
         await Task.CompletedTask.ConfigureAwait(false);
         try
         {
+            // Read current whitelist (no admin required — IOCTL read).
+            // Only invoke the CLI write (which requires admin) if the entry is absent.
+            var paths = _controller.ApplicationPaths;
+            if (paths.Contains(_ownExePath, StringComparer.OrdinalIgnoreCase))
+            {
+                _logger.LogDebug("HidHide: own executable already whitelisted — no write needed '{Path}'", _ownExePath);
+                return;
+            }
+
             _controller.AddApplicationPath(_ownExePath);
-            _logger.LogInformation("HidHide: ensured own executable is whitelisted '{Path}'", _ownExePath);
+            _logger.LogInformation("HidHide: whitelisted own executable '{Path}'", _ownExePath);
         }
         catch (Exception ex)
         {
