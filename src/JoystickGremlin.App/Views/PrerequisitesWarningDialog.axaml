@@ -1,0 +1,104 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="JoystickGremlin.App.Views.PrerequisitesWarningDialog"
+        Title="Prerequisite Check"
+        Width="520"
+        MinWidth="420" MinHeight="200"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <Border Padding="24">
+        <StackPanel Spacing="16">
+
+            <!-- Header row -->
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBlock Text="⚠️" FontSize="32" VerticalAlignment="Center"/>
+                <StackPanel Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="Prerequisite Check"
+                               FontSize="16"
+                               FontWeight="SemiBold"/>
+                    <TextBlock Text="One or more prerequisites could not be verified. Review the items below."
+                               FontSize="12"
+                               Opacity="0.7"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- vJoy section (shown only when vJoy has a problem) -->
+            <Border x:Name="VJoySection"
+                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                    CornerRadius="4"
+                    Padding="12,10">
+                <StackPanel Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="❌" VerticalAlignment="Center"/>
+                        <TextBlock Text="vJoy (required for virtual output)"
+                                   FontWeight="SemiBold"
+                                   FontSize="13"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock x:Name="VJoyReasonText"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               Opacity="0.85"/>
+                    <TextBlock Text="Output mappings will not work until vJoy v2.2.x (BrunnerInnovation fork) is installed."
+                               FontSize="11"
+                               Opacity="0.6"
+                               TextWrapping="Wrap"/>
+                    <Button x:Name="VJoyDownloadButton"
+                            Content="⬇  Download vJoy"
+                            FontSize="12"
+                            HorizontalAlignment="Left"
+                            Click="VJoyDownloadButton_Click"/>
+                </StackPanel>
+            </Border>
+
+            <!-- HidHide section (shown only when HidHide has a problem) -->
+            <Border x:Name="HidHideSection"
+                    Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                    CornerRadius="4"
+                    Padding="12,10">
+                <StackPanel Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="⚠️" VerticalAlignment="Center"/>
+                        <TextBlock Text="HidHide (optional — device hiding)"
+                                   FontWeight="SemiBold"
+                                   FontSize="13"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock x:Name="HidHideReasonText"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               Opacity="0.85"/>
+                    <TextBlock Text="HidHide is optional. Without it, physical devices remain visible to games while vJoy is active. The app will function normally without it."
+                               FontSize="11"
+                               Opacity="0.6"
+                               TextWrapping="Wrap"/>
+                    <Button x:Name="HidHideDownloadButton"
+                            Content="⬇  Download HidHide"
+                            FontSize="12"
+                            HorizontalAlignment="Left"
+                            Click="HidHideDownloadButton_Click"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Buttons -->
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="8">
+                <Button x:Name="ContinueButton"
+                        Content="Continue Anyway"
+                        Click="ContinueButton_Click"
+                        IsDefault="True"/>
+            </StackPanel>
+
+        </StackPanel>
+    </Border>
+
+</Window>

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -10,6 +11,7 @@ using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.ForceFeedback;
 using JoystickGremlin.Core.Pipeline;
 using JoystickGremlin.Core.Profile;
+using JoystickGremlin.Interop.HidHide;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
 using Velopack;
@@ -107,8 +109,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 .SelectMany(entry => Observable.FromAsync(() => LoadProfileEntryAsync(entry)))
                 .Subscribe());
 
-        ToggleActiveCommand    = ReactiveCommand.CreateFromTask(ToggleActiveAsync);
-        CheckForUpdatesCommand = ReactiveCommand.CreateFromTask(CheckForUpdatesAsync);
+        ToggleActiveCommand     = ReactiveCommand.CreateFromTask(ToggleActiveAsync);
+        CheckForUpdatesCommand  = ReactiveCommand.CreateFromTask(CheckForUpdatesAsync);
+        OpenHidHideClientCommand = ReactiveCommand.Create(OpenHidHideClient,
+            canExecute: this.WhenAnyValue(x => x.HasHidHideClient));
 
         _profileLibrary.LibraryChanged += OnLibraryChanged;
         _profileState.ProfileChanged   += OnProfileChanged;
@@ -182,6 +186,15 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the command that checks for application updates via Velopack.</summary>
     public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
+
+    /// <summary>Gets the command that launches the HidHide configuration client GUI.</summary>
+    public ReactiveCommand<Unit, Unit> OpenHidHideClientCommand { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the HidHide configuration client executable is available
+    /// on the current machine.
+    /// </summary>
+    public bool HasHidHideClient => HidHidePrerequisiteChecker.GetConfigurationClientPath() is not null;
 
     /// <summary>
     /// Performs async startup: loads settings, initialises device manager, and scans the profile library.
@@ -310,6 +323,25 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
 
         IsGremlinActive = true;
+    }
+
+    private void OpenHidHideClient()
+    {
+        var clientPath = HidHidePrerequisiteChecker.GetConfigurationClientPath();
+        if (clientPath is null)
+        {
+            _logger.LogWarning("HidHide configuration client could not be found");
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(clientPath) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to launch HidHide configuration client at {Path}", clientPath);
+        }
     }
 
     private async Task CheckForUpdatesAsync()
