@@ -322,6 +322,36 @@ public sealed class HidHideManagerTests : IDisposable
         await sut.Invoking(s => s.InitializeAsync()).Should().NotThrowAsync();
     }
 
+    [Fact]
+    public async Task InitializeAsync_WhenAlreadyWhitelisted_DoesNotAddDuplicate()
+    {
+        // If own exe is already in the whitelist, EnsureWhitelistedAsync must not
+        // add a second entry — i.e., no unnecessary CLI write is performed.
+        using var sut = CreateSut();
+        await sut.InitializeAsync(); // first call — adds own exe
+
+        var countAfterFirst = _controller.ApplicationPaths.Count;
+
+        await sut.InitializeAsync(); // second call — should NOT add a duplicate
+
+        _controller.ApplicationPaths.Count.Should().Be(countAfterFirst);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_WhenAlreadyBlocked_DoesNotAddDuplicate()
+    {
+        // If a device is already in the block list (e.g. from another tool), ApplyAsync
+        // must not add a duplicate entry — i.e., no unnecessary CLI write is performed.
+        _controller.AddBlockedInstance("HID\\VID_AAAA&PID_0001\\001");
+        using var sut = CreateSut();
+
+        await sut.ApplyAsync();
+
+        _controller.BlockedInstanceIds.Count(id =>
+            string.Equals(id, "HID\\VID_AAAA&PID_0001\\001", StringComparison.OrdinalIgnoreCase))
+            .Should().Be(1);
+    }
+
     // ── StatusChanged event ───────────────────────────────────────────────────
 
     [Fact]
