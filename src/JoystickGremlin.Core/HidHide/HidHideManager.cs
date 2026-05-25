@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using JoystickGremlin.Core.Configuration;
+using JoystickGremlin.Core.Exceptions;
 using JoystickGremlin.Core.Pipeline;
 using Microsoft.Extensions.Logging;
 
@@ -293,6 +294,10 @@ public sealed class HidHideManager : IHidHideManager
 
             _controller.AddApplicationPath(_ownExePath);
             _logger.LogInformation("HidHide: whitelisted own executable '{Path}'", _ownExePath);
+        }
+        catch (HidHideElevationCancelledException)
+        {
+            _logger.LogInformation("HidHide: user declined elevation — app not added to whitelist; device hiding may not work correctly");
         }
         catch (Exception ex)
         {

@@ -51,6 +51,19 @@ public sealed class DeviceException : GremlinException
 }
 
 /// <summary>
+/// Raised when the user cancels the UAC elevation prompt requested by a HidHide operation.
+/// Callers should catch this and skip the operation gracefully rather than treating it as an error.
+/// </summary>
+public sealed class HidHideElevationCancelledException : GremlinException
+{
+    /// <inheritdoc />
+    public HidHideElevationCancelledException(string message) : base(message) { }
+
+    /// <inheritdoc />
+    public HidHideElevationCancelledException(string message, Exception innerException) : base(message, innerException) { }
+}
+
+/// <summary>
 /// Raised when an operation references an unknown or invalid mode name.
 /// </summary>
 public sealed class ModeException : GremlinException
