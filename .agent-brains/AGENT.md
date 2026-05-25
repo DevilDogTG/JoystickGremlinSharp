@@ -12,5 +12,6 @@ strict_override: false
 Project-specific context and local overrides for JoystickGremlinSharp.
 
 ## Workspace Rules
-- Follow the framework mechanics defined in `~\.agent-brains\GLOBAL_AGENT.md`.
-- Maintain operational state strictly in .\.agent-brains\.
+<!-- begin:framework -->
+<!-- Global and profile rules are active automatically. Add project-specific overrides here. -->
+<!-- end:framework -->
