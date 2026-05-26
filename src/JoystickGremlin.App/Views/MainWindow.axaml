@@ -45,7 +45,6 @@
                 <Button Grid.Column="2"
                         Content="🛡 HidHide"
                         Command="{Binding OpenHidHideClientCommand}"
-                        IsEnabled="{Binding HasHidHideClient}"
                         MinWidth="110"
                         ToolTip.Tip="Open HidHide configuration client"/>
 

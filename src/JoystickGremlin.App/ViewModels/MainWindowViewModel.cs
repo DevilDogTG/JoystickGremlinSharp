@@ -40,6 +40,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly CompositeDisposable _subscriptions = [];
 
     private readonly ObservableAsPropertyHelper<string> _toggleButtonLabel;
+    private readonly bool _hasHidHideClient =
+        HidHidePrerequisiteChecker.GetConfigurationClientPath() is not null;
     private ViewModelBase _currentPage;
     private NavItemViewModel? _selectedNavItem;
     private bool _isGremlinActive;
@@ -108,7 +110,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         ToggleActiveCommand     = ReactiveCommand.CreateFromTask(ToggleActiveAsync);
         CheckForUpdatesCommand  = ReactiveCommand.CreateFromTask(CheckForUpdatesAsync);
         OpenHidHideClientCommand = ReactiveCommand.Create(OpenHidHideClient,
-            canExecute: this.WhenAnyValue(x => x.HasHidHideClient));
+            canExecute: Observable.Return(_hasHidHideClient));
 
         _profileLibrary.LibraryChanged += OnLibraryChanged;
         _profileState.ProfileChanged   += OnProfileChanged;
@@ -190,7 +192,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// Gets a value indicating whether the HidHide configuration client executable is available
     /// on the current machine.
     /// </summary>
-    public bool HasHidHideClient => HidHidePrerequisiteChecker.GetConfigurationClientPath() is not null;
+    public bool HasHidHideClient => _hasHidHideClient;
 
     /// <summary>
     /// Performs async startup: loads settings, initialises device manager, and scans the profile library.

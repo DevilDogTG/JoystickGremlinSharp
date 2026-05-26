@@ -43,7 +43,7 @@ public static class HidHidePrerequisiteChecker
             var operational = svc.IsOperational;
             return new HidHidePrerequisiteResult(IsInstalled: true, IsOperational: operational);
         }
-        catch
+        catch (Exception)
         {
             return new HidHidePrerequisiteResult(IsInstalled: false, IsOperational: false);
         }
@@ -62,7 +62,7 @@ public static class HidHidePrerequisiteChecker
                 var svc = new HidHideControlService();
                 return svc.IsInstalled;
             }
-            catch
+            catch (Exception)
             {
                 return false;
             }
@@ -82,7 +82,7 @@ public static class HidHidePrerequisiteChecker
                 var svc = new HidHideControlService();
                 return svc.IsInstalled && svc.IsOperational;
             }
-            catch
+            catch (Exception)
             {
                 return false;
             }
@@ -136,7 +136,7 @@ public static class HidHidePrerequisiteChecker
             using var wow64Key = Registry.LocalMachine.OpenSubKey(HidHideWow64UninstallKey, writable: false);
             return wow64Key?.GetValue("InstallLocation") as string;
         }
-        catch
+        catch (Exception)
         {
             return null;
         }
