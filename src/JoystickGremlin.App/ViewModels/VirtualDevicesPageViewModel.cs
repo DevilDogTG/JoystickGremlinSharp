@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Devices;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
@@ -18,6 +19,7 @@ namespace JoystickGremlin.App.ViewModels;
 public sealed class VirtualDevicesPageViewModel : ViewModelBase, IDisposable
 {
     private readonly IVirtualDeviceManager _virtualDeviceManager;
+    private readonly ISettingsService _settingsService;
     private readonly ILogger<VirtualDevicesPageViewModel> _logger;
     private readonly ILogger<VirtualDeviceViewModel> _deviceLogger;
     private readonly CompositeDisposable _subscriptions = [];
@@ -28,10 +30,12 @@ public sealed class VirtualDevicesPageViewModel : ViewModelBase, IDisposable
     /// </summary>
     public VirtualDevicesPageViewModel(
         IVirtualDeviceManager virtualDeviceManager,
+        ISettingsService settingsService,
         ILogger<VirtualDevicesPageViewModel> logger,
         ILogger<VirtualDeviceViewModel> deviceLogger)
     {
         _virtualDeviceManager = virtualDeviceManager;
+        _settingsService = settingsService;
         _logger = logger;
         _deviceLogger = deviceLogger;
 
@@ -41,9 +45,13 @@ public sealed class VirtualDevicesPageViewModel : ViewModelBase, IDisposable
         OpenVJoyControlPanelCommand = ReactiveCommand.Create(OpenVJoyControlPanel);
 
         _subscriptions.Add(
-            Observable.Interval(TimeSpan.FromMilliseconds(200))
+            Observable.Interval(TimeSpan.FromMilliseconds(_settingsService.Settings.UiUpdateIntervalMs))
                 .ObserveOn(AvaloniaScheduler.Instance)
-                .Subscribe(_ => SelectedDevice?.Refresh()));
+                .Subscribe(_ =>
+                {
+                    if (_settingsService.Settings.EnableLiveInputRefresh)
+                        SelectedDevice?.Refresh();
+                }));
     }
 
     /// <summary>Gets the configured virtual devices.</summary>
