@@ -24,6 +24,7 @@ public sealed class VirtualDevicesPageViewModel : ViewModelBase, IDisposable
     private readonly ILogger<VirtualDeviceViewModel> _deviceLogger;
     private readonly CompositeDisposable _subscriptions = [];
     private VirtualDeviceViewModel? _selectedDevice;
+    private long _lastVirtualDeviceUpdateMs;
 
     /// <summary>
     /// Initializes a new instance of <see cref="VirtualDevicesPageViewModel"/>.
@@ -45,12 +46,15 @@ public sealed class VirtualDevicesPageViewModel : ViewModelBase, IDisposable
         OpenVJoyControlPanelCommand = ReactiveCommand.Create(OpenVJoyControlPanel);
 
         _subscriptions.Add(
-            Observable.Interval(TimeSpan.FromMilliseconds(_settingsService.Settings.UiUpdateIntervalMs))
+            Observable.Interval(TimeSpan.FromMilliseconds(8))
                 .ObserveOn(AvaloniaScheduler.Instance)
                 .Subscribe(_ =>
                 {
-                    if (_settingsService.Settings.EnableLiveInputRefresh)
-                        SelectedDevice?.Refresh();
+                    if (!_settingsService.Settings.EnableLiveInputRefresh) return;
+                    var now = Environment.TickCount64;
+                    if (now - _lastVirtualDeviceUpdateMs < _settingsService.Settings.UiUpdateIntervalMs) return;
+                    _lastVirtualDeviceUpdateMs = now;
+                    SelectedDevice?.Refresh();
                 }));
     }
 
