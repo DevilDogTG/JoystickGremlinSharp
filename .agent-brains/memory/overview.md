@@ -10,7 +10,7 @@
 
 **Branch model**: main-first, tag-based releases. Feature branches → rebase-merge PR → main.
 
-**Test baseline**: 303 tests, 0 warnings (as of `feature/hidhide-startup-ux` fix commit `9daf6293`, 2026-05-26).
+**Test baseline**: 303 tests, 0 warnings (as of `feature/hidhide-startup-ux` merged to `main` via PR #54, 2026-05-26). PR #55 (`bugfix/virtual-devices-refresh-rate`) adds no new tests — baseline remains 303.
 
 ---
 
