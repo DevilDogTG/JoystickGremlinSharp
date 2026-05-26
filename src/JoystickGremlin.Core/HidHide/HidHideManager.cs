@@ -280,7 +280,6 @@ public sealed class HidHideManager : IHidHideManager
         if (string.IsNullOrEmpty(_ownExePath) || !_controller.IsInstalled)
             return;
 
-        await Task.CompletedTask.ConfigureAwait(false);
         try
         {
             // Read current whitelist (no admin required — IOCTL read).

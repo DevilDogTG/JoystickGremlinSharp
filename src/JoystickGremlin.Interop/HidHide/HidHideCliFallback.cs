@@ -127,7 +127,12 @@ internal sealed class HidHideCliFallback
         process.Start();
 
         string? stderr = useShellExecute ? null : process.StandardError.ReadToEnd();
-        process.WaitForExit(5000);
+        bool exited = process.WaitForExit(5000);
+        if (!exited)
+        {
+            _logger.LogWarning("HidHideCLI.exe did not exit within 5 s — assuming success");
+            return;
+        }
 
         if (process.ExitCode != 0)
         {
