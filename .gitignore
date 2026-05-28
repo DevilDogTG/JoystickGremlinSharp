@@ -2,6 +2,7 @@
 *.sw[op]
 *.pyc
 *.wxs
+!installer/*.wxs
 poetry.lock
 
 # Python generated folders

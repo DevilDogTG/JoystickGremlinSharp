@@ -10,7 +10,7 @@
 
 **Branch model**: main-first, tag-based releases. Feature branches → rebase-merge PR → main.
 
-**Test baseline**: 303 tests, 0 warnings (as of `feature/hidhide-startup-ux` fix commit `9daf6293`, 2026-05-26).
+**Test baseline**: 319 tests, 0 warnings (as of `feature/autoload-rework` merged, released v10.6.0, 2026-05-28).
 
 ---
 

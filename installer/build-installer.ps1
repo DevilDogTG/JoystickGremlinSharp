@@ -1,11 +1,12 @@
 <#
 .SYNOPSIS
-    Builds a Velopack installer for JoystickGremlinSharp (local development use).
+    Builds a WiX v6 MSI installer for JoystickGremlinSharp (local development use).
 
 .DESCRIPTION
     1. Publishes the application as a self-contained win-x64 binary.
-    2. Packs the output into a Velopack installer using vpk CLI.
-    The resulting installer and delta packages are placed in installer/out/.
+    2. Installs the WiX v6 dotnet global tool if not present.
+    3. Builds the MSI using the WiX SDK project (installer/JoystickGremlinSharp.wixproj).
+    The resulting MSI is placed in installer/out/.
 
 .EXAMPLE
     # From the repository root:
@@ -18,10 +19,14 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # ── Resolve paths ──────────────────────────────────────────────────────────────
-$repoRoot   = Split-Path $PSScriptRoot -Parent
-$publishDir = Join-Path $repoRoot 'publish'
-$outputDir  = Join-Path $PSScriptRoot 'out'
-$appCsproj  = Join-Path $repoRoot 'src\JoystickGremlin.App\JoystickGremlin.App.csproj'
+$repoRoot      = Split-Path $PSScriptRoot -Parent
+$publishDir    = Join-Path $repoRoot 'publish'
+$outputDir     = Join-Path $PSScriptRoot 'out'
+$appCsproj     = Join-Path $repoRoot 'src\JoystickGremlin.App\JoystickGremlin.App.csproj'
+$wixProj       = Join-Path $PSScriptRoot 'JoystickGremlinSharp.wixproj'
+
+# Trailing backslash required for WiX HarvestDirectory
+$publishDirSlash = $publishDir.TrimEnd('\') + '\'
 
 # ── Read version from version.json ─────────────────────────────────────────────
 $versionJson = Get-Content (Join-Path $repoRoot 'version.json') | ConvertFrom-Json
@@ -38,46 +43,37 @@ dotnet publish $appCsproj `
 
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 
-# ── Ensure vpk CLI is available ────────────────────────────────────────────────
-if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {
-    Write-Host "`nInstalling Velopack CLI (vpk)..." -ForegroundColor Cyan
-    dotnet tool install --global vpk
-    if ($LASTEXITCODE -ne 0) { throw "Failed to install vpk" }
+# ── Ensure wix global tool is available ───────────────────────────────────────
+if (-not (Get-Command wix -ErrorAction SilentlyContinue)) {
+    Write-Host "`nInstalling WiX v6 CLI (wix)..." -ForegroundColor Cyan
+    dotnet tool install --global wix --version 6.0.2
+    if ($LASTEXITCODE -ne 0) { throw "Failed to install wix tool" }
 }
 
-# Allow vpk (built against .NET 9) to run on .NET 10 via roll-forward.
-$env:DOTNET_ROLL_FORWARD = 'Major'
+# ── Build MSI ─────────────────────────────────────────────────────────────────
+Write-Host "`nBuilding MSI..." -ForegroundColor Cyan
 
-# ── Pack installer ─────────────────────────────────────────────────────────────
-Write-Host "`nPacking installer..." -ForegroundColor Cyan
-vpk pack `
-    --packId   JoystickGremlinSharp `
-    --packVersion $version `
-    --packDir  $publishDir `
-    --mainExe  JoystickGremlin.App.exe `
-    --icon     (Join-Path $repoRoot 'src\JoystickGremlin.App\Assets\icon.ico') `
-    --outputDir $outputDir
+if (-not (Test-Path $outputDir)) { New-Item -ItemType Directory -Path $outputDir | Out-Null }
 
-if ($LASTEXITCODE -ne 0) { throw "vpk pack failed" }
+dotnet build $wixProj `
+    --configuration Release `
+    -p:AppVersion=$version `
+    -p:PublishDir=$publishDirSlash `
+    -p:OutputPath=$outputDir
 
-# ── Rename outputs to include version suffix ────────────────────────────────────
-$renameMap = @{
-    'JoystickGremlinSharp-win-Setup.exe'    = "JoystickGremlinSharp-$version-win-Setup.exe"
-    'JoystickGremlinSharp-win-Portable.zip' = "JoystickGremlinSharp-$version-win-Portable.zip"
-}
-foreach ($entry in $renameMap.GetEnumerator()) {
-    $src = Join-Path $outputDir $entry.Key
-    $dst = Join-Path $outputDir $entry.Value
-    if (Test-Path $src) {
-        Move-Item -Path $src -Destination $dst -Force
-        Write-Host "Renamed: $($entry.Key) → $($entry.Value)" -ForegroundColor DarkGray
-    }
-}
+if ($LASTEXITCODE -ne 0) { throw "MSI build failed" }
 
-# ── Remove nupkg files ─────────────────────────────────────────────────────────
-Get-ChildItem -Path $outputDir -Filter '*.nupkg' | ForEach-Object {
-    Remove-Item $_.FullName -Force
-    Write-Host "Removed: $($_.Name)" -ForegroundColor DarkGray
+# ── Rename MSI to include version suffix ──────────────────────────────────────
+$msi = Get-ChildItem -Path $outputDir -Filter '*.msi' | Select-Object -First 1
+if ($null -eq $msi) { throw "No .msi found in $outputDir — build may have failed." }
+
+$desiredName = "JoystickGremlinSharp-$version-Setup.msi"
+if ($msi.Name -ne $desiredName) {
+    $dest = Join-Path $outputDir $desiredName
+    Move-Item -Path $msi.FullName -Destination $dest -Force
+    Write-Host "Renamed: $($msi.Name) → $desiredName" -ForegroundColor DarkGray
+} else {
+    Write-Host "MSI already named: $desiredName" -ForegroundColor DarkGray
 }
 
 Write-Host "`nInstaller ready in: $outputDir" -ForegroundColor Green

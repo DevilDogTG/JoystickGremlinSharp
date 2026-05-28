@@ -1,5 +1,5 @@
 # Triggered when a vX.Y.Z tag is pushed to main (by tag.yml after a release PR merge).
-# Builds a self-contained Windows installer with Velopack and creates a GitHub Release.
+# Builds a self-contained Windows MSI installer with WiX v6 and creates a GitHub Release.
 name: Publish
 
 on:
@@ -50,21 +50,21 @@ jobs:
           --self-contained true
           --output publish/
 
-      - name: Install Velopack CLI
-        run: dotnet tool install --global vpk
+      - name: Install WiX v6 CLI
+        run: dotnet tool install --global wix --version 6.0.2
 
-      - name: Pack installer
+      - name: Build MSI
         shell: pwsh
         run: |
-          vpk pack `
-            --packId   JoystickGremlinSharp `
-            --packVersion "${{ steps.version.outputs.version }}" `
-            --packDir  publish/ `
-            --mainExe  JoystickGremlin.App.exe `
-            --icon     src/JoystickGremlin.App/Assets/icon.ico `
-            --outputDir installer/out/
+          $publishDir = (Resolve-Path 'publish/').Path.TrimEnd('\') + '\'
+          dotnet build installer/JoystickGremlinSharp.wixproj `
+            --configuration Release `
+            -p:AppVersion="${{ steps.version.outputs.version }}" `
+            -p:PublishDir="$publishDir" `
+            -p:OutputPath=installer/out/
+          if ($LASTEXITCODE -ne 0) { throw "MSI build failed" }
 
-      - name: Sign main EXE
+      - name: Sign MSI
         if: ${{ env.SIGNING_CERT_BASE64 != '' }}
         shell: pwsh
         run: |
@@ -77,48 +77,28 @@ jobs:
                         Select-Object -First 1 -ExpandProperty FullName
           if ($null -eq $signtool) { throw 'signtool.exe not found in Windows SDK. Ensure windows-2022 runner is used.' }
 
+          $msi = Get-ChildItem 'installer/out/' -Filter '*.msi' | Select-Object -First 1
+          if ($null -eq $msi) { throw 'No .msi found in installer/out/ — WiX build may have failed.' }
+
           & $signtool sign /fd SHA256 /p $env:SIGNING_CERT_PASSWORD /f $certPath `
             /t http://timestamp.digicert.com `
-            publish/JoystickGremlin.App.exe
+            $msi.FullName
 
-          if ($LASTEXITCODE -ne 0) { throw "signtool failed for main EXE" }
-          Write-Host 'Signed: publish/JoystickGremlin.App.exe' -ForegroundColor Green
+          if ($LASTEXITCODE -ne 0) { throw "signtool failed for MSI" }
+          Write-Host "Signed: $($msi.Name)" -ForegroundColor Green
           Remove-Item $certPath -Force
 
-      - name: Sign installer EXE
-        if: ${{ env.SIGNING_CERT_BASE64 != '' }}
-        shell: pwsh
-        run: |
-          $certPath = Join-Path $env:RUNNER_TEMP 'signing.pfx'
-          [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:SIGNING_CERT_BASE64))
-
-          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Recurse -Filter signtool.exe |
-                        Where-Object { $_.FullName -like '*x64*' } |
-                        Sort-Object FullName -Descending |
-                        Select-Object -First 1 -ExpandProperty FullName
-          if ($null -eq $signtool) { throw 'signtool.exe not found in Windows SDK. Ensure windows-2022 runner is used.' }
-
-          $setup = Get-ChildItem 'installer/out/' -Filter '*Setup.exe' | Select-Object -First 1
-          if ($null -eq $setup) { throw 'No *-Setup.exe found in installer/out/ — vpk pack may have failed.' }
-          & $signtool sign /fd SHA256 /p $env:SIGNING_CERT_PASSWORD /f $certPath `
-            /t http://timestamp.digicert.com `
-            $setup.FullName
-
-          if ($LASTEXITCODE -ne 0) { throw "signtool failed for installer" }
-          Write-Host "Signed: $($setup.Name)" -ForegroundColor Green
-          Remove-Item $certPath -Force
-
-      - name: Rename installer to include version
+      - name: Rename MSI to include version
         shell: pwsh
         run: |
           Write-Host "installer/out/ contents:"
           Get-ChildItem "installer/out/" | ForEach-Object { Write-Host "  $($_.Name)" }
-          $setup = Get-ChildItem "installer/out/" -Filter "*Setup.exe" | Select-Object -First 1
-          if ($null -eq $setup) { throw "No *Setup.exe found in installer/out/" }
-          $newName = "JoystickGremlinSharp-${{ steps.version.outputs.version }}-Setup.exe"
-          if ($setup.Name -ne $newName) {
-            Rename-Item -Path $setup.FullName -NewName $newName
-            Write-Host "Renamed: $($setup.Name) → $newName"
+          $msi = Get-ChildItem "installer/out/" -Filter "*.msi" | Select-Object -First 1
+          if ($null -eq $msi) { throw "No .msi found in installer/out/" }
+          $newName = "JoystickGremlinSharp-${{ steps.version.outputs.version }}-Setup.msi"
+          if ($msi.Name -ne $newName) {
+            Rename-Item -Path $msi.FullName -NewName $newName
+            Write-Host "Renamed: $($msi.Name) → $newName"
           } else {
             Write-Host "Already named correctly: $newName"
           }
@@ -131,6 +111,6 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-          files: installer/out/*-Setup.exe
+          files: installer/out/*-Setup.msi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
