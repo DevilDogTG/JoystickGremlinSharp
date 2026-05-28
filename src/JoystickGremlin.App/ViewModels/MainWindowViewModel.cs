@@ -13,8 +13,6 @@ using JoystickGremlin.Core.Profile;
 using JoystickGremlin.Interop.HidHide;
 using Microsoft.Extensions.Logging;
 using ReactiveUI;
-using Velopack;
-using Velopack.Sources;
 using ProfileModel = JoystickGremlin.Core.Profile.Profile;
 
 namespace JoystickGremlin.App.ViewModels;
@@ -189,7 +187,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Gets the command that toggles the Gremlin event pipeline on or off.</summary>
     public ReactiveCommand<Unit, Unit> ToggleActiveCommand { get; }
 
-    /// <summary>Gets the command that checks for application updates via Velopack.</summary>
+    /// <summary>Gets the command that opens the GitHub Releases page to check for updates.</summary>
     public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
 
     /// <summary>Gets the command that launches the HidHide configuration client GUI.</summary>
@@ -333,26 +331,23 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private async Task CheckForUpdatesAsync()
+    private Task CheckForUpdatesAsync()
     {
+        // Full in-app version checker is planned for a future release.
+        // For now, open the GitHub Releases page so the user can check manually.
         try
         {
-            var source = new GithubSource("https://github.com/DevilDogTG/JoystickGremlinSharp", null, false);
-            var mgr = new UpdateManager(source);
-            var newVersion = await mgr.CheckForUpdatesAsync();
-            if (newVersion is null)
+            Process.Start(new ProcessStartInfo(
+                "https://github.com/DevilDogTG/JoystickGremlinSharp/releases")
             {
-                _logger.LogInformation("Application is up to date");
-                return;
-            }
-            _logger.LogInformation("Update available: {Version}", newVersion.TargetFullRelease.Version);
-            await mgr.DownloadUpdatesAsync(newVersion);
-            mgr.ApplyUpdatesAndRestart(newVersion);
+                UseShellExecute = true
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Update check failed");
+            _logger.LogWarning(ex, "Failed to open GitHub Releases page");
         }
+        return Task.CompletedTask;
     }
 
     private void OnLibraryChanged(object? sender, EventArgs e)

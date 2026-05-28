@@ -2,7 +2,8 @@
 
 ## Completed
 
-- [x] **feature/hidhide-startup-ux** — HidHide startup UX + admin privilege optimization *(PR #53 ready to merge)*
+- [x] **feature/autoload-rework** — Auto-load process→profile rework *(released v10.6.0)*
+
   - [x] Combined prerequisite warning dialog (vJoy + HidHide)
   - [x] Auto-whitelist own exe at startup (`EnsureWhitelistedAsync`)
   - [x] Toolbar `🛡 HidHide` button → opens native HidHide client
@@ -13,14 +14,15 @@
 
 ## In Progress
 
-- [ ] **feature/autoload-rework** — Auto-load process→profile rework *(see [autoload-rework.md](autoload-rework.md))*
-  - [ ] Process picker (windowed apps + game flag) replacing hand-typed exe/regex
-  - [ ] Profile dropdown from `IProfileLibrary` (app-created profiles only)
-  - [ ] Dedicated Auto-load page; remove auto-load grid from Settings
-  - [ ] Match by exe name / manual path; drop regex; keep advanced toggles
+- [ ] **feature/wix-installer** — Replace Velopack with WiX v6 MSI installer
+  - [x] Remove Velopack NuGet + `VelopackApp.Build()` from app
+  - [x] WiX v6 `.wixproj` + `Package.wxs` with wizard UI, path selection, optional desktop shortcut
+  - [x] Update `build-installer.ps1` + `publish.yml` CI
+  - [ ] Build verified, HKLM registration confirmed
 
 ## Backlog (Optional Features)
 
+- [ ] **In-app GitHub Releases version checker** — check latest release, compare semver, show download link (no auto-install)
 - [ ] Response curve editor (axes)
 - [ ] Condition-based action pipeline
 - [ ] UI for button mapping configuration

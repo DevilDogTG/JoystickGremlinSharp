@@ -1,0 +1,34 @@
+<Project Sdk="WixToolset.Sdk/6.0.2">
+
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+    <Cultures>en-US</Cultures>
+    <!-- Allow local builds without version being defined on the CLI.
+         In CI, -p:AppVersion is always passed from version.json. -->
+    <AppVersion Condition="'$(AppVersion)' == ''">0.0.1</AppVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" Version="6.0.2" />
+  </ItemGroup>
+
+  <!--
+    Harvest the published application directory at build time.
+    Pass -p:PublishDir=<path> when building this project (trailing backslash required).
+    Default falls back to publish\ relative to the solution root for local dev.
+  -->
+  <PropertyGroup>
+    <PublishDir Condition="'$(PublishDir)' == ''">$(MSBuildThisFileDirectory)..\publish\</PublishDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <HarvestDirectory Include="$(PublishDir)">
+      <ComponentGroupName>AppFiles</ComponentGroupName>
+      <DirectoryRefId>INSTALLFOLDER</DirectoryRefId>
+      <SuppressRootDirectory>true</SuppressRootDirectory>
+      <!-- Exclude Velopack/update-related files if any residual exist -->
+      <Excludes>*.pdb;Update.exe;Squirrel.exe</Excludes>
+    </HarvestDirectory>
+  </ItemGroup>
+
+</Project>

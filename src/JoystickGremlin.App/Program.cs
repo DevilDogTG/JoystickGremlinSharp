@@ -2,7 +2,6 @@
 
 using Avalonia;
 using ReactiveUI.Avalonia;
-using Velopack;
 
 namespace JoystickGremlin.App;
 
@@ -11,9 +10,6 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        // Must be the very first call — handles install/uninstall hooks and exits early when needed.
-        VelopackApp.Build().Run();
-
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 

@@ -1,6 +1,6 @@
 # Plan: Auto-load (process → profile) Rework
 
-**Status:** active
+**Status:** finished
 **Created:** 2026-05-28
 **Branch:** feature/autoload-rework
 
