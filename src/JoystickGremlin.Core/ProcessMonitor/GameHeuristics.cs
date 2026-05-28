@@ -36,13 +36,18 @@ public static class GameHeuristics
     /// <param name="executablePath">The full executable path.</param>
     public static bool IsLikelyGame(string? executablePath)
     {
-        if (string.IsNullOrWhiteSpace(executablePath)) return false;
+        if (string.IsNullOrWhiteSpace(executablePath))
+        {
+            return false;
+        }
 
         var normalized = executablePath.Replace('\\', '/').ToLowerInvariant();
         foreach (var marker in GameStoreMarkers)
         {
             if (normalized.Contains(marker, StringComparison.Ordinal))
+            {
                 return true;
+            }
         }
 
         return false;

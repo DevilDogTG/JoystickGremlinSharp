@@ -23,15 +23,23 @@ public partial class ProcessPickerDialog : Window
         DataContext = viewModel;
     }
 
+    /// <summary>Handler for the Select button — confirms the current selection.</summary>
     private void SelectButton_Click(object? sender, RoutedEventArgs e) => Confirm();
 
+    /// <summary>Handler for the Cancel button — closes the dialog with a null result.</summary>
     private void CancelButton_Click(object? sender, RoutedEventArgs e) => Close(null);
 
+    /// <summary>Handler for double-tap on the process list — shortcut for Select.</summary>
     private void ProcessList_DoubleTapped(object? sender, TappedEventArgs e) => Confirm();
 
+    /// <summary>
+    /// Closes the dialog with the currently selected process, or does nothing when no row is selected.
+    /// </summary>
     private void Confirm()
     {
         if (DataContext is ProcessPickerViewModel { SelectedProcess: { } selected })
+        {
             Close(selected);
+        }
     }
 }

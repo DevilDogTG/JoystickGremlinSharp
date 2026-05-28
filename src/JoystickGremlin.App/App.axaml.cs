@@ -11,6 +11,7 @@ using JoystickGremlin.App.Views;
 using JoystickGremlin.Core;
 using JoystickGremlin.Core.Actions;
 using JoystickGremlin.Core.Configuration;
+using JoystickGremlin.Core.ForceFeedback;
 using JoystickGremlin.Core.HidHide;
 using JoystickGremlin.Core.Profile;
 using JoystickGremlin.Core.Startup;
@@ -48,7 +49,7 @@ public partial class App : Application
         _services.GetRequiredService<ProcessMonitorService>().Start();
 
         // Resolve the FFB auto-bridge so its constructor subscribes to pipeline events.
-        _ = _services.GetRequiredService<JoystickGremlin.Core.ForceFeedback.FfbAutoBridgeService>();
+        _ = _services.GetRequiredService<FfbAutoBridgeService>();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

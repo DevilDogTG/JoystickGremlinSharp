@@ -36,22 +36,35 @@ public sealed class FfbAutoBridgeService : IDisposable
         _pipeline.Stopped += OnPipelineStopped;
     }
 
+    /// <summary>
+    /// Reacts to pipeline start by initiating an asynchronous FFB bridge start if the user has
+    /// enabled the bridge. Fire-and-forget so a slow/failing bridge does not stall the pipeline.
+    /// </summary>
     private void OnPipelineStarted(object? sender, EventArgs e)
     {
         if (!_settings.Settings.EnableFfbBridge)
+        {
             return;
+        }
 
         _ = StartFfbBridgeAsync();
     }
 
+    /// <summary>
+    /// Reacts to pipeline stop by tearing down the FFB bridge unless it is already in a
+    /// non-running state (Disabled/Stopped), which would make a StopAsync call a no-op.
+    /// </summary>
     private void OnPipelineStopped(object? sender, EventArgs e)
     {
         if (_bridge.State is ForceFeedbackBridgeState.Disabled or ForceFeedbackBridgeState.Stopped)
+        {
             return;
+        }
 
         _ = StopFfbBridgeAsync();
     }
 
+    /// <summary>Starts the FFB bridge, logging and swallowing any startup exception.</summary>
     private async Task StartFfbBridgeAsync()
     {
         try
@@ -67,6 +80,7 @@ public sealed class FfbAutoBridgeService : IDisposable
         }
     }
 
+    /// <summary>Stops the FFB bridge, logging and swallowing any shutdown exception.</summary>
     private async Task StopFfbBridgeAsync()
     {
         try
@@ -82,7 +96,10 @@ public sealed class FfbAutoBridgeService : IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
         _pipeline.Started -= OnPipelineStarted;
         _pipeline.Stopped -= OnPipelineStopped;
         _disposed = true;

@@ -115,7 +115,9 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
 
             ClearRows();
             foreach (var model in s.ProcessMappings)
+            {
                 AddRow(new ProcessMappingViewModel(model, _processPicker, _filePicker, AvailableProfiles));
+            }
         }
         finally
         {
@@ -123,6 +125,11 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>
+    /// Rebuilds <see cref="AvailableProfiles"/> on the UI thread and refreshes each row's
+    /// <see cref="ProcessMappingViewModel.SelectedProfile"/> so dropdowns continue to reflect the
+    /// renamed/added/removed profile. Guarded by <c>_loading</c> to suppress save side effects.
+    /// </summary>
     private void OnLibraryChanged(object? sender, EventArgs e)
     {
         Dispatcher.UIThread.Post(() =>
@@ -132,7 +139,9 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
             {
                 RebuildProfiles();
                 foreach (var row in Mappings)
+                {
                     row.RefreshSelectedProfile();
+                }
             }
             finally
             {
@@ -141,13 +150,20 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
         });
     }
 
+    /// <summary>Repopulates <see cref="AvailableProfiles"/> from the current profile library entries.</summary>
     private void RebuildProfiles()
     {
         AvailableProfiles.Clear();
         foreach (var entry in _profileLibrary.Entries)
+        {
             AvailableProfiles.Add(entry);
+        }
     }
 
+    /// <summary>
+    /// Adds a new blank mapping to both the persisted model list and the row collection,
+    /// then schedules a debounced save.
+    /// </summary>
     private void AddMapping()
     {
         var model = new ProcessProfileMapping();
@@ -156,6 +172,7 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
         ScheduleSave();
     }
 
+    /// <summary>Removes the given row from both the model list and the row collection.</summary>
     private void RemoveMapping(ProcessMappingViewModel vm)
     {
         _settingsService.Settings.ProcessMappings.Remove(vm.Model);
@@ -163,57 +180,84 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
         ScheduleSave();
     }
 
+    /// <summary>Moves a row up in evaluation order, mirroring the move in the persisted list.</summary>
     private void MoveUp(ProcessMappingViewModel vm)
     {
         var idx = Mappings.IndexOf(vm);
-        if (idx <= 0) return;
+        if (idx <= 0)
+        {
+            return;
+        }
         Mappings.Move(idx, idx - 1);
         var list = _settingsService.Settings.ProcessMappings;
         (list[idx], list[idx - 1]) = (list[idx - 1], list[idx]);
         ScheduleSave();
     }
 
+    /// <summary>Moves a row down in evaluation order, mirroring the move in the persisted list.</summary>
     private void MoveDown(ProcessMappingViewModel vm)
     {
         var idx = Mappings.IndexOf(vm);
-        if (idx < 0 || idx >= Mappings.Count - 1) return;
+        if (idx < 0 || idx >= Mappings.Count - 1)
+        {
+            return;
+        }
         Mappings.Move(idx, idx + 1);
         var list = _settingsService.Settings.ProcessMappings;
         (list[idx], list[idx + 1]) = (list[idx + 1], list[idx]);
         ScheduleSave();
     }
 
+    /// <summary>
+    /// Adds a row and subscribes to its reactive change stream so any per-row edit (toggles,
+    /// process pick, profile selection) feeds into the debounced save.
+    /// </summary>
     private void AddRow(ProcessMappingViewModel row)
     {
         Mappings.Add(row);
         _rowSubscriptions[row] = row.Changed.Subscribe(_ => ScheduleSave());
     }
 
+    /// <summary>Removes a row, disposing its change-stream subscription to avoid a leak.</summary>
     private void RemoveRow(ProcessMappingViewModel row)
     {
         if (_rowSubscriptions.Remove(row, out var sub))
+        {
             sub.Dispose();
+        }
         Mappings.Remove(row);
     }
 
+    /// <summary>Disposes all per-row subscriptions and empties the row collection.</summary>
     private void ClearRows()
     {
         foreach (var sub in _rowSubscriptions.Values)
+        {
             sub.Dispose();
+        }
         _rowSubscriptions.Clear();
         Mappings.Clear();
     }
 
+    /// <summary>
+    /// Fires the debounced save trigger if a load is not in progress. Multiple rapid calls
+    /// collapse into a single <see cref="SaveAsync"/> after the configured throttle window.
+    /// </summary>
     private void ScheduleSave()
     {
         if (!_loading)
+        {
             _saveTrigger.OnNext(Unit.Default);
+        }
     }
 
+    /// <summary>Flushes all row VMs into their backing models and persists the settings.</summary>
     private async Task SaveAsync()
     {
         foreach (var row in Mappings)
+        {
             row.ApplyToModel();
+        }
 
         _settingsService.Settings.EnableAutoLoading = EnableAutoLoading;
         // The ProcessMappings list is mutated in place by Add/Remove/Move.
