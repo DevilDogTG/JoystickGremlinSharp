@@ -31,7 +31,7 @@
     <Property Id="ARPHELPLINK"      Value="https://github.com/DevilDogTG/JoystickGremlinSharp/issues" />
     <Property Id="ARPCOMMENTS"      Value="A C#/.NET 10 rewrite of JoystickGremlin. Map joystick inputs to virtual vJoy outputs." />
     <Property Id="ARPPRODUCTICON"   Value="JgsIcon.ico" />
-    <Icon     Id="JgsIcon.ico"      SourceFile="$(MSBuildThisFileDirectory)..\src\JoystickGremlin.App\Assets\icon.ico" />
+    <Icon     Id="JgsIcon.ico"      SourceFile="$(sys.SOURCEFILEDIR)..\src\JoystickGremlin.App\Assets\icon.ico" />
 
     <!-- ── UI ──────────────────────────────────────────────────────────
          WixUI_Mondo provides:
@@ -42,7 +42,7 @@
     <ui:WixUI Id="WixUI_Mondo" />
 
     <!-- License agreement shown in wizard -->
-    <WixVariable Id="WixUILicenseRtf" Value="$(MSBuildThisFileDirectory)License.rtf" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(sys.SOURCEFILEDIR)License.rtf" />
 
     <!-- Default install root shown in directory picker (Custom mode) -->
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
@@ -56,7 +56,7 @@
              Title="Joystick Gremlin Sharp"
              Description="The application and all required files."
              Level="1"
-             Absent="disallow">
+             AllowAbsent="no">
       <ComponentGroupRef Id="AppFiles" />
       <ComponentRef Id="StartMenuShortcut" />
     </Feature>
@@ -73,24 +73,23 @@
 
   <!-- ═══════════════════════════════════════════════════════════════════
        Directory layout
+       WiX v4+ uses <StandardDirectory> for system folders — no TARGETDIR wrapper needed.
        ═══════════════════════════════════════════════════════════════════ -->
   <Fragment>
-    <Directory Id="TARGETDIR" Name="SourceDir">
 
-      <!-- Program Files\JoystickGremlinSharp  (x64 machine) -->
-      <Directory Id="ProgramFiles64Folder">
-        <Directory Id="INSTALLFOLDER" Name="JoystickGremlinSharp" />
-      </Directory>
+    <!-- Program Files\JoystickGremlinSharp  (x64 machine) -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="JoystickGremlinSharp" />
+    </StandardDirectory>
 
-      <!-- Desktop -->
-      <Directory Id="DesktopFolder" />
+    <!-- Desktop -->
+    <StandardDirectory Id="DesktopFolder" />
 
-      <!-- Start Menu\Programs\JoystickGremlinSharp -->
-      <Directory Id="ProgramMenuFolder">
-        <Directory Id="AppMenuFolder" Name="JoystickGremlinSharp" />
-      </Directory>
+    <!-- Start Menu\Programs\JoystickGremlinSharp -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppMenuFolder" Name="JoystickGremlinSharp" />
+    </StandardDirectory>
 
-    </Directory>
   </Fragment>
 
   <!-- ═══════════════════════════════════════════════════════════════════
