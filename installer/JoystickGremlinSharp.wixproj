@@ -3,13 +3,25 @@
   <PropertyGroup>
     <OutputType>Package</OutputType>
     <Cultures>en-US</Cultures>
+    <!-- x64 MSI — required for ProgramFiles64Folder and self-contained win-x64 publish. -->
+    <InstallerPlatform>x64</InstallerPlatform>
     <!-- Allow local builds without version being defined on the CLI.
          In CI, -p:AppVersion is always passed from version.json. -->
     <AppVersion Condition="'$(AppVersion)' == ''">0.0.1</AppVersion>
+    <!-- Forward MSBuild properties to the WiX preprocessor so $(AppVersion) and $(var.PublishDir)
+         resolve in Package.wxs and in the heat-harvested _AppFiles_dir.wxs. -->
+    <DefineConstants>AppVersion=$(AppVersion);PublishDir=$(PublishDir)</DefineConstants>
+    <!-- HEAT5151: heat tries to read every harvested file as a managed assembly for COM data.
+         .NET 10 single-file/self-contained dependencies are not classic assemblies, so it logs
+         a warning per file. The MSI does not need COM info from these — suppress the noise. -->
+    <HarvestDirectorySuppressSpecificWarnings>5151</HarvestDirectorySuppressSpecificWarnings>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="WixToolset.UI.wixext" Version="6.0.2" />
+    <!-- WixToolset.Heat ships the <HarvestDirectory> MSBuild item used below.
+         In WiX v4+ this was moved out of the SDK into a separate package. -->
+    <PackageReference Include="WixToolset.Heat" Version="6.0.2" />
   </ItemGroup>
 
   <!--
@@ -26,6 +38,9 @@
       <ComponentGroupName>AppFiles</ComponentGroupName>
       <DirectoryRefId>INSTALLFOLDER</DirectoryRefId>
       <SuppressRootDirectory>true</SuppressRootDirectory>
+      <!-- Tell heat to emit $(var.PublishDir)\file.dll rather than SourceDir\file.dll
+           so the WiX binder can locate each harvested file. -->
+      <PreprocessorVariable>var.PublishDir</PreprocessorVariable>
       <!-- Exclude PDB files (recursive) and legacy Velopack artifacts if any residual exist -->
       <Excludes>**\*.pdb;Update.exe;Squirrel.exe</Excludes>
     </HarvestDirectory>

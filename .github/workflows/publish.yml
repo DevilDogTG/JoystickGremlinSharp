@@ -57,11 +57,13 @@ jobs:
         shell: pwsh
         run: |
           $publishDir = (Resolve-Path 'publish/').Path.TrimEnd('\') + '\'
+          # OutputPath is resolved relative to the wixproj directory (installer/),
+          # so 'out/' here lands the MSI at installer/out/.
           dotnet build installer/JoystickGremlinSharp.wixproj `
             --configuration Release `
             -p:AppVersion="${{ steps.version.outputs.version }}" `
             -p:PublishDir="$publishDir" `
-            -p:OutputPath=installer/out/
+            -p:OutputPath=out/
           if ($LASTEXITCODE -ne 0) { throw "MSI build failed" }
 
       - name: Sign MSI
