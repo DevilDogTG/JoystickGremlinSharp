@@ -8,7 +8,6 @@ using System.Reactive.Linq;
 using Avalonia.Threading;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Devices;
-using JoystickGremlin.Core.ForceFeedback;
 using JoystickGremlin.Core.Pipeline;
 using JoystickGremlin.Core.Profile;
 using JoystickGremlin.Interop.HidHide;
@@ -32,9 +31,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly IProfileLibrary _profileLibrary;
     private readonly ISettingsService _settingsService;
     private readonly IDeviceManager _deviceManager;
-    private readonly IForceFeedbackBridge _forceFeedbackBridge;
     private readonly ControllerSetupPageViewModel _controllerSetupPage;
     private readonly SettingsPageViewModel _settingsPage;
+    private readonly AutoLoadPageViewModel _autoLoadPage;
     private readonly VirtualDevicesPageViewModel _virtualDevicesPage;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly CompositeDisposable _subscriptions = [];
@@ -55,6 +54,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         ControllerSetupPageViewModel controllerSetupPage,
         ProfilePageViewModel profilePage,
         SettingsPageViewModel settingsPage,
+        AutoLoadPageViewModel autoLoadPage,
         VirtualDevicesPageViewModel virtualDevicesPage,
         AboutPageViewModel aboutPage,
         IEventPipeline eventPipeline,
@@ -63,7 +63,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         IProfileLibrary profileLibrary,
         ISettingsService settingsService,
         IDeviceManager deviceManager,
-        IForceFeedbackBridge forceFeedbackBridge,
         ILogger<MainWindowViewModel> logger)
     {
         _eventPipeline = eventPipeline;
@@ -72,9 +71,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _profileLibrary = profileLibrary;
         _settingsService = settingsService;
         _deviceManager = deviceManager;
-        _forceFeedbackBridge = forceFeedbackBridge;
         _controllerSetupPage = controllerSetupPage;
         _settingsPage = settingsPage;
+        _autoLoadPage = autoLoadPage;
         _virtualDevicesPage = virtualDevicesPage;
         _logger = logger;
 
@@ -83,6 +82,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             new NavItemViewModel { Title = "Controller Setup", Icon = "🎮", Page = controllerSetupPage },
             new NavItemViewModel { Title = "Virtual Devices",  Icon = "🕹️", Page = virtualDevicesPage },
             new NavItemViewModel { Title = "Profile",          Icon = "📋", Page = profilePage         },
+            new NavItemViewModel { Title = "Auto-load",        Icon = "⚡", Page = autoLoadPage        },
             new NavItemViewModel { Title = "Settings",         Icon = "⚙️", Page = settingsPage        },
             new NavItemViewModel { Title = "About",            Icon = "ℹ️", Page = aboutPage           },
         };
@@ -114,6 +114,13 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
         _profileLibrary.LibraryChanged += OnLibraryChanged;
         _profileState.ProfileChanged   += OnProfileChanged;
+
+        // Treat the pipeline as the single source of truth for "active" state. This way the
+        // toolbar Start/Stop label and any IsGremlinActive observer (e.g. the tray menu) stay
+        // in sync whether the pipeline is started manually or by the auto-load process monitor.
+        _eventPipeline.Started += OnPipelineStarted;
+        _eventPipeline.Stopped += OnPipelineStopped;
+        _isGremlinActive = _eventPipeline.IsRunning;
 
         // Keep toolbar toggle in sync with the Settings page property (single source of truth).
         _subscriptions.Add(
@@ -216,6 +223,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         await _profileLibrary.ScanAsync();
         RebuildProfileEntries();
 
+        // Load auto-load mappings now that the profile library is populated so each
+        // mapping's profile dropdown can resolve its selection.
+        _autoLoadPage.LoadFromSettings();
+
         var activeProfilePath = _settingsService.Settings.ActiveProfilePath;
         if (!string.IsNullOrWhiteSpace(activeProfilePath))
         {
@@ -279,47 +290,28 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             : StartRuntimeAsync();
     }
 
-    private async Task StopRuntimeAsync()
+    private Task StopRuntimeAsync()
     {
         _logger.LogInformation("Stopping Gremlin event pipeline");
 
-        if (_forceFeedbackBridge.State != ForceFeedbackBridgeState.Disabled &&
-            _forceFeedbackBridge.State != ForceFeedbackBridgeState.Stopped)
-        {
-            await _forceFeedbackBridge.StopAsync();
-        }
-
+        // The pipeline's Stopped event drives both IsGremlinActive (this VM) and the FFB bridge
+        // shutdown (FfbAutoBridgeService) and HidHide revert (HidHideManager).
         _eventPipeline.Stop();
-        IsGremlinActive = false;
+        return Task.CompletedTask;
     }
 
-    private async Task StartRuntimeAsync()
+    private Task StartRuntimeAsync()
     {
         var profile = _profileState.CurrentProfile;
         if (profile is null)
-        {
-            return;
-        }
+            return Task.CompletedTask;
 
         _logger.LogInformation("Starting Gremlin event pipeline for profile {Profile}", profile.Name);
+
+        // The pipeline's Started event drives IsGremlinActive (this VM), the FFB bridge start
+        // (FfbAutoBridgeService), and HidHide apply (HidHideManager).
         _eventPipeline.Start(profile);
-
-        if (_settingsService.Settings.EnableFfbBridge)
-        {
-            _logger.LogInformation(
-                "Starting force feedback bridge for vJoy device {DeviceId}",
-                _settingsService.Settings.FfbVJoyDeviceId);
-            try
-            {
-                await _forceFeedbackBridge.StartAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Force feedback bridge failed to start; continuing without FFB.");
-            }
-        }
-
-        IsGremlinActive = true;
+        return Task.CompletedTask;
     }
 
     private void OpenHidHideClient()
@@ -368,6 +360,18 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         Dispatcher.UIThread.Post(RebuildProfileEntries);
     }
 
+    private void OnPipelineStarted(object? sender, EventArgs e)
+    {
+        // Pipeline events may fire on any thread that called Start/Stop. Marshal to the UI
+        // thread before driving the ReactiveUI property that backs Avalonia bindings.
+        Dispatcher.UIThread.Post(() => IsGremlinActive = true);
+    }
+
+    private void OnPipelineStopped(object? sender, EventArgs e)
+    {
+        Dispatcher.UIThread.Post(() => IsGremlinActive = false);
+    }
+
     private void RebuildProfileEntries()
     {
         var current = _selectedProfileEntry?.FilePath;
@@ -404,6 +408,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         _profileLibrary.LibraryChanged -= OnLibraryChanged;
         _profileState.ProfileChanged -= OnProfileChanged;
+        _eventPipeline.Started -= OnPipelineStarted;
+        _eventPipeline.Stopped -= OnPipelineStopped;
         _toggleButtonLabel.Dispose();
         _subscriptions.Dispose();
     }

@@ -46,6 +46,7 @@ public static class InteropServiceCollectionExtensions
         services.TryAddSingleton<IKeyboardSimulator>(sp => sp.GetRequiredService<SendInputKeyboardSimulator>());
         services.TryAddSingleton<IKeyNameCatalog, SendInputKeyNameCatalog>();
         services.TryAddSingleton<IProcessMonitor, WindowsProcessMonitor>();
+        services.TryAddSingleton<IProcessEnumerator, WindowsProcessEnumerator>();
         services.TryAddSingleton<IStartupService, WindowsStartupService>();
 
         // Register FFB services. The runtime decides whether the bridge is started,

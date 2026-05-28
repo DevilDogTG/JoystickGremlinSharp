@@ -47,6 +47,9 @@ public partial class App : Application
         // Start the process monitor service so it begins watching for game processes.
         _services.GetRequiredService<ProcessMonitorService>().Start();
 
+        // Resolve the FFB auto-bridge so its constructor subscribes to pipeline events.
+        _ = _services.GetRequiredService<JoystickGremlin.Core.ForceFeedback.FfbAutoBridgeService>();
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var mainWindowVm = _services.GetRequiredService<MainWindowViewModel>();
@@ -55,6 +58,7 @@ public partial class App : Application
 
             var settingsService = _services.GetRequiredService<ISettingsService>();
             var filePickerService = _services.GetRequiredService<FilePickerService>();
+            var processPickerService = _services.GetRequiredService<ProcessPickerDialogService>();
 
             _mainWindow.Opened += async (_, _) =>
             {
@@ -66,6 +70,7 @@ public partial class App : Application
                 if (Interlocked.CompareExchange(ref _isInitialized, 1, 0) == 1) return;
 
                 filePickerService.SetTopLevel(_mainWindow);
+                processPickerService.SetOwner(_mainWindow);
 
                 // Run both prerequisite checks and show a combined warning if any fail.
                 var vjoyCheck    = VJoyPrerequisiteChecker.Check();
@@ -216,6 +221,7 @@ public partial class App : Application
         services.AddSingleton<ControllerSetupPageViewModel>();
         services.AddSingleton<ProfilePageViewModel>();
         services.AddSingleton<SettingsPageViewModel>();
+        services.AddSingleton<AutoLoadPageViewModel>();
         services.AddSingleton<BindingsPageViewModel>();
         services.AddSingleton<VirtualDevicesPageViewModel>();
         services.AddSingleton<AboutPageViewModel>();
@@ -226,6 +232,10 @@ public partial class App : Application
         // File picker service — concrete type also registered so SetTopLevel can be called.
         services.AddSingleton<FilePickerService>();
         services.AddSingleton<IFilePickerService>(sp => sp.GetRequiredService<FilePickerService>());
+
+        // Process picker dialog service — concrete type also registered so SetOwner can be called.
+        services.AddSingleton<ProcessPickerDialogService>();
+        services.AddSingleton<IProcessPickerDialogService>(sp => sp.GetRequiredService<ProcessPickerDialogService>());
 
         // Process monitor orchestration service.
         services.AddSingleton<ProcessMonitorService>();

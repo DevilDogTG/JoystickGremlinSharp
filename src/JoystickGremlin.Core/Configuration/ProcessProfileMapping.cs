@@ -3,15 +3,30 @@
 namespace JoystickGremlin.Core.Configuration;
 
 /// <summary>
-/// Maps a Windows executable (by exact path or regex pattern) to a JoystickGremlin profile.
+/// Maps a Windows executable to a JoystickGremlin profile.
 /// When the mapped executable becomes the foreground window, the profile is loaded automatically.
+/// The executable is matched either by file name or by full path — see <see cref="MatchType"/>.
 /// </summary>
 public sealed class ProcessProfileMapping
 {
     /// <summary>
-    /// Gets or sets the executable path or regex pattern to match.
-    /// Examples: <c>"C:/Games/DCS.exe"</c> (exact) or <c>".*DCS.*"</c> (regex).
-    /// Matching is case-insensitive. Exact match is tried before regex.
+    /// Gets or sets how the foreground executable is matched against this mapping.
+    /// Defaults to <see cref="ProcessMatchType.ExecutablePath"/> (enum value 0) so that settings
+    /// persisted before this field existed deserialize into path mode without a migration. The
+    /// process picker sets <see cref="ProcessMatchType.ExecutableName"/> explicitly when used.
+    /// </summary>
+    public ProcessMatchType MatchType { get; set; }
+
+    /// <summary>
+    /// Gets or sets the executable file name to match when <see cref="MatchType"/> is
+    /// <see cref="ProcessMatchType.ExecutableName"/>. Example: <c>"DCS.exe"</c>. Case-insensitive.
+    /// </summary>
+    public string ExecutableName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the full executable path. Used for matching when <see cref="MatchType"/> is
+    /// <see cref="ProcessMatchType.ExecutablePath"/>; in name-match mode it is retained for display
+    /// (the path captured when the process was picked). Example: <c>"C:/Games/DCS.exe"</c>.
     /// </summary>
     public string ExecutablePath { get; set; } = string.Empty;
 

@@ -11,6 +11,27 @@
         Width="1280" Height="720"
         MinWidth="1280" MinHeight="720">
 
+    <Window.Styles>
+        <!-- "Active" Button class: mirrors the ToggleButton "checked" appearance so the toolbar
+             Start/Stop button visually matches the Live Input toggle while the pipeline is running.
+             Pulled from the same Fluent theme tokens so the accent stays consistent across themes. -->
+        <Style Selector="Button.active">
+            <Setter Property="Background" Value="{DynamicResource ToggleButtonBackgroundChecked}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ToggleButtonForegroundChecked}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushChecked}"/>
+        </Style>
+        <Style Selector="Button.active:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ToggleButtonBackgroundCheckedPointerOver}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushCheckedPointerOver}"/>
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource ToggleButtonForegroundCheckedPointerOver}"/>
+        </Style>
+        <Style Selector="Button.active:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ToggleButtonBackgroundCheckedPressed}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource ToggleButtonBorderBrushCheckedPressed}"/>
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource ToggleButtonForegroundCheckedPressed}"/>
+        </Style>
+    </Window.Styles>
+
     <DockPanel>
 
         <!-- ─── Top Toolbar ─── -->
@@ -58,10 +79,12 @@
                     </TextBlock>
                 </ToggleButton>
 
-                <!-- Start / Stop toggle -->
+                <!-- Start / Stop toggle — uses the .active class to mirror the Live Input
+                     ToggleButton's checked colors while the pipeline is running. -->
                 <Button Grid.Column="4"
                         Content="{Binding ToggleButtonLabel}"
                         Command="{Binding ToggleActiveCommand}"
+                        Classes.active="{Binding IsGremlinActive}"
                         MinWidth="90"
                         ToolTip.Tip="Start or stop the Gremlin event pipeline"/>
 
