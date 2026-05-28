@@ -1,0 +1,91 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:JoystickGremlin.App.ViewModels"
+        xmlns:core="using:JoystickGremlin.Core.ProcessMonitor"
+        xmlns:conv="using:Avalonia.Data.Converters"
+        x:Class="JoystickGremlin.App.Views.ProcessPickerDialog"
+        x:DataType="vm:ProcessPickerViewModel"
+        Title="Select Process"
+        Width="560" Height="480"
+        MinWidth="420" MinHeight="320"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <Grid Margin="16" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10">
+
+        <!-- Search -->
+        <TextBox Grid.Row="0"
+                 Text="{Binding SearchText}"
+                 PlaceholderText="Filter by name, window title, or path…"/>
+
+        <!-- Options row -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+            <CheckBox Grid.Column="0"
+                      Content="Show all processes"
+                      IsChecked="{Binding ShowAllProcesses}"
+                      ToolTip.Tip="Include background processes without a visible window."/>
+            <TextBlock Grid.Column="1"
+                       Text="Loading…"
+                       Opacity="0.6"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding IsLoading}"/>
+            <Button Grid.Column="2"
+                    Content="⟳ Refresh"
+                    Command="{Binding RefreshCommand}"/>
+        </Grid>
+
+        <!-- Process list -->
+        <Border Grid.Row="2"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                CornerRadius="4">
+            <ListBox ItemsSource="{Binding Processes}"
+                     SelectedItem="{Binding SelectedProcess}"
+                     DoubleTapped="ProcessList_DoubleTapped">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="core:RunningProcessInfo">
+                        <Grid ColumnDefinitions="22,*" Margin="0,2">
+                            <TextBlock Grid.Column="0"
+                                       Text="🎮"
+                                       VerticalAlignment="Center"
+                                       IsVisible="{Binding LikelyGame}"
+                                       ToolTip.Tip="Looks like a game"/>
+                            <StackPanel Grid.Column="1" Spacing="1">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{Binding ExecutableName}"
+                                               FontWeight="SemiBold"
+                                               FontSize="12"/>
+                                    <TextBlock Text="{Binding WindowTitle}"
+                                               FontSize="11"
+                                               Opacity="0.6"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding ExecutablePath}"
+                                           FontSize="10"
+                                           Opacity="0.5"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="3"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8">
+            <Button Content="Cancel"
+                    Click="CancelButton_Click"
+                    IsCancel="True"/>
+            <Button Content="Select"
+                    Click="SelectButton_Click"
+                    IsDefault="True"
+                    IsEnabled="{Binding SelectedProcess, Converter={x:Static conv:ObjectConverters.IsNotNull}}"/>
+        </StackPanel>
+
+    </Grid>
+
+</Window>

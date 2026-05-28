@@ -57,11 +57,18 @@ public static class CoreServiceCollectionExtensions
         // Process monitor — NullProcessMonitor by default; override in Interop for real window tracking.
         services.TryAddSingleton<IProcessMonitor, NullProcessMonitor>();
 
+        // Process enumerator — NullProcessEnumerator by default; override in Interop for real enumeration.
+        services.TryAddSingleton<IProcessEnumerator, NullProcessEnumerator>();
+
         // Startup service — NullStartupService by default; override in Interop for real registry integration.
         services.TryAddSingleton<IStartupService, NullStartupService>();
 
         // FFB bridge — NullForceFeedbackBridge by default; override in Interop for real bridge.
         services.TryAddSingleton<IForceFeedbackBridge, NullForceFeedbackBridge>();
+
+        // FFB orchestrator — ties the bridge lifecycle to the pipeline so the bridge
+        // starts/stops whether the pipeline is run manually or by auto-load.
+        services.AddSingleton<FfbAutoBridgeService>();
 
         // HidHide — NullHidHideController by default; override in Interop for real driver access.
         services.TryAddSingleton<IHidHideController, NullHidHideController>();

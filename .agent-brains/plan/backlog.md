@@ -11,6 +11,14 @@
   - [x] Remove HidHide integration page; delegate to native client
   - [x] PR #53 created, reviewed, all findings resolved — **ready to merge**
 
+## In Progress
+
+- [ ] **feature/autoload-rework** — Auto-load process→profile rework *(see [autoload-rework.md](autoload-rework.md))*
+  - [ ] Process picker (windowed apps + game flag) replacing hand-typed exe/regex
+  - [ ] Profile dropdown from `IProfileLibrary` (app-created profiles only)
+  - [ ] Dedicated Auto-load page; remove auto-load grid from Settings
+  - [ ] Match by exe name / manual path; drop regex; keep advanced toggles
+
 ## Backlog (Optional Features)
 
 - [ ] Response curve editor (axes)

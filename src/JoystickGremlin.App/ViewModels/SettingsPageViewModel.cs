@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Linq;
 using JoystickGremlin.Core.Configuration;
@@ -21,14 +20,12 @@ public sealed class SettingsPageViewModel : ViewModelBase
 {
     private readonly ISettingsService _settingsService;
     private readonly IStartupService _startupService;
-    private readonly IFilePickerService _filePicker;
     private readonly IForceFeedbackBridge _ffbBridge;
     private readonly ILogger<SettingsPageViewModel> _logger;
     private string _profilesFolderPath = string.Empty;
     private bool _startMinimized;
     private bool _startWithWindows;
     private bool _closeToTray = true;
-    private bool _enableAutoLoading;
     private bool _enableFfbBridge;
     private decimal _ffbVJoyDeviceId = 1;
     private int _ffbGainPercent = 100;
@@ -44,21 +41,13 @@ public sealed class SettingsPageViewModel : ViewModelBase
     public SettingsPageViewModel(
         ISettingsService settingsService,
         IStartupService startupService,
-        IFilePickerService filePicker,
         IForceFeedbackBridge ffbBridge,
         ILogger<SettingsPageViewModel> logger)
     {
         _settingsService = settingsService;
         _startupService  = startupService;
-        _filePicker      = filePicker;
         _ffbBridge       = ffbBridge;
         _logger          = logger;
-
-        ProcessMappings = [];
-        AddMappingCommand    = ReactiveCommand.Create(AddMapping);
-        RemoveMappingCommand = ReactiveCommand.Create<ProcessMappingViewModel>(RemoveMapping);
-        MoveUpCommand        = ReactiveCommand.Create<ProcessMappingViewModel>(MoveUp);
-        MoveDownCommand      = ReactiveCommand.Create<ProcessMappingViewModel>(MoveDown);
 
         _ffbBridge.StateChanged += OnBridgeStateChanged;
         _ffbBridgeStatus = _ffbBridge.State.ToString();
@@ -68,10 +57,9 @@ public sealed class SettingsPageViewModel : ViewModelBase
                 x => x.StartMinimized,
                 x => x.StartWithWindows,
                 x => x.CloseToTray,
-                x => x.EnableAutoLoading,
                 x => x.UiUpdateIntervalMs,
                 x => x.EnableLiveInputRefresh,
-                (_, _, _, _, _, _, _) => Unit.Default)
+                (_, _, _, _, _, _) => Unit.Default)
             .Skip(1)
             .Throttle(TimeSpan.FromMilliseconds(800), AvaloniaScheduler.Instance)
             .Subscribe(unit => { if (!_loading) _ = SaveAsync(); });
@@ -113,13 +101,6 @@ public sealed class SettingsPageViewModel : ViewModelBase
     {
         get => _closeToTray;
         set => this.RaiseAndSetIfChanged(ref _closeToTray, value);
-    }
-
-    /// <summary>Gets or sets whether the auto-load feature is globally enabled.</summary>
-    public bool EnableAutoLoading
-    {
-        get => _enableAutoLoading;
-        set => this.RaiseAndSetIfChanged(ref _enableAutoLoading, value);
     }
 
     /// <summary>
@@ -194,21 +175,6 @@ public sealed class SettingsPageViewModel : ViewModelBase
         private set => this.RaiseAndSetIfChanged(ref _ffbBridgeStatus, value);
     }
 
-    /// <summary>Gets the ordered list of process-to-profile mapping ViewModels.</summary>
-    public ObservableCollection<ProcessMappingViewModel> ProcessMappings { get; }
-
-    /// <summary>Gets the command that adds a new empty process mapping entry.</summary>
-    public ReactiveCommand<Unit, Unit> AddMappingCommand { get; }
-
-    /// <summary>Gets the command that removes the given mapping entry.</summary>
-    public ReactiveCommand<ProcessMappingViewModel, Unit> RemoveMappingCommand { get; }
-
-    /// <summary>Gets the command that moves the given mapping entry up (higher priority).</summary>
-    public ReactiveCommand<ProcessMappingViewModel, Unit> MoveUpCommand { get; }
-
-    /// <summary>Gets the command that moves the given mapping entry down (lower priority).</summary>
-    public ReactiveCommand<ProcessMappingViewModel, Unit> MoveDownCommand { get; }
-
     /// <summary>
     /// Populates ViewModel properties from the current <see cref="ISettingsService.Settings"/>.
     /// Call after <see cref="ISettingsService.LoadAsync"/> completes.
@@ -223,17 +189,12 @@ public sealed class SettingsPageViewModel : ViewModelBase
             StartMinimized       = s.StartMinimized;
             StartWithWindows     = _startupService.IsEnabled;
             CloseToTray          = s.CloseToTray;
-            EnableAutoLoading    = s.EnableAutoLoading;
             UiUpdateIntervalMs   = s.UiUpdateIntervalMs > 0 ? (decimal)s.UiUpdateIntervalMs : 10m;
             EnableLiveInputRefresh = s.EnableLiveInputRefresh;
             EnableFfbBridge      = s.EnableFfbBridge;
             FfbVJoyDeviceId      = s.FfbVJoyDeviceId;
             FfbGainPercent       = s.FfbGainPercent;
             FfbWheelInstanceGuid = s.FfbWheelInstanceGuid ?? string.Empty;
-
-            ProcessMappings.Clear();
-            foreach (var m in s.ProcessMappings)
-                ProcessMappings.Add(new ProcessMappingViewModel(m, _filePicker));
         }
         finally
         {
@@ -248,52 +209,12 @@ public sealed class SettingsPageViewModel : ViewModelBase
         Avalonia.Threading.Dispatcher.UIThread.Post(() => FfbBridgeStatus = state.ToString());
     }
 
-    private void AddMapping()
-    {
-        var model = new ProcessProfileMapping();
-        _settingsService.Settings.ProcessMappings.Add(model);
-        ProcessMappings.Add(new ProcessMappingViewModel(model, _filePicker));
-        _ = SaveAsync();
-    }
-
-    private void RemoveMapping(ProcessMappingViewModel vm)
-    {
-        _settingsService.Settings.ProcessMappings.Remove(vm.Model);
-        ProcessMappings.Remove(vm);
-        _ = SaveAsync();
-    }
-
-    private void MoveUp(ProcessMappingViewModel vm)
-    {
-        var idx = ProcessMappings.IndexOf(vm);
-        if (idx <= 0) return;
-        ProcessMappings.Move(idx, idx - 1);
-        var list = _settingsService.Settings.ProcessMappings;
-        var tmp = list[idx]; list[idx] = list[idx - 1]; list[idx - 1] = tmp;
-        _ = SaveAsync();
-    }
-
-    private void MoveDown(ProcessMappingViewModel vm)
-    {
-        var idx = ProcessMappings.IndexOf(vm);
-        if (idx < 0 || idx >= ProcessMappings.Count - 1) return;
-        ProcessMappings.Move(idx, idx + 1);
-        var list = _settingsService.Settings.ProcessMappings;
-        var tmp = list[idx]; list[idx] = list[idx + 1]; list[idx + 1] = tmp;
-        _ = SaveAsync();
-    }
-
     private async Task SaveAsync()
     {
-        // Flush all mapping ViewModels to their underlying models first.
-        foreach (var vm in ProcessMappings)
-            vm.ApplyToModel();
-
         var s = _settingsService.Settings;
         s.ProfilesFolderPath = string.IsNullOrWhiteSpace(ProfilesFolderPath) ? null : ProfilesFolderPath;
         s.StartMinimized     = StartMinimized;
         s.CloseToTray        = CloseToTray;
-        s.EnableAutoLoading  = EnableAutoLoading;
         s.UiUpdateIntervalMs = (int)UiUpdateIntervalMs;
         s.EnableLiveInputRefresh = EnableLiveInputRefresh;
         s.EnableFfbBridge    = EnableFfbBridge;
@@ -314,7 +235,6 @@ public sealed class SettingsPageViewModel : ViewModelBase
         }
 
         s.StartWithWindows = StartWithWindows;
-        // ProcessMappings list is already mutated in-place by AddMapping/RemoveMapping/Move*.
         try
         {
             await _settingsService.SaveAsync();

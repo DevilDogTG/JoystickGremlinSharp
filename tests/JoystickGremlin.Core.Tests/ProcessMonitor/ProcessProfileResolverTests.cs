@@ -9,40 +9,101 @@ namespace JoystickGremlin.Core.Tests.ProcessMonitor;
 
 public sealed class ProcessProfileResolverTests
 {
-    private static ProcessProfileMapping MakeMapping(
-        string exe, string profile = "profile.json", bool enabled = true) =>
+    private static ProcessProfileMapping NameMapping(
+        string exeName, string profile = "profile.json", bool enabled = true) =>
         new()
         {
-            ExecutablePath = exe,
+            MatchType      = ProcessMatchType.ExecutableName,
+            ExecutableName = exeName,
+            ProfilePath    = profile,
+            IsEnabled      = enabled,
+        };
+
+    private static ProcessProfileMapping PathMapping(
+        string exePath, string profile = "profile.json", bool enabled = true) =>
+        new()
+        {
+            MatchType      = ProcessMatchType.ExecutablePath,
+            ExecutablePath = exePath,
             ProfilePath    = profile,
             IsEnabled      = enabled,
         };
 
     // ──────────────────────────────────────────────
-    // Exact match
+    // Name match
+    // ──────────────────────────────────────────────
+
+    [Fact]
+    public void Resolve_ExecutableName_ReturnsMatch()
+    {
+        var mappings = new List<ProcessProfileMapping> { NameMapping("DCS.exe", "dcs.json") };
+
+        var result = ProcessProfileResolver.Resolve(@"C:\Program Files\DCS World\bin\DCS.exe", mappings);
+
+        result.Should().NotBeNull();
+        result!.ProfilePath.Should().Be("dcs.json");
+    }
+
+    [Fact]
+    public void Resolve_ExecutableName_IsCaseInsensitive()
+    {
+        var mappings = new List<ProcessProfileMapping> { NameMapping("dcs.EXE") };
+
+        var result = ProcessProfileResolver.Resolve(@"C:\Games\DCS World\DCS.exe", mappings);
+
+        result.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Resolve_ExecutableName_IgnoresDirectory()
+    {
+        // Same exe name in a completely different install location still matches.
+        var mappings = new List<ProcessProfileMapping> { NameMapping("game.exe") };
+
+        var result = ProcessProfileResolver.Resolve(@"D:\Some\Other\Path\game.exe", mappings);
+
+        result.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Resolve_ExecutableName_DifferentExe_ReturnsNull()
+    {
+        var mappings = new List<ProcessProfileMapping> { NameMapping("DCS.exe") };
+
+        var result = ProcessProfileResolver.Resolve(@"C:\Games\OtherGame.exe", mappings);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void Resolve_ExecutableName_Empty_ReturnsNull()
+    {
+        var mappings = new List<ProcessProfileMapping> { NameMapping(string.Empty) };
+
+        var result = ProcessProfileResolver.Resolve(@"C:\Games\game.exe", mappings);
+
+        result.Should().BeNull();
+    }
+
+    // ──────────────────────────────────────────────
+    // Path match (legacy / manual mode)
     // ──────────────────────────────────────────────
 
     [Fact]
     public void Resolve_ExactPath_ReturnsMatch()
     {
-        var mappings = new List<ProcessProfileMapping>
-        {
-            MakeMapping(@"C:\Games\game.exe"),
-        };
+        var mappings = new List<ProcessProfileMapping> { PathMapping(@"C:\Games\game.exe", "exact.json") };
 
         var result = ProcessProfileResolver.Resolve(@"C:\Games\game.exe", mappings);
 
         result.Should().NotBeNull();
-        result!.ProfilePath.Should().Be("profile.json");
+        result!.ProfilePath.Should().Be("exact.json");
     }
 
     [Fact]
     public void Resolve_ExactPath_IsCaseInsensitive()
     {
-        var mappings = new List<ProcessProfileMapping>
-        {
-            MakeMapping(@"C:\games\Game.EXE"),
-        };
+        var mappings = new List<ProcessProfileMapping> { PathMapping(@"C:\games\Game.EXE") };
 
         var result = ProcessProfileResolver.Resolve(@"c:\Games\game.exe", mappings);
 
@@ -52,45 +113,22 @@ public sealed class ProcessProfileResolverTests
     [Fact]
     public void Resolve_ExactPath_NormalizesBackslashes()
     {
-        var mappings = new List<ProcessProfileMapping>
-        {
-            MakeMapping("C:/Games/game.exe"),
-        };
+        var mappings = new List<ProcessProfileMapping> { PathMapping("C:/Games/game.exe") };
 
         var result = ProcessProfileResolver.Resolve(@"C:\Games\game.exe", mappings);
 
         result.Should().NotBeNull();
     }
 
-    // ──────────────────────────────────────────────
-    // Regex fallback
-    // ──────────────────────────────────────────────
-
     [Fact]
-    public void Resolve_RegexPattern_ReturnsMatch()
+    public void Resolve_PathMode_DifferentDirectory_ReturnsNull()
     {
-        var mappings = new List<ProcessProfileMapping>
-        {
-            MakeMapping(@".*DCS.*", "dcs-profile.json"),
-        };
+        // Path mode must NOT match on file name alone — the full path has to agree.
+        var mappings = new List<ProcessProfileMapping> { PathMapping(@"C:\Games\game.exe") };
 
-        var result = ProcessProfileResolver.Resolve(@"C:\Program Files\DCS World\bin\DCS.exe", mappings);
+        var result = ProcessProfileResolver.Resolve(@"D:\Other\game.exe", mappings);
 
-        result.Should().NotBeNull();
-        result!.ProfilePath.Should().Be("dcs-profile.json");
-    }
-
-    [Fact]
-    public void Resolve_RegexPattern_IsCaseInsensitive()
-    {
-        var mappings = new List<ProcessProfileMapping>
-        {
-            MakeMapping(".*dcs.*"),
-        };
-
-        var result = ProcessProfileResolver.Resolve(@"C:\Games\DCS World\DCS.EXE", mappings);
-
-        result.Should().NotBeNull();
+        result.Should().BeNull();
     }
 
     // ──────────────────────────────────────────────
@@ -102,8 +140,8 @@ public sealed class ProcessProfileResolverTests
     {
         var mappings = new List<ProcessProfileMapping>
         {
-            MakeMapping(@".*DCS.*",  "first.json"),
-            MakeMapping(@".*DCS.*",  "second.json"),
+            NameMapping("DCS.exe", "first.json"),
+            NameMapping("DCS.exe", "second.json"),
         };
 
         var result = ProcessProfileResolver.Resolve(@"C:\DCS\DCS.exe", mappings);
@@ -113,19 +151,18 @@ public sealed class ProcessProfileResolverTests
     }
 
     [Fact]
-    public void Resolve_ExactMatchBeforeRegex()
+    public void Resolve_MixedModes_FirstEnabledMatchWins()
     {
         var mappings = new List<ProcessProfileMapping>
         {
-            MakeMapping(@".*DCS.*",               "regex.json"),
-            MakeMapping(@"C:\Games\DCS\DCS.exe",  "exact.json"),
+            PathMapping(@"C:\Games\DCS\DCS.exe", "path.json"),
+            NameMapping("DCS.exe", "name.json"),
         };
 
-        // Exact match is in position 1, regex in position 0 — but exact wins regardless.
         var result = ProcessProfileResolver.Resolve(@"C:\Games\DCS\DCS.exe", mappings);
 
         result.Should().NotBeNull();
-        result!.ProfilePath.Should().Be("exact.json");
+        result!.ProfilePath.Should().Be("path.json");
     }
 
     // ──────────────────────────────────────────────
@@ -135,10 +172,7 @@ public sealed class ProcessProfileResolverTests
     [Fact]
     public void Resolve_DisabledEntry_IsSkipped()
     {
-        var mappings = new List<ProcessProfileMapping>
-        {
-            MakeMapping(@".*DCS.*", enabled: false),
-        };
+        var mappings = new List<ProcessProfileMapping> { NameMapping("DCS.exe", enabled: false) };
 
         var result = ProcessProfileResolver.Resolve(@"C:\DCS\DCS.exe", mappings);
 
@@ -150,8 +184,8 @@ public sealed class ProcessProfileResolverTests
     {
         var mappings = new List<ProcessProfileMapping>
         {
-            MakeMapping(@".*DCS.*", "disabled.json", enabled: false),
-            MakeMapping(@".*DCS.*", "enabled.json",  enabled: true),
+            NameMapping("DCS.exe", "disabled.json", enabled: false),
+            NameMapping("DCS.exe", "enabled.json",  enabled: true),
         };
 
         var result = ProcessProfileResolver.Resolve(@"C:\DCS\DCS.exe", mappings);
@@ -167,7 +201,7 @@ public sealed class ProcessProfileResolverTests
     [Fact]
     public void Resolve_NullPath_ReturnsNull()
     {
-        var mappings = new List<ProcessProfileMapping> { MakeMapping("game.exe") };
+        var mappings = new List<ProcessProfileMapping> { NameMapping("game.exe") };
 
         var result = ProcessProfileResolver.Resolve(null!, mappings);
 
@@ -177,7 +211,7 @@ public sealed class ProcessProfileResolverTests
     [Fact]
     public void Resolve_EmptyPath_ReturnsNull()
     {
-        var mappings = new List<ProcessProfileMapping> { MakeMapping("game.exe") };
+        var mappings = new List<ProcessProfileMapping> { NameMapping("game.exe") };
 
         var result = ProcessProfileResolver.Resolve(string.Empty, mappings);
 
@@ -190,34 +224,5 @@ public sealed class ProcessProfileResolverTests
         var result = ProcessProfileResolver.Resolve(@"C:\Games\game.exe", []);
 
         result.Should().BeNull();
-    }
-
-    [Fact]
-    public void Resolve_InvalidRegex_IsSkipped()
-    {
-        var mappings = new List<ProcessProfileMapping>
-        {
-            MakeMapping("[[[invalid regex"),
-        };
-
-        // Should not throw; invalid regex entry is silently skipped.
-        var act = () => ProcessProfileResolver.Resolve(@"C:\Games\game.exe", mappings);
-
-        act.Should().NotThrow();
-    }
-
-    [Fact]
-    public void Resolve_InvalidRegexFollowedByValidMatch_ReturnsValidMatch()
-    {
-        var mappings = new List<ProcessProfileMapping>
-        {
-            MakeMapping("[[[invalid",   "bad.json"),
-            MakeMapping(@".*game\.exe", "good.json"),
-        };
-
-        var result = ProcessProfileResolver.Resolve(@"C:\Games\game.exe", mappings);
-
-        result.Should().NotBeNull();
-        result!.ProfilePath.Should().Be("good.json");
     }
 }

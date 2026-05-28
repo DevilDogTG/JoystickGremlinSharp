@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-using System.Text.RegularExpressions;
 using JoystickGremlin.Core.Configuration;
 
 namespace JoystickGremlin.Core.ProcessMonitor;
 
 /// <summary>
 /// Resolves a foreground executable path against a list of <see cref="ProcessProfileMapping"/> entries.
-/// Uses exact-path matching first, then regex pattern matching.
+/// Each mapping is matched either by executable file name or by full path (see
+/// <see cref="ProcessMatchType"/>); the first enabled match in list order wins.
 /// </summary>
 public static class ProcessProfileResolver
 {
@@ -15,7 +15,7 @@ public static class ProcessProfileResolver
     /// Finds the first matching <see cref="ProcessProfileMapping"/> for the given executable path.
     /// </summary>
     /// <param name="executablePath">
-    /// The normalized full path of the foreground executable (forward slashes, case-insensitive).
+    /// The full path of the foreground executable (any case, either path separator).
     /// </param>
     /// <param name="mappings">The ordered list of profile mappings to search.</param>
     /// <returns>
@@ -27,28 +27,26 @@ public static class ProcessProfileResolver
     {
         if (string.IsNullOrEmpty(executablePath)) return null;
 
-        var normalized = Normalize(executablePath);
-        var list = mappings.Where(m => m.IsEnabled).ToList();
+        var normalizedPath = Normalize(executablePath);
+        var fileName = GetFileName(normalizedPath);
 
-        // Pass 1: exact path match (normalized, case-insensitive).
-        foreach (var mapping in list)
+        foreach (var mapping in mappings)
         {
-            if (string.Equals(Normalize(mapping.ExecutablePath), normalized, StringComparison.OrdinalIgnoreCase))
-                return mapping;
-        }
+            if (!mapping.IsEnabled) continue;
 
-        // Pass 2: regex pattern match (first match wins).
-        foreach (var mapping in list)
-        {
-            if (string.IsNullOrEmpty(mapping.ExecutablePath)) continue;
-            try
+            switch (mapping.MatchType)
             {
-                if (Regex.IsMatch(normalized, mapping.ExecutablePath, RegexOptions.IgnoreCase))
-                    return mapping;
-            }
-            catch (RegexParseException)
-            {
-                // Invalid regex — skip entry rather than crash.
+                case ProcessMatchType.ExecutableName:
+                    if (!string.IsNullOrEmpty(mapping.ExecutableName)
+                        && string.Equals(mapping.ExecutableName, fileName, StringComparison.OrdinalIgnoreCase))
+                        return mapping;
+                    break;
+
+                case ProcessMatchType.ExecutablePath:
+                    if (!string.IsNullOrEmpty(mapping.ExecutablePath)
+                        && string.Equals(Normalize(mapping.ExecutablePath), normalizedPath, StringComparison.OrdinalIgnoreCase))
+                        return mapping;
+                    break;
             }
         }
 
@@ -57,4 +55,10 @@ public static class ProcessProfileResolver
 
     private static string Normalize(string path) =>
         path.Replace('\\', '/').TrimEnd('/');
+
+    private static string GetFileName(string normalizedPath)
+    {
+        var slash = normalizedPath.LastIndexOf('/');
+        return slash >= 0 ? normalizedPath[(slash + 1)..] : normalizedPath;
+    }
 }
