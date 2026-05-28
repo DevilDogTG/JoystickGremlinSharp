@@ -25,27 +25,37 @@ public static class ProcessProfileResolver
         string executablePath,
         IEnumerable<ProcessProfileMapping> mappings)
     {
-        if (string.IsNullOrEmpty(executablePath)) return null;
+        if (string.IsNullOrEmpty(executablePath))
+        {
+            return null;
+        }
 
         var normalizedPath = Normalize(executablePath);
         var fileName = GetFileName(normalizedPath);
 
         foreach (var mapping in mappings)
         {
-            if (!mapping.IsEnabled) continue;
+            if (!mapping.IsEnabled)
+            {
+                continue;
+            }
 
             switch (mapping.MatchType)
             {
                 case ProcessMatchType.ExecutableName:
                     if (!string.IsNullOrEmpty(mapping.ExecutableName)
                         && string.Equals(mapping.ExecutableName, fileName, StringComparison.OrdinalIgnoreCase))
+                    {
                         return mapping;
+                    }
                     break;
 
                 case ProcessMatchType.ExecutablePath:
                     if (!string.IsNullOrEmpty(mapping.ExecutablePath)
                         && string.Equals(Normalize(mapping.ExecutablePath), normalizedPath, StringComparison.OrdinalIgnoreCase))
+                    {
                         return mapping;
+                    }
                     break;
             }
         }

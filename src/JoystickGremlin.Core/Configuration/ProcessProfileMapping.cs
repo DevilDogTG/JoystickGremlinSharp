@@ -9,11 +9,19 @@ namespace JoystickGremlin.Core.Configuration;
 /// </summary>
 public sealed class ProcessProfileMapping
 {
+    // IMPORTANT — STJ-deserialization invariant:
+    // This property MUST NOT have a C# initializer. System.Text.Json does not write to
+    // properties absent from the JSON document, so an initializer would override the
+    // legacy-compatible default. Keeping it unset means absent "MatchType" → enum value 0
+    // → ExecutablePath, which is the only state where pre-existing settings.json files
+    // (containing a bare "ExecutablePath" field) continue to resolve correctly.
+    // Locked by ProcessProfileMappingCompatTests. Do not "tidy up" by adding `= ...`.
+
     /// <summary>
     /// Gets or sets how the foreground executable is matched against this mapping.
-    /// Defaults to <see cref="ProcessMatchType.ExecutablePath"/> (enum value 0) so that settings
-    /// persisted before this field existed deserialize into path mode without a migration. The
-    /// process picker sets <see cref="ProcessMatchType.ExecutableName"/> explicitly when used.
+    /// Defaults to <see cref="ProcessMatchType.ExecutablePath"/> via the enum's underlying
+    /// value 0 — see the IMPORTANT note above. The process picker sets
+    /// <see cref="ProcessMatchType.ExecutableName"/> explicitly when used.
     /// </summary>
     public ProcessMatchType MatchType { get; set; }
 

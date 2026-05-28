@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using JoystickGremlin.Core.ProcessMonitor;
@@ -20,6 +21,7 @@ public sealed class ProcessPickerViewModel : ViewModelBase
 {
     private readonly IProcessEnumerator _enumerator;
     private IReadOnlyList<RunningProcessInfo> _all = [];
+    private CancellationTokenSource? _reloadCts;
     private string _searchText = string.Empty;
     private bool _showAllProcesses;
     private bool _isLoading;
@@ -78,24 +80,51 @@ public sealed class ProcessPickerViewModel : ViewModelBase
     /// <summary>Gets the command that re-enumerates running processes.</summary>
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
 
+    /// <summary>
+    /// Enumerates processes off the UI thread and commits the result, cancelling any in-flight
+    /// reload first so a fast user toggle of <see cref="ShowAllProcesses"/> can't have a slow
+    /// previous enumeration overwrite a newer one's result.
+    /// </summary>
     private async Task ReloadAsync()
     {
+        // Cancel and dispose any prior reload; this property setter is only ever entered from
+        // the UI thread, so the field swap doesn't need Interlocked.
+        var previousCts = _reloadCts;
+        _reloadCts = new CancellationTokenSource();
+        previousCts?.Cancel();
+        previousCts?.Dispose();
+        var token = _reloadCts.Token;
+
         IsLoading = true;
         var includeAll = ShowAllProcesses;
         try
         {
-            _all = await Task.Run(() => _enumerator.GetUserProcesses(includeAll));
-        }
-        finally
-        {
+            var result = await Task.Run(() => _enumerator.GetUserProcesses(includeAll), token);
+            if (token.IsCancellationRequested)
+            {
+                return;
+            }
+            _all = result;
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
+                if (token.IsCancellationRequested)
+                {
+                    return;
+                }
                 ApplyFilter();
                 IsLoading = false;
             });
         }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a later reload — drop the result silently.
+        }
     }
 
+    /// <summary>
+    /// Rebuilds <see cref="Processes"/> from the cached enumeration in <c>_all</c>, applying the
+    /// current <see cref="SearchText"/> filter and preserving the selected process if still present.
+    /// </summary>
     private void ApplyFilter()
     {
         var previous = SelectedProcess;
@@ -112,10 +141,14 @@ public sealed class ProcessPickerViewModel : ViewModelBase
 
         Processes.Clear();
         foreach (var p in filtered)
+        {
             Processes.Add(p);
+        }
 
         // Preserve the selection if it is still present.
         if (previous is not null)
+        {
             SelectedProcess = Processes.FirstOrDefault(p => p.Pid == previous.Pid);
+        }
     }
 }

@@ -196,26 +196,46 @@ public sealed class ProcessMappingViewModel : ReactiveObject
         Model.RemainActiveOnFocusLoss = RemainActiveOnFocusLoss;
     }
 
+    /// <summary>
+    /// Opens the process picker dialog. On a successful pick the mapping switches to
+    /// <see cref="ProcessMatchType.ExecutableName"/> mode and captures both the exe name (for matching)
+    /// and the full path (for display).
+    /// </summary>
     private async System.Threading.Tasks.Task PickProcessAsync()
     {
         var picked = await _processPicker.PickProcessAsync();
-        if (picked is null) return;
+        if (picked is null)
+        {
+            return;
+        }
 
         MatchType      = ProcessMatchType.ExecutableName;
         ExecutableName = picked.ExecutableName;
         ExecutablePath = picked.ExecutablePath;
     }
 
+    /// <summary>
+    /// Opens an <c>*.exe</c> file picker. On a successful selection the mapping switches to
+    /// <see cref="ProcessMatchType.ExecutablePath"/> mode; the path is normalized to forward slashes
+    /// to match the resolver's normalization and the exe name is derived for display.
+    /// </summary>
     private async System.Threading.Tasks.Task BrowseExecutableAsync()
     {
         var path = await _filePicker.PickOpenFileAsync("Select Executable", "Executable", "*.exe");
-        if (path is null) return;
+        if (path is null)
+        {
+            return;
+        }
 
         MatchType      = ProcessMatchType.ExecutablePath;
         ExecutablePath = path.Replace('\\', '/');
         ExecutableName = Path.GetFileName(path);
     }
 
+    /// <summary>
+    /// Re-raises the computed-match display properties so XAML bindings refresh after
+    /// <see cref="MatchType"/>, <see cref="ExecutableName"/>, or <see cref="ExecutablePath"/> changes.
+    /// </summary>
     private void RaiseMatchDisplayChanged()
     {
         this.RaisePropertyChanged(nameof(MatchDisplay));

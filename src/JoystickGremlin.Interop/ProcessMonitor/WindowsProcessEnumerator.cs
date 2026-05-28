@@ -38,13 +38,22 @@ public sealed class WindowsProcessEnumerator : IProcessEnumerator
         {
             try
             {
-                if (process.Id == ownPid) continue;
+                if (process.Id == ownPid)
+                {
+                    continue;
+                }
 
                 // Cheap filter first: only query the path for processes we'll actually return.
-                if (!includeAll && process.MainWindowHandle == IntPtr.Zero) continue;
+                if (!includeAll && process.MainWindowHandle == IntPtr.Zero)
+                {
+                    continue;
+                }
 
                 var path = QueryProcessPath(process.Id);
-                if (string.IsNullOrEmpty(path)) continue;
+                if (string.IsNullOrEmpty(path))
+                {
+                    continue;
+                }
 
                 var exeName = GetFileName(path);
                 string windowTitle;
@@ -85,29 +94,44 @@ public sealed class WindowsProcessEnumerator : IProcessEnumerator
             .ToList();
     }
 
+    /// <summary>
+    /// Returns <see cref="Process.ProcessName"/>, treating exited/inaccessible processes as
+    /// empty strings so a single bad process can't tear down the whole enumeration.
+    /// </summary>
     private static string SafeProcessName(Process process)
     {
         try { return process.ProcessName; }
         catch { return string.Empty; }
     }
 
+    /// <summary>Returns the file-name segment of a forward-slash-normalized path.</summary>
     private static string GetFileName(string normalizedPath)
     {
         var slash = normalizedPath.LastIndexOf('/');
         return slash >= 0 ? normalizedPath[(slash + 1)..] : normalizedPath;
     }
 
+    /// <summary>
+    /// Resolves the full executable path for a PID via <c>QueryFullProcessImageName</c>.
+    /// Uses <c>PROCESS_QUERY_LIMITED_INFORMATION</c> so the call works without elevation, and
+    /// returns an empty string instead of throwing on processes the caller cannot open.
+    /// </summary>
     private static string QueryProcessPath(int pid)
     {
         var handle = NativeMethods.OpenProcess(ProcessQueryLimitedInformation, false, pid);
-        if (handle == IntPtr.Zero) return string.Empty;
+        if (handle == IntPtr.Zero)
+        {
+            return string.Empty;
+        }
 
         try
         {
             var buffer = new char[1024];
             var size = (uint)buffer.Length;
             if (!NativeMethods.QueryFullProcessImageName(handle, 0, buffer, ref size))
+            {
                 return string.Empty;
+            }
 
             // Normalize path separators to forward slashes, consistent with WindowsProcessMonitor.
             return new string(buffer, 0, (int)size).Replace('\\', '/');
@@ -120,11 +144,14 @@ public sealed class WindowsProcessEnumerator : IProcessEnumerator
 
     // ─── P/Invoke declarations ────────────────────────────────────────────────
 
+    /// <summary>Win32 entry points used by <see cref="WindowsProcessEnumerator"/>.</summary>
     private static class NativeMethods
     {
+        /// <summary>kernel32!OpenProcess — opens an existing local process object.</summary>
         [DllImport("kernel32.dll", SetLastError = true)]
         internal static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, int dwProcessId);
 
+        /// <summary>kernel32!QueryFullProcessImageNameW — retrieves the full executable path for a process handle.</summary>
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool QueryFullProcessImageName(
@@ -133,6 +160,7 @@ public sealed class WindowsProcessEnumerator : IProcessEnumerator
             char[] lpExeName,
             ref uint lpdwSize);
 
+        /// <summary>kernel32!CloseHandle — closes an open object handle.</summary>
         [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool CloseHandle(IntPtr hObject);
