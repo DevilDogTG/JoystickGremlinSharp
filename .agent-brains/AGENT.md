@@ -2,7 +2,8 @@
 version: 1.0
 profiles:
   - base-developer
-  - charp-developer
+  - csharp-developer
+  - github-scm
 strict_override: false
 ---
 
