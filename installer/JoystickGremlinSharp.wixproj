@@ -26,8 +26,8 @@
       <ComponentGroupName>AppFiles</ComponentGroupName>
       <DirectoryRefId>INSTALLFOLDER</DirectoryRefId>
       <SuppressRootDirectory>true</SuppressRootDirectory>
-      <!-- Exclude Velopack/update-related files if any residual exist -->
-      <Excludes>*.pdb;Update.exe;Squirrel.exe</Excludes>
+      <!-- Exclude PDB files (recursive) and legacy Velopack artifacts if any residual exist -->
+      <Excludes>**\*.pdb;Update.exe;Squirrel.exe</Excludes>
     </HarvestDirectory>
   </ItemGroup>
 

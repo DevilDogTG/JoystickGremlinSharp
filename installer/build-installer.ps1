@@ -43,11 +43,18 @@ dotnet publish $appCsproj `
 
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 
-# ── Ensure wix global tool is available ───────────────────────────────────────
-if (-not (Get-Command wix -ErrorAction SilentlyContinue)) {
-    Write-Host "`nInstalling WiX v6 CLI (wix)..." -ForegroundColor Cyan
-    dotnet tool install --global wix --version 6.0.2
-    if ($LASTEXITCODE -ne 0) { throw "Failed to install wix tool" }
+# ── Ensure wix global tool is available at the correct version ────────────────
+$requiredWixVersion = '6.0.2'
+$wixCmd = Get-Command wix -ErrorAction SilentlyContinue
+$wixVersionOk = $wixCmd -and ((wix --version 2>&1) -match [regex]::Escape($requiredWixVersion))
+
+if (-not $wixVersionOk) {
+    Write-Host "`nInstalling WiX CLI v$requiredWixVersion..." -ForegroundColor Cyan
+    dotnet tool install --global wix --version $requiredWixVersion 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        dotnet tool update --global wix --version $requiredWixVersion
+    }
+    if ($LASTEXITCODE -ne 0) { throw "Failed to install/update wix tool to v$requiredWixVersion" }
 }
 
 # ── Build MSI ─────────────────────────────────────────────────────────────────

@@ -48,8 +48,8 @@
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
 
     <!-- ── Features ────────────────────────────────────────────────────
-         Level 1  = selected in Typical + Custom
-         Level 2  = optional; selected in Custom only (user can toggle)
+         Level 1  = selected in both Typical and Custom (on by default)
+         Level 2  = optional; visible in Custom only (off by default)
          Level 0  = absent (disabled)
     ───────────────────────────────────────────────────────────────────── -->
     <Feature Id="MainApp"
@@ -65,6 +65,7 @@
              Title="Desktop Shortcut"
              Description="Create a shortcut on the Desktop."
              Level="1">
+      <!-- Level 1: installed by default (Typical and Custom). Deselect in Custom mode to skip. -->
       <ComponentRef Id="DesktopShortcut" />
     </Feature>
 
