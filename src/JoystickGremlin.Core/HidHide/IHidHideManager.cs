@@ -14,5 +14,5 @@ public interface IHidHideManager : IDisposable
     /// Runs on application startup: whitelists this executable's path so the app
     /// can see hidden devices. Called once from <c>App.axaml.cs</c>.
     /// </summary>
-    Task InitializeAsync(CancellationToken cancellationToken = default);
+    Task InitializeAsync();
 }

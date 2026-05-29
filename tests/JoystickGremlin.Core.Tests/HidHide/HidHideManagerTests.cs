@@ -91,4 +91,20 @@ public sealed class HidHideManagerTests
 
         sut.Invoking(s => s.Dispose()).Should().NotThrow();
     }
+
+    [Fact]
+    public async Task Dispose_CalledTwice_RemovesWhitelistEntryOnlyOnce()
+    {
+        // Guard against the `_disposed` flag being removed by a future "tidy up" pass:
+        // a second Dispose must be a no-op (must not attempt another RemoveApplicationPath
+        // call, which would no-op against a fake but would re-trigger CLI/UAC in production).
+        var sut = CreateSut();
+        await sut.InitializeAsync();
+        sut.Dispose();
+        var pathsAfterFirstDispose = _controller.ApplicationPaths.Count;
+
+        sut.Invoking(s => s.Dispose()).Should().NotThrow();
+
+        _controller.ApplicationPaths.Count.Should().Be(pathsAfterFirstDispose);
+    }
 }
