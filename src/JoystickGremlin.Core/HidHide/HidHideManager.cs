@@ -18,6 +18,13 @@ public sealed class HidHideManager : IHidHideManager
     private readonly string _ownExePath;
     private bool _disposed;
 
+    /// <summary>
+    /// Initializes a new <see cref="HidHideManager"/> and captures the running process's
+    /// executable path so it can be added to and removed from the HidHide application
+    /// bypass-list during the application lifecycle.
+    /// </summary>
+    /// <param name="controller">The low-level HidHide driver controller.</param>
+    /// <param name="logger">Logger for diagnostic output.</param>
     public HidHideManager(
         IHidHideController controller,
         ILogger<HidHideManager> logger)
@@ -31,7 +38,9 @@ public sealed class HidHideManager : IHidHideManager
     public Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         if (!_controller.IsInstalled || string.IsNullOrEmpty(_ownExePath))
+        {
             return Task.CompletedTask;
+        }
 
         try
         {
@@ -63,7 +72,9 @@ public sealed class HidHideManager : IHidHideManager
     public void Dispose()
     {
         if (_disposed)
+        {
             return;
+        }
 
         if (!string.IsNullOrEmpty(_ownExePath) && _controller.IsInstalled)
         {
