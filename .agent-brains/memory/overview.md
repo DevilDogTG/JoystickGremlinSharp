@@ -13,7 +13,9 @@
 
 **Branch model**: main-first, tag-based releases. Feature branches → rebase-merge PR → main.
 
-**Test baseline**: 328 tests, 0 warnings (as of `feature/wix-installer` merged, 2026-05-28).
+**Test baseline**: 332 tests, 0 warnings (as of `feature/autoload-into-profile` merge, 2026-05-29).
+
+**Current version**: v11.0.0 (breaking change — see `BREAKING-CHANGES.md` and Auto-Load section below).
 
 ---
 
@@ -27,6 +29,35 @@
 - **CI**: `publish.yml` runs `dotnet publish` → `dotnet build .wixproj` → sign MSI → release as `*-Setup.msi`
 - **In-app updates**: Removed (Velopack). `Check for Updates` toolbar button opens GitHub Releases in browser.
   Full semver version checker planned for future release (see backlog).
+
+## Auto-Load Triggers (v11.0+)
+
+- **Per-profile ownership**: process triggers live inside each profile's
+  `AutoLoadTriggers` list, not in a global `settings.json` mapping. Deleting or
+  sharing a profile carries its triggers with it.
+- **Storage paths** (consolidated under `%APPDATA%\JoystickGremlinSharp\`):
+  - Profiles: `%APPDATA%\JoystickGremlinSharp\profiles\`
+  - Settings: `%APPDATA%\JoystickGremlinSharp\settings.json` (moved from legacy
+    `JoystickGremlin\` folder in v11)
+  - Logs: `%LOCALAPPDATA%\JoystickGremlinSharp\logs\`
+- **Resolver**: `ProcessProfileResolver.Resolve(string, IEnumerable<ProfileEntry>)`
+  returns `ProcessTriggerMatch(profile, trigger)`. Iteration order is the
+  library scan order (alphabetical by file path within each category).
+- **Global kill-switch**: `AppSettings.EnableAutoLoading` still gates the whole
+  feature.
+- **Breaking change**: v10.x mappings in `%APPDATA%\JoystickGremlin\settings.json`
+  are NOT migrated. See `BREAKING-CHANGES.md`.
+
+## Native Library Lifecycle Trap (recorded 2026-05-29)
+
+- Bundled native DLLs that write debug logs to CWD will crash non-admin
+  installed-build launches because CWD is `C:\Program Files\<app>\` or
+  `C:\Windows\system32`, neither user-writable.
+- Mitigation pattern: relocate `Environment.CurrentDirectory` to a per-user
+  folder around the native `init()` call, restore in `finally`.
+- Reference: `src/JoystickGremlin.Interop/Dill/DillDeviceManager.InitializeNative`
+  (redirects to `%LOCALAPPDATA%\JoystickGremlinSharp\dill\`).
+- Detail: `.agent-brains/memory/native-lib-cwd-trap.md`.
 
 ## HidHide Integration
 
@@ -43,3 +74,4 @@ HidHide is an optional device-hiding driver by Nefarius. Our integration:
 - Response curve editor (axes)
 - Condition-based action pipeline
 - UI for button mapping configuration
+- `ProfileLibrary.ScanCore` async + parallel JSON read (deferred from PR #66 code review; becomes relevant beyond ~50 profiles)
