@@ -2,6 +2,7 @@
 
 using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using JoystickGremlin.App.Services;
 using JoystickGremlin.Core.Profile;
@@ -14,14 +15,16 @@ namespace JoystickGremlin.App.ViewModels;
 /// Owns the per-profile add / remove / reorder commands and tracks whether the group has
 /// pending unsaved changes so the page can save only the profiles that actually changed.
 /// </summary>
-public sealed class ProfileTriggersGroupViewModel : ReactiveObject
+public sealed class ProfileTriggersGroupViewModel : ReactiveObject, IDisposable
 {
     private readonly IProcessPickerDialogService _processPicker;
     private readonly IFilePickerService _filePicker;
     private readonly Action _onChanged;
+    private readonly Dictionary<ProcessTriggerViewModel, IDisposable> _rowSubscriptions = [];
 
     private bool _isDirty;
     private bool _isExpanded;
+    private bool _disposed;
 
     /// <summary>Gets the profile whose triggers are displayed in this group.</summary>
     public ProfileEntry Profile { get; }
@@ -99,10 +102,12 @@ public sealed class ProfileTriggersGroupViewModel : ReactiveObject
     }
 
     /// <summary>
-    /// Builds the persisted <see cref="ProcessTrigger"/> list from the current row VMs and
-    /// clears the dirty flag.
+    /// Returns a fresh persisted-model list reflecting the current row state.
+    /// Pure — does not clear the dirty flag. Callers must invoke <see cref="MarkSaved"/>
+    /// only after the corresponding save has succeeded, so that a failed save leaves
+    /// the group dirty for the next debounced retry.
     /// </summary>
-    public List<ProcessTrigger> BuildModelList()
+    public List<ProcessTrigger> SnapshotTriggers()
     {
         var list = new List<ProcessTrigger>(Triggers.Count);
         foreach (var row in Triggers)
@@ -110,9 +115,15 @@ public sealed class ProfileTriggersGroupViewModel : ReactiveObject
             row.ApplyToModel();
             list.Add(row.Model);
         }
-        IsDirty = false;
         return list;
     }
+
+    /// <summary>
+    /// Clears the dirty flag. Invoke only after a successful save of the snapshot
+    /// returned by <see cref="SnapshotTriggers"/>; on save failure leave the group
+    /// dirty so the next change re-enters the save queue.
+    /// </summary>
+    public void MarkSaved() => IsDirty = false;
 
     private void AddTrigger()
     {
@@ -122,6 +133,8 @@ public sealed class ProfileTriggersGroupViewModel : ReactiveObject
 
     private void RemoveTrigger(ProcessTriggerViewModel row)
     {
+        if (_rowSubscriptions.Remove(row, out var sub))
+            sub.Dispose();
         Triggers.Remove(row);
         this.RaisePropertyChanged(nameof(TriggerCountSummary));
         MarkDirty();
@@ -147,7 +160,7 @@ public sealed class ProfileTriggersGroupViewModel : ReactiveObject
     {
         var vm = new ProcessTriggerViewModel(model, _processPicker, _filePicker);
         Triggers.Add(vm);
-        vm.Changed.Subscribe(_ => MarkDirty());
+        _rowSubscriptions[vm] = vm.Changed.Subscribe(_ => MarkDirty());
         if (!silent)
         {
             this.RaisePropertyChanged(nameof(TriggerCountSummary));
@@ -159,6 +172,17 @@ public sealed class ProfileTriggersGroupViewModel : ReactiveObject
     {
         IsDirty = true;
         _onChanged();
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        foreach (var sub in _rowSubscriptions.Values)
+            sub.Dispose();
+        _rowSubscriptions.Clear();
     }
 
     private static ProcessTrigger CloneTrigger(ProcessTrigger src) => new()

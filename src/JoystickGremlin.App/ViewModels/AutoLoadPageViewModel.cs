@@ -126,7 +126,13 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
 
     private void RebuildGroups()
     {
+        // Dispose the existing groups before clearing so their per-row reactive
+        // subscriptions are released. Without this, every library scan would
+        // accumulate detached subscriptions until GC eventually collects them.
+        foreach (var oldGroup in ProfileGroups)
+            oldGroup.Dispose();
         ProfileGroups.Clear();
+
         foreach (var entry in _profileLibrary.Entries)
         {
             ProfileGroups.Add(new ProfileTriggersGroupViewModel(
@@ -148,17 +154,23 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
     {
         // Persist any per-profile edits.
         var dirtyGroups = ProfileGroups.Where(g => g.IsDirty).ToList();
+        var savedAtLeastOne = false;
         foreach (var group in dirtyGroups)
         {
             try
             {
                 var profile = await _profileRepository.LoadAsync(group.Profile.FilePath);
 
-                // Replace the in-memory triggers list and save back.
+                // Replace the in-memory triggers list and save back. SnapshotTriggers
+                // is pure — the dirty flag is only cleared via MarkSaved() below,
+                // and only after the save succeeds, so a failed save stays in the
+                // dirty queue for the next debounced retry.
                 profile.AutoLoadTriggers.Clear();
-                profile.AutoLoadTriggers.AddRange(group.BuildModelList());
+                profile.AutoLoadTriggers.AddRange(group.SnapshotTriggers());
 
                 await _profileRepository.SaveAsync(profile, group.Profile.FilePath);
+                group.MarkSaved();
+                savedAtLeastOne = true;
                 _logger.LogInformation(
                     "Saved {Count} auto-load trigger(s) to profile '{Path}'",
                     profile.AutoLoadTriggers.Count, group.Profile.FilePath);
@@ -166,12 +178,13 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
             catch (Exception ex)
             {
                 _logger.LogError(ex,
-                    "Failed to save auto-load triggers for profile '{Path}'",
+                    "Failed to save auto-load triggers for profile '{Path}' — will retry on next change",
                     group.Profile.FilePath);
+                // IsDirty stays true; the next debounced save retries this group.
             }
         }
 
-        if (dirtyGroups.Count > 0)
+        if (savedAtLeastOne)
         {
             // Refresh the library so the in-memory snapshot used by ProcessMonitorService
             // (via IProfileLibrary.Entries) reflects the just-saved triggers.
@@ -209,6 +222,9 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         _profileLibrary.LibraryChanged -= OnLibraryChanged;
+        foreach (var group in ProfileGroups)
+            group.Dispose();
+        ProfileGroups.Clear();
         _subscriptions.Dispose();
         _saveTrigger.Dispose();
     }
