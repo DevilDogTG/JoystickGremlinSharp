@@ -13,7 +13,7 @@
 
 **Branch model**: main-first, tag-based releases. Feature branches → rebase-merge PR → main.
 
-**Test baseline**: 332 tests, 0 warnings (as of `feature/autoload-into-profile` merge, 2026-05-29).
+**Test baseline**: 314 tests, 0 warnings (as of `chore/cleanup-hidhide-and-ci`, 2026-05-29 — drop from 332 reflects 18 deleted tests covering the now-removed HidHide Apply/Revert pipeline).
 
 **Current version**: v11.0.0 (breaking change — see `BREAKING-CHANGES.md` and Auto-Load section below).
 
@@ -63,12 +63,13 @@
 
 ## HidHide Integration
 
-HidHide is an optional device-hiding driver by Nefarius. Our integration:
-- **Auto-whitelist**: App whitelists its own exe at startup so it can see devices HidHide may be hiding.
+HidHide is an optional device-hiding driver by Nefarius. Our integration is a **thin whitelist manager** (cleaned up 2026-05-29 — the original Apply/Revert event-pipeline code never got a settings UI and was removed):
+- **Auto-whitelist**: `HidHideManager.InitializeAsync()` adds own exe to the bypass-list at startup so it can see devices HidHide may be hiding.
+- **Whitelist cleanup**: `HidHideManager.Dispose()` removes own exe on clean exit.
 - **On-demand UAC**: App runs as `asInvoker` (no forced admin). If CLI write needs elevation, Windows UAC prompt appears just for that subprocess. User can decline safely.
 - **Toolbar button**: `🛡 HidHide` opens native HidHide configuration client. Grayed out when not installed.
 - **Startup check**: `PrerequisitesWarningDialog` shown if vJoy or HidHide is absent/incompatible.
-- **No in-app config page**: Device hiding configuration fully delegated to the native HidHide client.
+- **No in-app config page**: Device hiding configuration fully delegated to the native HidHide client. `IHidHideManager` exposes only `InitializeAsync` + `Dispose` — no Apply/Revert/Status/StatusChanged.
 
 ## Remaining Optional Features
 

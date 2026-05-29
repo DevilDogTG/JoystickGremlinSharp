@@ -25,6 +25,14 @@
 
 - [x] **fix/startup-crash-dill-cwd** — Non-admin users crashed on installed builds because bundled `dill.dll` writes `dill_debug.log` to CWD. Fix: CWD relocation in `DillDeviceManager.InitializeNative` + global exception handlers in `Program.Main` + try/catch on `MainWindow.Opened` async lambda. *(Cherry-picked into PR #66 on 2026-05-29; merging together)*
 
+- [x] **chore/cleanup-hidhide-and-ci** — Post-v11 cleanup pass *(2026-05-29)*
+  - [x] Deleted `.github/workflows/dotnet-ci.yml` (build+test moved to PR-review trust)
+  - [x] Stripped HidHide Apply/Revert event-pipeline dead code from `HidHideManager`
+  - [x] Removed dead `AppSettings` fields (`EnableHidHide`, `AutoHideOnPipelineRun`, `HiddenDeviceInstanceIds`, `HiddenDevices`)
+  - [x] Deleted `HidHideStatus` enum and `HiddenDeviceEntry` type files
+  - [x] Updated AGENTS.md HidHide section to match shipping reality
+  - [x] Trimmed `HidHideManagerTests` (332 → 314 tests, all passing, 0 warnings)
+
 ## Backlog (Optional Features)
 
 - [ ] **In-app GitHub Releases version checker** — check latest release, compare semver, show download link (no auto-install)

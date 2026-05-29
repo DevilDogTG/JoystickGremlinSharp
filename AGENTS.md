@@ -129,8 +129,8 @@ src/JoystickGremlin.Core/
                                                           (embedded in Profile.AutoLoadTriggers since v11.0)
                       LegacyProfileMigrator — migrates old modes-based JSON on load; drops change-mode actions
   Startup/          IStartupService, NullStartupService (overridable by Interop for real registry use)
-  HidHide/          IHidHideController, NullHidHideController, IHidHideManager, HidHideManager,
-                      HidHideStatus enum — soft-optional driver integration (see HidHide Integration section)
+  HidHide/          IHidHideController, NullHidHideController, IHidHideManager, HidHideManager
+                      — soft-optional driver integration (see HidHide Integration section)
   Common/           Extensions, utilities
 ```
 
@@ -384,23 +384,14 @@ Windows `INPUT` struct on x64 is **40 bytes**: `DWORD type`(4) + padding(4) + un
 
 ## HidHide Integration
 
-HidHide is an **optional** Windows kernel-mode driver that hides HID devices from selected processes. The integration allows JoystickGremlinSharp to automatically hide physical joystick devices from games when the event pipeline starts — preventing games from seeing both the real device and the mapped vJoy output simultaneously.
+HidHide is an **optional** Windows kernel-mode driver that hides HID devices from selected processes. JoystickGremlinSharp does **not** configure device hiding itself — that is delegated to the native HidHide configuration client (launched via the `🛡 HidHide` toolbar button). Our integration manages exactly one thing: keeping this application's executable on HidHide's bypass-whitelist so games hidden devices remain visible to *us*.
 
 ### Driver Requirement (Soft-Optional)
 
 - **Driver**: [HidHide by Nefarius](https://github.com/nefarius/HidHide) — install separately
 - **Download**: https://github.com/nefarius/HidHide/releases
-- The app checks for the driver at startup (`HidHidePrerequisiteChecker`) **only when `EnableHidHide = true`** in settings; shows a warning dialog with the download link if absent
-- **Graceful degradation**: if the driver is not installed, `HidHideStatus.NotInstalled` is reported and all operations are no-ops; the rest of the app continues normally
-
-### AppSettings Fields
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `EnableHidHide` | `bool` | `false` | Master switch — must be `true` for any hiding to occur |
-| `AutoHideOnPipelineRun` | `bool` | `true` | Hide on pipeline start; unhide on pipeline stop |
-| `HiddenDeviceInstanceIds` | `List<string>` | `[]` | Windows instance IDs of devices to block |
-| `HiddenDevices` | `List<HiddenDeviceEntry>` | `[]` | Friendly-name metadata (InstanceId + FriendlyName) for stale-entry display |
+- The app checks for the driver at startup (`HidHidePrerequisiteChecker`) and shows a warning dialog with the download link if absent
+- **Graceful degradation**: if the driver is not installed, `InitializeAsync` is a no-op and the rest of the app continues normally
 
 ### Core Abstractions (`Core/HidHide/`)
 
@@ -408,16 +399,12 @@ HidHide is an **optional** Windows kernel-mode driver that hides HID devices fro
 IHidHideController   — low-level driver interface (IsInstalled, IsActive, BlockedInstanceIds,
                         ApplicationPaths, Add/Remove operations, Refresh)
 NullHidHideController — no-op default; registered by Core DI via TryAddSingleton
-IHidHideManager      — orchestrator interface (InitializeAsync, ApplyAsync, RevertAsync,
-                        RefreshAsync, Status, IsApplied, StatusChanged event)
-HidHideManager       — full implementation:
-                        • subscribes to IEventPipeline.Started/Stopped
-                        • auto-applies/reverts when AutoHideOnPipelineRun is true
-                        • idempotency via SemaphoreSlim(1,1)
-                        • crash-recovery: InitializeAsync removes stale blocks from prior crash
-                        • Dispose: RevertAsync with 3-second cancellation timeout
-HidHideStatus        — enum: Disabled / NotInstalled / Ready / Active / Error
-HiddenDeviceEntry    — class { string InstanceId; string FriendlyName } (object initializer)
+IHidHideManager      — whitelist manager interface (InitializeAsync, Dispose)
+HidHideManager       — implementation:
+                        • InitializeAsync: adds own exe to HidHide's application bypass-list
+                          when not already present (read first, write only if needed)
+                        • Dispose: removes own exe from the bypass-list on clean exit
+                        • Handles HidHideElevationCancelledException gracefully (user declined UAC)
 ```
 
 ### Interop Implementations (`Interop/HidHide/`)
@@ -429,14 +416,6 @@ HidHideCliFallback        — shells to HidHideCLI.exe via registry/PATH discove
                              DO NOT redirect stdout (only stderr) — unread stdout pipe deadlocks
 HidHidePrerequisiteChecker — IsInstalled check used at startup
 ```
-
-### InstanceId Resolution (`Interop/Dill/HidInstanceIdResolver`)
-
-HidHide requires Windows **Device Instance IDs** (e.g. `HID\VID_054C&PID_05C4\...`). DILL provides only VID+PID. `HidInstanceIdResolver.BuildInstanceIdMap()` scans `HKLM\SYSTEM\CurrentControlSet\Enum\HID` and builds a `(VID, PID) → InstanceId` dictionary. Results are cached per `DillDeviceManager.RefreshDevices()` call.
-
-- `IPhysicalDevice.InstanceId` is `string?`; `null` means the InstanceId could not be resolved
-- First-match-wins for duplicate VID/PID (known limitation)
-- Devices without a resolved InstanceId are silently excluded from the HidHide device picker
 
 ### DI Wiring
 
@@ -451,26 +430,18 @@ Interop: TryAddSingleton<IHidHideController, NefariusHidHideController>()  ← w
 
 `App.axaml.cs` calls `AddInteropServices()` before `AddCoreServices()`, so Interop's real controller wins.
 
-### Pipeline Lifecycle
+### Lifecycle
 
 ```
-IEventPipeline.Started  →  OnPipelineStarted  →  ApplyAsync()   (if AutoHideOnPipelineRun)
-IEventPipeline.Stopped  →  OnPipelineStopped  →  RevertAsync()  (if AutoHideOnPipelineRun)
-App exit / Dispose      →  RevertAsync() with 3-second timeout
-App startup             →  InitializeAsync()  →  crash-recovery revert of any stale blocks
+App startup       →  HidHidePrerequisiteChecker.Check()  →  warning dialog if missing
+App startup       →  IHidHideManager.InitializeAsync()   →  whitelist own exe (no-op if absent)
+App exit          →  IHidHideManager.Dispose()           →  remove own exe from whitelist
+Toolbar button    →  launches native HidHide config client (where user configures hiding)
 ```
 
-### UI Page (`HidHidePageViewModel` / `HidHidePageView.axaml`)
+### UI
 
-- **Status banner**: shows current `HidHideStatus` with coloured indicator
-- **Driver-missing warning**: shown when `!IsDriverInstalled`; download button opens browser
-- **Enable toggle** (`EnableHidHide`) + **Auto-hide on run toggle** (`AutoHideOnPipelineRun`)
-- **Device picker table**: lists connected DILL devices with resolvable InstanceIds; per-row `IsHidden` checkbox
-- **Stale entries section**: devices in settings but not currently connected; can be removed individually
-- **Own-exe whitelist display**: shows the process path whitelisted in HidHide so JoystickGremlinSharp continues to receive input
-- **Apply Now / Revert Now** buttons for manual control
-- Auto-save: `EnableHidHide` and `AutoHideOnPipelineRun` changes debounced 500ms via `WhenAnyValue`
-- Nav item: 🙈 in `MainWindowViewModel`
+There is **no in-app HidHide configuration page**. Device hiding is configured by the user in the native HidHide UI. The toolbar shows a `🛡 HidHide` button that opens the native client and is grayed out when the driver is not installed (`MainWindowViewModel.OpenHidHideClientAsync`).
 
 ## Action System
 
