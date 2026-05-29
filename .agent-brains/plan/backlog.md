@@ -11,6 +11,10 @@
   - [x] Code review findings resolved (2 warnings, 2 style)
   - [x] Re-review verdict: Approved
 
+## Active
+
+- [ ] **fix/startup-crash-dill-cwd** — Non-admin users crash at launch after MSI install because `dill.dll` writes `dill_debug.log` to CWD. See `fix-startup-crash-dill-cwd.md`.
+
 ## Backlog (Optional Features)
 
 - [ ] **In-app GitHub Releases version checker** — check latest release, compare semver, show download link (no auto-install)
