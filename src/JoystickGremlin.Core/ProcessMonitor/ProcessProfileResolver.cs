@@ -1,29 +1,41 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-using JoystickGremlin.Core.Configuration;
+using JoystickGremlin.Core.Profile;
 
 namespace JoystickGremlin.Core.ProcessMonitor;
 
 /// <summary>
-/// Resolves a foreground executable path against a list of <see cref="ProcessProfileMapping"/> entries.
-/// Each mapping is matched either by executable file name or by full path (see
-/// <see cref="ProcessMatchType"/>); the first enabled match in list order wins.
+/// Pairs a matched <see cref="ProcessTrigger"/> with the <see cref="ProfileEntry"/> that owns it.
 /// </summary>
+/// <param name="Profile">The profile whose trigger matched.</param>
+/// <param name="Trigger">The matching trigger within that profile.</param>
+public sealed record ProcessTriggerMatch(ProfileEntry Profile, ProcessTrigger Trigger);
+
+/// <summary>
+/// Resolves a foreground executable path against the <see cref="Profile.AutoLoadTriggers"/>
+/// of every profile in the library.
+/// </summary>
+/// <remarks>
+/// Iteration order is the library scan order (alphabetical by file path within each category,
+/// root-level profiles before categorised profiles). Within each profile, triggers are evaluated
+/// in declaration order. The first enabled trigger whose match criteria fit the executable wins.
+/// </remarks>
 public static class ProcessProfileResolver
 {
     /// <summary>
-    /// Finds the first matching <see cref="ProcessProfileMapping"/> for the given executable path.
+    /// Finds the first matching trigger for the given executable across all profiles.
     /// </summary>
     /// <param name="executablePath">
     /// The full path of the foreground executable (any case, either path separator).
     /// </param>
-    /// <param name="mappings">The ordered list of profile mappings to search.</param>
+    /// <param name="profiles">The ordered list of profile entries to search.</param>
     /// <returns>
-    /// The first enabled matching <see cref="ProcessProfileMapping"/>, or <c>null</c> if none match.
+    /// The first <see cref="ProcessTriggerMatch"/> whose trigger is enabled and matches, or
+    /// <c>null</c> if none match.
     /// </returns>
-    public static ProcessProfileMapping? Resolve(
+    public static ProcessTriggerMatch? Resolve(
         string executablePath,
-        IEnumerable<ProcessProfileMapping> mappings)
+        IEnumerable<ProfileEntry> profiles)
     {
         if (string.IsNullOrEmpty(executablePath))
         {
@@ -33,30 +45,33 @@ public static class ProcessProfileResolver
         var normalizedPath = Normalize(executablePath);
         var fileName = GetFileName(normalizedPath);
 
-        foreach (var mapping in mappings)
+        foreach (var profile in profiles)
         {
-            if (!mapping.IsEnabled)
+            foreach (var trigger in profile.AutoLoadTriggers)
             {
-                continue;
-            }
+                if (!trigger.IsEnabled)
+                {
+                    continue;
+                }
 
-            switch (mapping.MatchType)
-            {
-                case ProcessMatchType.ExecutableName:
-                    if (!string.IsNullOrEmpty(mapping.ExecutableName)
-                        && string.Equals(mapping.ExecutableName, fileName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return mapping;
-                    }
-                    break;
+                switch (trigger.MatchType)
+                {
+                    case ProcessMatchType.ExecutableName:
+                        if (!string.IsNullOrEmpty(trigger.ExecutableName)
+                            && string.Equals(trigger.ExecutableName, fileName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return new ProcessTriggerMatch(profile, trigger);
+                        }
+                        break;
 
-                case ProcessMatchType.ExecutablePath:
-                    if (!string.IsNullOrEmpty(mapping.ExecutablePath)
-                        && string.Equals(Normalize(mapping.ExecutablePath), normalizedPath, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return mapping;
-                    }
-                    break;
+                    case ProcessMatchType.ExecutablePath:
+                        if (!string.IsNullOrEmpty(trigger.ExecutablePath)
+                            && string.Equals(Normalize(trigger.ExecutablePath), normalizedPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return new ProcessTriggerMatch(profile, trigger);
+                        }
+                        break;
+                }
             }
         }
 

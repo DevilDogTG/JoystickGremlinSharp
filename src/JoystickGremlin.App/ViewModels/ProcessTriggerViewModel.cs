@@ -1,68 +1,54 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-using System;
-using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
 using System.Reactive;
 using JoystickGremlin.App.Services;
-using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Profile;
 using ReactiveUI;
 
 namespace JoystickGremlin.App.ViewModels;
 
 /// <summary>
-/// Wraps a <see cref="ProcessProfileMapping"/> domain model for display on the Auto-load page.
+/// Wraps a <see cref="ProcessTrigger"/> for display in a profile's auto-load triggers list.
 /// The executable is chosen either via the process picker (name match) or by browsing for an
-/// .exe file (path match); the profile is chosen from the application's profile library.
+/// .exe file (path match). The owning profile is identified by the parent group.
 /// </summary>
-public sealed class ProcessMappingViewModel : ReactiveObject
+public sealed class ProcessTriggerViewModel : ReactiveObject
 {
     private readonly IProcessPickerDialogService _processPicker;
     private readonly IFilePickerService _filePicker;
-    private readonly ObservableCollection<ProfileEntry> _availableProfiles;
 
     private ProcessMatchType _matchType;
     private string _executableName;
     private string _executablePath;
-    private string _profilePath;
     private bool _isEnabled;
     private bool _autoStart;
     private bool _remainActiveOnFocusLoss;
-    private ProfileEntry? _selectedProfile;
-    private bool _suppressProfileSync;
 
     /// <summary>Gets the underlying domain model, updated by <see cref="ApplyToModel"/>.</summary>
-    public ProcessProfileMapping Model { get; }
+    public ProcessTrigger Model { get; }
 
     /// <summary>
-    /// Initializes a new instance of <see cref="ProcessMappingViewModel"/>.
+    /// Initializes a new instance of <see cref="ProcessTriggerViewModel"/>.
     /// </summary>
-    /// <param name="model">The mapping domain model.</param>
+    /// <param name="model">The trigger domain model.</param>
     /// <param name="processPicker">Service used to pick a running process.</param>
     /// <param name="filePicker">Service used to browse for an executable file.</param>
-    /// <param name="availableProfiles">The shared collection of selectable profiles (owned by the page).</param>
-    public ProcessMappingViewModel(
-        ProcessProfileMapping model,
+    public ProcessTriggerViewModel(
+        ProcessTrigger model,
         IProcessPickerDialogService processPicker,
-        IFilePickerService filePicker,
-        ObservableCollection<ProfileEntry> availableProfiles)
+        IFilePickerService filePicker)
     {
         Model = model;
         _processPicker = processPicker;
         _filePicker = filePicker;
-        _availableProfiles = availableProfiles;
 
         _matchType               = model.MatchType;
         _executableName          = model.ExecutableName;
         _executablePath          = model.ExecutablePath;
-        _profilePath             = model.ProfilePath;
         _isEnabled               = model.IsEnabled;
         _autoStart               = model.AutoStart;
         _remainActiveOnFocusLoss = model.RemainActiveOnFocusLoss;
-
-        RefreshSelectedProfile();
 
         PickProcessCommand = ReactiveCommand.CreateFromTask(PickProcessAsync);
         BrowseExecutableCommand = ReactiveCommand.CreateFromTask(BrowseExecutableAsync);
@@ -101,51 +87,21 @@ public sealed class ProcessMappingViewModel : ReactiveObject
         }
     }
 
-    /// <summary>Gets or sets the profile file path.</summary>
-    public string ProfilePath
-    {
-        get => _profilePath;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _profilePath, value);
-            this.RaisePropertyChanged(nameof(IsProfileMissing));
-        }
-    }
-
-    /// <summary>Gets or sets the selected profile entry. Setting it updates <see cref="ProfilePath"/>.</summary>
-    public ProfileEntry? SelectedProfile
-    {
-        get => _selectedProfile;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _selectedProfile, value);
-            if (!_suppressProfileSync && value is not null)
-                ProfilePath = value.FilePath;
-            this.RaisePropertyChanged(nameof(IsProfileMissing));
-        }
-    }
-
-    /// <summary>
-    /// Gets a value indicating whether a profile is configured but no longer exists in the library
-    /// (e.g. it was renamed or deleted).
-    /// </summary>
-    public bool IsProfileMissing => !string.IsNullOrEmpty(ProfilePath) && SelectedProfile is null;
-
-    /// <summary>Gets or sets a value indicating whether this mapping is active.</summary>
+    /// <summary>Gets or sets a value indicating whether this trigger is active.</summary>
     public bool IsEnabled
     {
         get => _isEnabled;
         set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
     }
 
-    /// <summary>Gets or sets whether to auto-start the pipeline when this mapping activates.</summary>
+    /// <summary>Gets or sets whether to auto-start the pipeline when this trigger activates.</summary>
     public bool AutoStart
     {
         get => _autoStart;
         set => this.RaiseAndSetIfChanged(ref _autoStart, value);
     }
 
-    /// <summary>Gets or sets whether to keep the pipeline active when the mapped app loses focus.</summary>
+    /// <summary>Gets or sets whether to keep the pipeline active when the triggered app loses focus.</summary>
     public bool RemainActiveOnFocusLoss
     {
         get => _remainActiveOnFocusLoss;
@@ -170,72 +126,41 @@ public sealed class ProcessMappingViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> BrowseExecutableCommand { get; }
 
     /// <summary>
-    /// Re-resolves <see cref="SelectedProfile"/> from <see cref="ProfilePath"/> against the current
-    /// profile library, without rewriting <see cref="ProfilePath"/> (so a missing profile is preserved).
-    /// </summary>
-    public void RefreshSelectedProfile()
-    {
-        _suppressProfileSync = true;
-        SelectedProfile = _availableProfiles.FirstOrDefault(e =>
-            string.Equals(e.FilePath, ProfilePath, StringComparison.OrdinalIgnoreCase));
-        _suppressProfileSync = false;
-    }
-
-    /// <summary>
     /// Writes the current ViewModel values back to the underlying domain model.
-    /// Call before saving settings.
+    /// Call before saving the owning profile.
     /// </summary>
     public void ApplyToModel()
     {
         Model.MatchType               = MatchType;
         Model.ExecutableName          = ExecutableName;
         Model.ExecutablePath          = ExecutablePath;
-        Model.ProfilePath             = ProfilePath;
         Model.IsEnabled               = IsEnabled;
         Model.AutoStart               = AutoStart;
         Model.RemainActiveOnFocusLoss = RemainActiveOnFocusLoss;
     }
 
-    /// <summary>
-    /// Opens the process picker dialog. On a successful pick the mapping switches to
-    /// <see cref="ProcessMatchType.ExecutableName"/> mode and captures both the exe name (for matching)
-    /// and the full path (for display).
-    /// </summary>
     private async System.Threading.Tasks.Task PickProcessAsync()
     {
         var picked = await _processPicker.PickProcessAsync();
         if (picked is null)
-        {
             return;
-        }
 
         MatchType      = ProcessMatchType.ExecutableName;
         ExecutableName = picked.ExecutableName;
         ExecutablePath = picked.ExecutablePath;
     }
 
-    /// <summary>
-    /// Opens an <c>*.exe</c> file picker. On a successful selection the mapping switches to
-    /// <see cref="ProcessMatchType.ExecutablePath"/> mode; the path is normalized to forward slashes
-    /// to match the resolver's normalization and the exe name is derived for display.
-    /// </summary>
     private async System.Threading.Tasks.Task BrowseExecutableAsync()
     {
         var path = await _filePicker.PickOpenFileAsync("Select Executable", "Executable", "*.exe");
         if (path is null)
-        {
             return;
-        }
 
         MatchType      = ProcessMatchType.ExecutablePath;
         ExecutablePath = path.Replace('\\', '/');
         ExecutableName = Path.GetFileName(path);
     }
 
-    /// <summary>
-    /// Re-raises the computed-match display properties so XAML bindings refresh after
-    /// <see cref="MatchType"/>, <see cref="ExecutableName"/>, or <see cref="ExecutablePath"/> changes.
-    /// </summary>
     private void RaiseMatchDisplayChanged()
     {
         this.RaisePropertyChanged(nameof(MatchDisplay));

@@ -32,15 +32,9 @@ public sealed class AppSettings
 
     /// <summary>
     /// Gets or sets a value indicating whether the auto-load feature is globally enabled.
-    /// When <c>false</c>, <see cref="ProcessMappings"/> entries are ignored.
+    /// When <c>false</c>, all per-profile <c>AutoLoadTriggers</c> are ignored.
     /// </summary>
     public bool EnableAutoLoading { get; set; } = false;
-
-    /// <summary>
-    /// Gets or sets the ordered list of process-to-profile mappings used for auto-loading.
-    /// Entries are evaluated in list order; the first match wins.
-    /// </summary>
-    public List<ProcessProfileMapping> ProcessMappings { get; set; } = [];
 
     /// <summary>Gets or sets whether the FFB bridge is enabled.</summary>
     public bool EnableFfbBridge { get; set; } = false;

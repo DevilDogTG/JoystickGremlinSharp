@@ -1,55 +1,53 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using FluentAssertions;
-using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.ProcessMonitor;
+using JoystickGremlin.Core.Profile;
 using Xunit;
 
 namespace JoystickGremlin.Core.Tests.ProcessMonitor;
 
 public sealed class ProcessProfileResolverTests
 {
-    private static ProcessProfileMapping NameMapping(
-        string exeName, string profile = "profile.json", bool enabled = true) =>
-        new()
-        {
-            MatchType      = ProcessMatchType.ExecutableName,
-            ExecutableName = exeName,
-            ProfilePath    = profile,
-            IsEnabled      = enabled,
-        };
+    private static ProcessTrigger NameTrigger(string exeName, bool enabled = true) => new()
+    {
+        MatchType      = ProcessMatchType.ExecutableName,
+        ExecutableName = exeName,
+        IsEnabled      = enabled,
+    };
 
-    private static ProcessProfileMapping PathMapping(
-        string exePath, string profile = "profile.json", bool enabled = true) =>
-        new()
-        {
-            MatchType      = ProcessMatchType.ExecutablePath,
-            ExecutablePath = exePath,
-            ProfilePath    = profile,
-            IsEnabled      = enabled,
-        };
+    private static ProcessTrigger PathTrigger(string exePath, bool enabled = true) => new()
+    {
+        MatchType      = ProcessMatchType.ExecutablePath,
+        ExecutablePath = exePath,
+        IsEnabled      = enabled,
+    };
+
+    private static ProfileEntry Entry(string name, params ProcessTrigger[] triggers) =>
+        new(name, null, $@"C:\fake\{name}.json", triggers);
 
     // ──────────────────────────────────────────────
     // Name match
     // ──────────────────────────────────────────────
 
     [Fact]
-    public void Resolve_ExecutableName_ReturnsMatch()
+    public void Resolve_ExecutableName_ReturnsMatchWithOwningProfile()
     {
-        var mappings = new List<ProcessProfileMapping> { NameMapping("DCS.exe", "dcs.json") };
+        var profile = Entry("DCS", NameTrigger("DCS.exe"));
 
-        var result = ProcessProfileResolver.Resolve(@"C:\Program Files\DCS World\bin\DCS.exe", mappings);
+        var result = ProcessProfileResolver.Resolve(@"C:\Program Files\DCS World\bin\DCS.exe", [profile]);
 
         result.Should().NotBeNull();
-        result!.ProfilePath.Should().Be("dcs.json");
+        result!.Profile.Should().BeSameAs(profile);
+        result.Trigger.ExecutableName.Should().Be("DCS.exe");
     }
 
     [Fact]
     public void Resolve_ExecutableName_IsCaseInsensitive()
     {
-        var mappings = new List<ProcessProfileMapping> { NameMapping("dcs.EXE") };
+        var profile = Entry("DCS", NameTrigger("dcs.EXE"));
 
-        var result = ProcessProfileResolver.Resolve(@"C:\Games\DCS World\DCS.exe", mappings);
+        var result = ProcessProfileResolver.Resolve(@"C:\Games\DCS World\DCS.exe", [profile]);
 
         result.Should().NotBeNull();
     }
@@ -57,10 +55,9 @@ public sealed class ProcessProfileResolverTests
     [Fact]
     public void Resolve_ExecutableName_IgnoresDirectory()
     {
-        // Same exe name in a completely different install location still matches.
-        var mappings = new List<ProcessProfileMapping> { NameMapping("game.exe") };
+        var profile = Entry("Game", NameTrigger("game.exe"));
 
-        var result = ProcessProfileResolver.Resolve(@"D:\Some\Other\Path\game.exe", mappings);
+        var result = ProcessProfileResolver.Resolve(@"D:\Some\Other\Path\game.exe", [profile]);
 
         result.Should().NotBeNull();
     }
@@ -68,9 +65,9 @@ public sealed class ProcessProfileResolverTests
     [Fact]
     public void Resolve_ExecutableName_DifferentExe_ReturnsNull()
     {
-        var mappings = new List<ProcessProfileMapping> { NameMapping("DCS.exe") };
+        var profile = Entry("DCS", NameTrigger("DCS.exe"));
 
-        var result = ProcessProfileResolver.Resolve(@"C:\Games\OtherGame.exe", mappings);
+        var result = ProcessProfileResolver.Resolve(@"C:\Games\OtherGame.exe", [profile]);
 
         result.Should().BeNull();
     }
@@ -78,34 +75,34 @@ public sealed class ProcessProfileResolverTests
     [Fact]
     public void Resolve_ExecutableName_Empty_ReturnsNull()
     {
-        var mappings = new List<ProcessProfileMapping> { NameMapping(string.Empty) };
+        var profile = Entry("Blank", NameTrigger(string.Empty));
 
-        var result = ProcessProfileResolver.Resolve(@"C:\Games\game.exe", mappings);
+        var result = ProcessProfileResolver.Resolve(@"C:\Games\game.exe", [profile]);
 
         result.Should().BeNull();
     }
 
     // ──────────────────────────────────────────────
-    // Path match (legacy / manual mode)
+    // Path match
     // ──────────────────────────────────────────────
 
     [Fact]
     public void Resolve_ExactPath_ReturnsMatch()
     {
-        var mappings = new List<ProcessProfileMapping> { PathMapping(@"C:\Games\game.exe", "exact.json") };
+        var profile = Entry("Exact", PathTrigger(@"C:\Games\game.exe"));
 
-        var result = ProcessProfileResolver.Resolve(@"C:\Games\game.exe", mappings);
+        var result = ProcessProfileResolver.Resolve(@"C:\Games\game.exe", [profile]);
 
         result.Should().NotBeNull();
-        result!.ProfilePath.Should().Be("exact.json");
+        result!.Profile.Should().BeSameAs(profile);
     }
 
     [Fact]
     public void Resolve_ExactPath_IsCaseInsensitive()
     {
-        var mappings = new List<ProcessProfileMapping> { PathMapping(@"C:\games\Game.EXE") };
+        var profile = Entry("Exact", PathTrigger(@"C:\games\Game.EXE"));
 
-        var result = ProcessProfileResolver.Resolve(@"c:\Games\game.exe", mappings);
+        var result = ProcessProfileResolver.Resolve(@"c:\Games\game.exe", [profile]);
 
         result.Should().NotBeNull();
     }
@@ -113,9 +110,9 @@ public sealed class ProcessProfileResolverTests
     [Fact]
     public void Resolve_ExactPath_NormalizesBackslashes()
     {
-        var mappings = new List<ProcessProfileMapping> { PathMapping("C:/Games/game.exe") };
+        var profile = Entry("Exact", PathTrigger("C:/Games/game.exe"));
 
-        var result = ProcessProfileResolver.Resolve(@"C:\Games\game.exe", mappings);
+        var result = ProcessProfileResolver.Resolve(@"C:\Games\game.exe", [profile]);
 
         result.Should().NotBeNull();
     }
@@ -123,46 +120,53 @@ public sealed class ProcessProfileResolverTests
     [Fact]
     public void Resolve_PathMode_DifferentDirectory_ReturnsNull()
     {
-        // Path mode must NOT match on file name alone — the full path has to agree.
-        var mappings = new List<ProcessProfileMapping> { PathMapping(@"C:\Games\game.exe") };
+        var profile = Entry("Exact", PathTrigger(@"C:\Games\game.exe"));
 
-        var result = ProcessProfileResolver.Resolve(@"D:\Other\game.exe", mappings);
+        var result = ProcessProfileResolver.Resolve(@"D:\Other\game.exe", [profile]);
 
         result.Should().BeNull();
     }
 
     // ──────────────────────────────────────────────
-    // Priority and ordering
+    // Priority and ordering — within a profile and across profiles
     // ──────────────────────────────────────────────
 
     [Fact]
-    public void Resolve_FirstMatchWins_ReturnsFirstInList()
+    public void Resolve_FirstMatchWithinProfile_ReturnsFirstTrigger()
     {
-        var mappings = new List<ProcessProfileMapping>
-        {
-            NameMapping("DCS.exe", "first.json"),
-            NameMapping("DCS.exe", "second.json"),
-        };
+        var first  = NameTrigger("DCS.exe");
+        var second = NameTrigger("DCS.exe");
+        var profile = Entry("DCS", first, second);
 
-        var result = ProcessProfileResolver.Resolve(@"C:\DCS\DCS.exe", mappings);
+        var result = ProcessProfileResolver.Resolve(@"C:\DCS\DCS.exe", [profile]);
 
         result.Should().NotBeNull();
-        result!.ProfilePath.Should().Be("first.json");
+        result!.Trigger.Should().BeSameAs(first);
+    }
+
+    [Fact]
+    public void Resolve_FirstMatchAcrossProfiles_ReturnsFirstProfile()
+    {
+        var alpha = Entry("Alpha", NameTrigger("DCS.exe"));
+        var beta  = Entry("Beta",  NameTrigger("DCS.exe"));
+
+        var result = ProcessProfileResolver.Resolve(@"C:\DCS\DCS.exe", [alpha, beta]);
+
+        result.Should().NotBeNull();
+        result!.Profile.Should().BeSameAs(alpha);
     }
 
     [Fact]
     public void Resolve_MixedModes_FirstEnabledMatchWins()
     {
-        var mappings = new List<ProcessProfileMapping>
-        {
-            PathMapping(@"C:\Games\DCS\DCS.exe", "path.json"),
-            NameMapping("DCS.exe", "name.json"),
-        };
+        var profile = Entry("Mixed",
+            PathTrigger(@"C:\Games\DCS\DCS.exe"),
+            NameTrigger("DCS.exe"));
 
-        var result = ProcessProfileResolver.Resolve(@"C:\Games\DCS\DCS.exe", mappings);
+        var result = ProcessProfileResolver.Resolve(@"C:\Games\DCS\DCS.exe", [profile]);
 
         result.Should().NotBeNull();
-        result!.ProfilePath.Should().Be("path.json");
+        result!.Trigger.MatchType.Should().Be(ProcessMatchType.ExecutablePath);
     }
 
     // ──────────────────────────────────────────────
@@ -170,28 +174,26 @@ public sealed class ProcessProfileResolverTests
     // ──────────────────────────────────────────────
 
     [Fact]
-    public void Resolve_DisabledEntry_IsSkipped()
+    public void Resolve_DisabledTrigger_IsSkipped()
     {
-        var mappings = new List<ProcessProfileMapping> { NameMapping("DCS.exe", enabled: false) };
+        var profile = Entry("DCS", NameTrigger("DCS.exe", enabled: false));
 
-        var result = ProcessProfileResolver.Resolve(@"C:\DCS\DCS.exe", mappings);
+        var result = ProcessProfileResolver.Resolve(@"C:\DCS\DCS.exe", [profile]);
 
         result.Should().BeNull();
     }
 
     [Fact]
-    public void Resolve_DisabledEntryWithEnabledFallback_ReturnsFallback()
+    public void Resolve_DisabledTriggerWithEnabledFallback_ReturnsFallback()
     {
-        var mappings = new List<ProcessProfileMapping>
-        {
-            NameMapping("DCS.exe", "disabled.json", enabled: false),
-            NameMapping("DCS.exe", "enabled.json",  enabled: true),
-        };
+        var disabled = NameTrigger("DCS.exe", enabled: false);
+        var enabled  = NameTrigger("DCS.exe", enabled: true);
+        var profile = Entry("DCS", disabled, enabled);
 
-        var result = ProcessProfileResolver.Resolve(@"C:\DCS\DCS.exe", mappings);
+        var result = ProcessProfileResolver.Resolve(@"C:\DCS\DCS.exe", [profile]);
 
         result.Should().NotBeNull();
-        result!.ProfilePath.Should().Be("enabled.json");
+        result!.Trigger.Should().BeSameAs(enabled);
     }
 
     // ──────────────────────────────────────────────
@@ -201,9 +203,9 @@ public sealed class ProcessProfileResolverTests
     [Fact]
     public void Resolve_NullPath_ReturnsNull()
     {
-        var mappings = new List<ProcessProfileMapping> { NameMapping("game.exe") };
+        var profile = Entry("X", NameTrigger("game.exe"));
 
-        var result = ProcessProfileResolver.Resolve(null!, mappings);
+        var result = ProcessProfileResolver.Resolve(null!, [profile]);
 
         result.Should().BeNull();
     }
@@ -211,17 +213,27 @@ public sealed class ProcessProfileResolverTests
     [Fact]
     public void Resolve_EmptyPath_ReturnsNull()
     {
-        var mappings = new List<ProcessProfileMapping> { NameMapping("game.exe") };
+        var profile = Entry("X", NameTrigger("game.exe"));
 
-        var result = ProcessProfileResolver.Resolve(string.Empty, mappings);
+        var result = ProcessProfileResolver.Resolve(string.Empty, [profile]);
 
         result.Should().BeNull();
     }
 
     [Fact]
-    public void Resolve_EmptyMappings_ReturnsNull()
+    public void Resolve_EmptyProfileList_ReturnsNull()
     {
         var result = ProcessProfileResolver.Resolve(@"C:\Games\game.exe", []);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void Resolve_ProfileWithNoTriggers_ReturnsNull()
+    {
+        var profile = Entry("Empty");
+
+        var result = ProcessProfileResolver.Resolve(@"C:\Games\game.exe", [profile]);
 
         result.Should().BeNull();
     }
