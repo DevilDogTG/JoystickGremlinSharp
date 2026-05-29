@@ -106,6 +106,47 @@ public sealed class ProfileRepositoryTests : IDisposable
         File.Exists(path).Should().BeTrue();
     }
 
+    [Fact]
+    public async Task SaveThenLoad_AutoLoadTriggers_RoundTripCorrectly()
+    {
+        var path = Path.Combine(_tempDir, "with-triggers.json");
+        var original = new JoystickGremlin.Core.Profile.Profile
+        {
+            Name = "DCS",
+            AutoLoadTriggers =
+            [
+                new ProcessTrigger
+                {
+                    MatchType               = ProcessMatchType.ExecutableName,
+                    ExecutableName          = "DCS.exe",
+                    ExecutablePath          = "C:/Games/DCS/DCS.exe",
+                    IsEnabled               = true,
+                    AutoStart               = true,
+                    RemainActiveOnFocusLoss = false,
+                },
+                new ProcessTrigger
+                {
+                    MatchType               = ProcessMatchType.ExecutablePath,
+                    ExecutablePath          = "C:/Games/Other/other.exe",
+                    IsEnabled               = false,
+                    AutoStart               = false,
+                    RemainActiveOnFocusLoss = true,
+                },
+            ],
+        };
+
+        await _sut.SaveAsync(original, path);
+        var loaded = await _sut.LoadAsync(path);
+
+        loaded.AutoLoadTriggers.Should().HaveCount(2);
+        loaded.AutoLoadTriggers[0].MatchType.Should().Be(ProcessMatchType.ExecutableName);
+        loaded.AutoLoadTriggers[0].ExecutableName.Should().Be("DCS.exe");
+        loaded.AutoLoadTriggers[0].IsEnabled.Should().BeTrue();
+        loaded.AutoLoadTriggers[1].MatchType.Should().Be(ProcessMatchType.ExecutablePath);
+        loaded.AutoLoadTriggers[1].IsEnabled.Should().BeFalse();
+        loaded.AutoLoadTriggers[1].RemainActiveOnFocusLoss.Should().BeTrue();
+    }
+
     // ── Error cases ────────────────────────────────────────────────────────
 
     [Fact]

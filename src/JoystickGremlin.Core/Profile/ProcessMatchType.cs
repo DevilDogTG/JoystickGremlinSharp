@@ -1,18 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-namespace JoystickGremlin.Core.Configuration;
+namespace JoystickGremlin.Core.Profile;
 
 /// <summary>
-/// Determines how a <see cref="ProcessProfileMapping"/> is matched against the
+/// Determines how a <see cref="ProcessTrigger"/> is matched against the
 /// foreground process's executable path.
 /// </summary>
 public enum ProcessMatchType
 {
     /// <summary>
     /// Match on the full executable path (case-insensitive, path-separator agnostic).
-    /// This is value <c>0</c> so that settings persisted before the match-type concept existed
-    /// — which stored a path in <see cref="ProcessProfileMapping.ExecutablePath"/> — deserialize
-    /// into this mode without an explicit migration.
+    /// Value <c>0</c> is the default for new triggers and for triggers whose JSON
+    /// omits the <c>MatchType</c> field.
     /// </summary>
     ExecutablePath = 0,
 

@@ -15,6 +15,13 @@ public sealed class Profile
 
     /// <summary>Gets the list of input bindings active in this profile.</summary>
     public List<InputBinding> Bindings { get; init; } = [];
+
+    /// <summary>
+    /// Gets the ordered list of process-based auto-load triggers that should activate this profile.
+    /// Triggers are evaluated in list order across all profiles; the first enabled match in
+    /// <see cref="IProfileLibrary.Entries"/> scan order wins (alphabetical by file path).
+    /// </summary>
+    public List<ProcessTrigger> AutoLoadTriggers { get; init; } = [];
 }
 
 /// <summary>

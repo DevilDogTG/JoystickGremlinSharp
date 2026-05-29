@@ -14,124 +14,129 @@
             </StackPanel>
 
             <TextBlock TextWrapping="Wrap" Opacity="0.65" FontSize="12" MaxWidth="720" HorizontalAlignment="Left">
-                When a mapped application becomes the active (focused) window, its profile is loaded and
-                the mapping starts. Switching to another window stops the mapping (the profile stays loaded)
-                and refocusing the application resumes it. The first enabled match in the list wins.
+                Each profile owns its own list of process triggers. When a triggered application becomes
+                the active (focused) window, the owning profile is loaded and the pipeline starts.
+                Switching away stops the pipeline (the profile stays loaded). The first enabled trigger
+                in library order wins.
             </TextBlock>
 
-            <!-- Column header -->
-            <Grid ColumnDefinitions="2*,2*,46,72,78,90"
-                  IsVisible="{Binding Mappings.Count}">
-                <TextBlock Grid.Column="0" Text="Application"   FontSize="11" FontWeight="SemiBold" Margin="2,0"/>
-                <TextBlock Grid.Column="1" Text="Profile"       FontSize="11" FontWeight="SemiBold" Margin="2,0"/>
-                <TextBlock Grid.Column="2" Text="On"            FontSize="11" FontWeight="SemiBold" Margin="2,0" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="3" Text="AutoStart"     FontSize="11" FontWeight="SemiBold" Margin="2,0" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="4" Text="Stay Active"   FontSize="11" FontWeight="SemiBold" Margin="2,0" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="5" Text="Actions"       FontSize="11" FontWeight="SemiBold" Margin="2,0" HorizontalAlignment="Center"/>
-            </Grid>
+            <TextBlock TextWrapping="Wrap" Opacity="0.55" FontSize="11" MaxWidth="720" HorizontalAlignment="Left"
+                       IsVisible="{Binding !ProfileGroups.Count}">
+                No profiles found. Create a profile from the Profile page first, then come back here to
+                attach a process trigger to it.
+            </TextBlock>
 
-            <!-- Mapping rows -->
-            <ItemsControl ItemsSource="{Binding Mappings}">
+            <!-- One expandable group per profile -->
+            <ItemsControl ItemsSource="{Binding ProfileGroups}">
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:ProcessMappingViewModel">
-                        <Grid ColumnDefinitions="2*,2*,46,72,78,90" Margin="0,3">
+                    <DataTemplate x:DataType="vm:ProfileTriggersGroupViewModel">
+                        <Expander Margin="0,2"
+                                  IsExpanded="{Binding IsExpanded}"
+                                  HorizontalAlignment="Stretch">
+                            <Expander.Header>
+                                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding DisplayLabel}" FontWeight="SemiBold" FontSize="13"/>
+                                    <TextBlock Text="{Binding TriggerCountSummary}" FontSize="11" Opacity="0.55" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Expander.Header>
 
-                            <!-- Application (match) cell -->
-                            <Grid Grid.Column="0" ColumnDefinitions="Auto,*,28,28" Margin="2,0" ColumnSpacing="2">
-                                <Border Grid.Column="0"
-                                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
-                                        CornerRadius="3" Padding="4,1" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding MatchModeLabel}" FontSize="10" Opacity="0.7"/>
-                                </Border>
-                                <TextBlock Grid.Column="1"
-                                           Text="{Binding MatchDisplay}"
-                                           ToolTip.Tip="{Binding MatchTooltip}"
-                                           FontSize="11"
-                                           VerticalAlignment="Center"
-                                           TextTrimming="CharacterEllipsis"
-                                           Margin="4,0"/>
-                                <Button Grid.Column="2"
-                                        Content="🎯"
-                                        Command="{Binding PickProcessCommand}"
-                                        FontSize="11" Padding="2,0"
-                                        ToolTip.Tip="Pick a running process (match by name)"/>
-                                <Button Grid.Column="3"
-                                        Content="📁"
-                                        Command="{Binding BrowseExecutableCommand}"
-                                        FontSize="11" Padding="2,0"
-                                        ToolTip.Tip="Browse for an executable (match by full path)"/>
-                            </Grid>
+                            <StackPanel Spacing="8" Margin="0,4,0,0">
 
-                            <!-- Profile cell -->
-                            <Grid Grid.Column="1" Margin="2,0">
-                                <ComboBox HorizontalAlignment="Stretch"
-                                          FontSize="11"
-                                          PlaceholderText="(select profile)"
-                                          ItemsSource="{Binding $parent[ItemsControl].((vm:AutoLoadPageViewModel)DataContext).AvailableProfiles}"
-                                          SelectedItem="{Binding SelectedProfile}">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding DisplayLabel}"/>
+                                <!-- Column header -->
+                                <Grid ColumnDefinitions="*,46,72,78,90"
+                                      IsVisible="{Binding Triggers.Count}">
+                                    <TextBlock Grid.Column="0" Text="Application" FontSize="11" FontWeight="SemiBold" Margin="2,0"/>
+                                    <TextBlock Grid.Column="1" Text="On"          FontSize="11" FontWeight="SemiBold" Margin="2,0" HorizontalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" Text="AutoStart"   FontSize="11" FontWeight="SemiBold" Margin="2,0" HorizontalAlignment="Center"/>
+                                    <TextBlock Grid.Column="3" Text="Stay Active" FontSize="11" FontWeight="SemiBold" Margin="2,0" HorizontalAlignment="Center"/>
+                                    <TextBlock Grid.Column="4" Text="Actions"     FontSize="11" FontWeight="SemiBold" Margin="2,0" HorizontalAlignment="Center"/>
+                                </Grid>
+
+                                <!-- Trigger rows -->
+                                <ItemsControl ItemsSource="{Binding Triggers}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ProcessTriggerViewModel">
+                                            <Grid ColumnDefinitions="*,46,72,78,90" Margin="0,3">
+
+                                                <!-- Application (match) cell -->
+                                                <Grid Grid.Column="0" ColumnDefinitions="Auto,*,28,28" Margin="2,0" ColumnSpacing="2">
+                                                    <Border Grid.Column="0"
+                                                            Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+                                                            CornerRadius="3" Padding="4,1" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding MatchModeLabel}" FontSize="10" Opacity="0.7"/>
+                                                    </Border>
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding MatchDisplay}"
+                                                               ToolTip.Tip="{Binding MatchTooltip}"
+                                                               FontSize="11"
+                                                               VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               Margin="4,0"/>
+                                                    <Button Grid.Column="2"
+                                                            Content="🎯"
+                                                            Command="{Binding PickProcessCommand}"
+                                                            FontSize="11" Padding="2,0"
+                                                            ToolTip.Tip="Pick a running process (match by name)"/>
+                                                    <Button Grid.Column="3"
+                                                            Content="📁"
+                                                            Command="{Binding BrowseExecutableCommand}"
+                                                            FontSize="11" Padding="2,0"
+                                                            ToolTip.Tip="Browse for an executable (match by full path)"/>
+                                                </Grid>
+
+                                                <!-- IsEnabled -->
+                                                <CheckBox Grid.Column="1"
+                                                          IsChecked="{Binding IsEnabled}"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"/>
+                                                <!-- AutoStart -->
+                                                <CheckBox Grid.Column="2"
+                                                          IsChecked="{Binding AutoStart}"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"
+                                                          ToolTip.Tip="Start the input pipeline automatically when this trigger activates"/>
+                                                <!-- RemainActiveOnFocusLoss -->
+                                                <CheckBox Grid.Column="3"
+                                                          IsChecked="{Binding RemainActiveOnFocusLoss}"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"
+                                                          ToolTip.Tip="Keep the pipeline running even when this application loses focus"/>
+                                                <!-- Actions: ↑ ↓ 🗑 -->
+                                                <StackPanel Grid.Column="4"
+                                                            Orientation="Horizontal"
+                                                            Spacing="2"
+                                                            HorizontalAlignment="Center">
+                                                    <Button Content="↑"
+                                                            Command="{Binding $parent[Expander].((vm:ProfileTriggersGroupViewModel)DataContext).MoveUpCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            FontSize="11" Padding="4,2"
+                                                            ToolTip.Tip="Move up (higher priority)"/>
+                                                    <Button Content="↓"
+                                                            Command="{Binding $parent[Expander].((vm:ProfileTriggersGroupViewModel)DataContext).MoveDownCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            FontSize="11" Padding="4,2"
+                                                            ToolTip.Tip="Move down (lower priority)"/>
+                                                    <Button Content="🗑"
+                                                            Command="{Binding $parent[Expander].((vm:ProfileTriggersGroupViewModel)DataContext).RemoveTriggerCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            FontSize="11" Padding="4,2"
+                                                            ToolTip.Tip="Remove this trigger"/>
+                                                </StackPanel>
+                                            </Grid>
                                         </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-                                <TextBlock Text="⚠ missing"
-                                           FontSize="10"
-                                           Foreground="{StaticResource WarningForegroundBrush}"
-                                           HorizontalAlignment="Right"
-                                           VerticalAlignment="Center"
-                                           Margin="0,0,30,0"
-                                           IsVisible="{Binding IsProfileMissing}"
-                                           ToolTip.Tip="The previously selected profile no longer exists. Choose another."/>
-                            </Grid>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
 
-                            <!-- IsEnabled -->
-                            <CheckBox Grid.Column="2"
-                                      IsChecked="{Binding IsEnabled}"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center"/>
-                            <!-- AutoStart -->
-                            <CheckBox Grid.Column="3"
-                                      IsChecked="{Binding AutoStart}"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center"
-                                      ToolTip.Tip="Start the input pipeline automatically when this mapping activates"/>
-                            <!-- RemainActiveOnFocusLoss -->
-                            <CheckBox Grid.Column="4"
-                                      IsChecked="{Binding RemainActiveOnFocusLoss}"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center"
-                                      ToolTip.Tip="Keep the pipeline running even when this application loses focus"/>
-                            <!-- Actions: ↑ ↓ 🗑 -->
-                            <StackPanel Grid.Column="5"
-                                        Orientation="Horizontal"
-                                        Spacing="2"
-                                        HorizontalAlignment="Center">
-                                <Button Content="↑"
-                                        Command="{Binding $parent[ItemsControl].((vm:AutoLoadPageViewModel)DataContext).MoveUpCommand}"
-                                        CommandParameter="{Binding}"
-                                        FontSize="11" Padding="4,2"
-                                        ToolTip.Tip="Move up (higher priority)"/>
-                                <Button Content="↓"
-                                        Command="{Binding $parent[ItemsControl].((vm:AutoLoadPageViewModel)DataContext).MoveDownCommand}"
-                                        CommandParameter="{Binding}"
-                                        FontSize="11" Padding="4,2"
-                                        ToolTip.Tip="Move down (lower priority)"/>
-                                <Button Content="🗑"
-                                        Command="{Binding $parent[ItemsControl].((vm:AutoLoadPageViewModel)DataContext).RemoveMappingCommand}"
-                                        CommandParameter="{Binding}"
-                                        FontSize="11" Padding="4,2"
-                                        ToolTip.Tip="Remove this mapping"/>
+                                <Button Content="+ Add Trigger"
+                                        Command="{Binding AddTriggerCommand}"
+                                        FontSize="12"
+                                        HorizontalAlignment="Left"/>
+
                             </StackPanel>
-                        </Grid>
+                        </Expander>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-
-            <Button Content="+ Add Mapping"
-                    Command="{Binding AddMappingCommand}"
-                    FontSize="12"
-                    HorizontalAlignment="Left"/>
 
         </StackPanel>
     </ScrollViewer>

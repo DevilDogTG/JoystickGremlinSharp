@@ -84,6 +84,57 @@ public sealed class ProfileLibraryTests : IDisposable
         _sut.Entries[0].Name.Should().Be("valid");
     }
 
+    [Fact]
+    public async Task ScanAsync_ProfileWithAutoLoadTriggers_SurfacesThemOnEntry()
+    {
+        var json = """
+            {
+              "name": "DCS",
+              "autoLoadTriggers": [
+                {
+                  "matchType": "ExecutableName",
+                  "executableName": "DCS.exe",
+                  "executablePath": "C:/Games/DCS/DCS.exe",
+                  "isEnabled": true,
+                  "autoStart": true,
+                  "remainActiveOnFocusLoss": false
+                }
+              ]
+            }
+            """;
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "DCS.json"), json);
+
+        await _sut.ScanAsync();
+
+        _sut.Entries.Should().HaveCount(1);
+        var triggers = _sut.Entries[0].AutoLoadTriggers;
+        triggers.Should().HaveCount(1);
+        triggers[0].ExecutableName.Should().Be("DCS.exe");
+        triggers[0].MatchType.Should().Be(ProcessMatchType.ExecutableName);
+        triggers[0].AutoStart.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ScanAsync_ProfileWithoutTriggers_HasEmptyTriggerList()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "Bare.json"), """{ "name": "Bare" }""");
+
+        await _sut.ScanAsync();
+
+        _sut.Entries[0].AutoLoadTriggers.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ScanAsync_ProfileWithInvalidJson_StillListedWithEmptyTriggers()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "Broken.json"), "{ not json }");
+
+        await _sut.ScanAsync();
+
+        _sut.Entries.Should().HaveCount(1);
+        _sut.Entries[0].AutoLoadTriggers.Should().BeEmpty();
+    }
+
     // ── CreateProfileAsync ─────────────────────────────────────────────────
 
     [Fact]

@@ -7,13 +7,13 @@ namespace JoystickGremlin.Core.Configuration;
 
 /// <summary>
 /// JSON-backed implementation of <see cref="ISettingsService"/>.
-/// The settings file is stored in <c>%APPDATA%\JoystickGremlin\settings.json</c> by default.
+/// The settings file is stored in <c>%APPDATA%\JoystickGremlinSharp\settings.json</c> by default.
 /// </summary>
 public sealed class SettingsService : ISettingsService
 {
     internal static readonly string DefaultSettingsPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "JoystickGremlin",
+        "JoystickGremlinSharp",
         "settings.json");
 
     private static readonly JsonSerializerOptions _options = new()
