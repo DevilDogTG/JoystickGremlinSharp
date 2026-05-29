@@ -346,6 +346,14 @@ internal static partial class VJoyNative
 `dill.dll` is bundled in the repository (`src/JoystickGremlin.Interop/Dill/dill.dll`) and copied to
 the output directory via `<Content CopyToOutputDirectory="PreserveNewest">` in the `.csproj`.
 
+> **⚠ `dill.dll` writes `dill_debug.log` to the current working directory** during `init()`. If the
+> CWD is read-only for the running user (e.g. `C:\Program Files\…` from the MSI shortcut, or
+> `C:\Windows\system32` from an HKCU `Run` registry launch at boot), the native open fails and the
+> process is terminated with no managed exception. `DillDeviceManager.Initialize()` therefore
+> temporarily redirects CWD to `%LOCALAPPDATA%\JoystickGremlinSharp\dill\` around the call to
+> `DillNative.init()`, then restores it. Anything else that P/Invokes into `dill.dll` must respect
+> this requirement.
+
 **vJoy is a prerequisite — not bundled (functional), install separately.**
 The app ships a reference copy of `vJoyInterface.dll` v2.2.2.0 for dependency resolution, but at
 runtime `VJoyNativeLibraryLoader` always prefers the DLL from the user's vJoy installation so the

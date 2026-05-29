@@ -70,31 +70,42 @@ public partial class App : Application
                 // is atomic across any thread that could invoke Show().
                 if (Interlocked.CompareExchange(ref _isInitialized, 1, 0) == 1) return;
 
-                filePickerService.SetTopLevel(_mainWindow);
-                processPickerService.SetOwner(_mainWindow);
-
-                // Run both prerequisite checks and show a combined warning if any fail.
-                var vjoyCheck    = VJoyPrerequisiteChecker.Check();
-                var hidHideCheck = HidHidePrerequisiteChecker.Check();
-
-                if (!vjoyCheck.IsOk || !hidHideCheck.IsInstalled)
+                // Catch all exceptions from the startup chain. Without this, any exception
+                // raised in an awaited call inside this async-void event handler propagates
+                // to the Avalonia dispatcher and may terminate the process with no log entry.
+                try
                 {
-                    var dialog = new PrerequisitesWarningDialog(
-                        vjoyCheck.IsOk    ? null : vjoyCheck,
-                        hidHideCheck.IsInstalled ? null : hidHideCheck);
-                    await dialog.ShowDialog(_mainWindow);
+                    filePickerService.SetTopLevel(_mainWindow);
+                    processPickerService.SetOwner(_mainWindow);
+
+                    // Run both prerequisite checks and show a combined warning if any fail.
+                    var vjoyCheck    = VJoyPrerequisiteChecker.Check();
+                    var hidHideCheck = HidHidePrerequisiteChecker.Check();
+
+                    if (!vjoyCheck.IsOk || !hidHideCheck.IsInstalled)
+                    {
+                        var dialog = new PrerequisitesWarningDialog(
+                            vjoyCheck.IsOk    ? null : vjoyCheck,
+                            hidHideCheck.IsInstalled ? null : hidHideCheck);
+                        await dialog.ShowDialog(_mainWindow);
+                    }
+
+                    // Perform HidHide crash-recovery revert and auto-whitelist own executable.
+                    var hidHideManager = _services.GetRequiredService<IHidHideManager>();
+                    await hidHideManager.InitializeAsync();
+
+                    await mainWindowVm.InitializeAsync();
+                    AttachTrayMenu(mainWindowVm);
+
+                    // After settings are loaded, hide window if start-minimized is set.
+                    if (settingsService.Settings.StartMinimized)
+                        _mainWindow.Hide();
                 }
-
-                // Perform HidHide crash-recovery revert and auto-whitelist own executable.
-                var hidHideManager = _services.GetRequiredService<IHidHideManager>();
-                await hidHideManager.InitializeAsync();
-
-                await mainWindowVm.InitializeAsync();
-                AttachTrayMenu(mainWindowVm);
-
-                // After settings are loaded, hide window if start-minimized is set.
-                if (settingsService.Settings.StartMinimized)
-                    _mainWindow.Hide();
+                catch (Exception ex)
+                {
+                    Log.Fatal(ex, "Main window startup chain failed");
+                    Log.CloseAndFlush();
+                }
             };
 
             // Intercept window close: minimize to tray when CloseToTray is enabled.

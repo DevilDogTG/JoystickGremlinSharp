@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+using System.Runtime.InteropServices;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.Events;
 using JoystickGremlin.Core.Exceptions;
@@ -63,7 +64,7 @@ public sealed class DillDeviceManager : IDeviceManager
         {
             if (!_dillInitialized)
             {
-                DillNative.init();
+                InitializeNative();
                 _dillInitialized = true;
                 _logger.LogInformation("DILL native library initialized");
             }
@@ -71,6 +72,75 @@ public sealed class DillDeviceManager : IDeviceManager
 
         RegisterCallbacks();
         RefreshDevices();
+    }
+
+    /// <summary>
+    /// Calls <see cref="DillNative.init"/> with the process working directory
+    /// temporarily redirected to a per-user folder.
+    /// </summary>
+    /// <remarks>
+    /// The bundled <c>dill.dll</c> opens <c>dill_debug.log</c> in the current working
+    /// directory during <c>init()</c>. When the app is launched from the MSI shortcut
+    /// (CWD = <c>C:\Program Files\JoystickGremlinSharp\</c>) or from the HKCU
+    /// <c>Run</c> registry at boot (CWD = <c>C:\Windows\system32</c>), a non-admin user
+    /// cannot write that file and the native code aborts the process. Redirecting
+    /// the CWD to <c>%LOCALAPPDATA%\JoystickGremlinSharp\dill\</c> ensures the log
+    /// file always lands somewhere writable; the original CWD is restored in
+    /// <c>finally</c> so nothing else in the process sees the change.
+    /// </remarks>
+    private void InitializeNative()
+    {
+        var dillWorkDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "JoystickGremlinSharp",
+            "dill");
+
+        try
+        {
+            Directory.CreateDirectory(dillWorkDir);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Could not create DILL working directory '{Dir}' — falling back to current CWD",
+                dillWorkDir);
+            DillNative.init();
+            return;
+        }
+
+        var originalCwd = Environment.CurrentDirectory;
+        try
+        {
+            Environment.CurrentDirectory = dillWorkDir;
+            _logger.LogDebug("Redirected CWD to '{Dir}' for DillNative.init", dillWorkDir);
+            DillNative.init();
+        }
+        catch (SEHException ex)
+        {
+            _logger.LogCritical(ex,
+                "DillNative.init() crashed with a native exception. " +
+                "Working directory was '{Dir}'.", dillWorkDir);
+            throw new DeviceException(
+                "DILL native library failed to initialize. " +
+                "See log for details.", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex, "DillNative.init() threw an unexpected exception");
+            throw new DeviceException("DILL native library failed to initialize.", ex);
+        }
+        finally
+        {
+            try
+            {
+                Environment.CurrentDirectory = originalCwd;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Could not restore original working directory '{Dir}'", originalCwd);
+            }
+        }
     }
 
     /// <summary>
