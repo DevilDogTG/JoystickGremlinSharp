@@ -134,7 +134,9 @@ public sealed class ProfileTriggersGroupViewModel : ReactiveObject, IDisposable
     private void RemoveTrigger(ProcessTriggerViewModel row)
     {
         if (_rowSubscriptions.Remove(row, out var sub))
+        {
             sub.Dispose();
+        }
         Triggers.Remove(row);
         this.RaisePropertyChanged(nameof(TriggerCountSummary));
         MarkDirty();
@@ -143,7 +145,10 @@ public sealed class ProfileTriggersGroupViewModel : ReactiveObject, IDisposable
     private void MoveUp(ProcessTriggerViewModel row)
     {
         var idx = Triggers.IndexOf(row);
-        if (idx <= 0) return;
+        if (idx <= 0)
+        {
+            return;
+        }
         Triggers.Move(idx, idx - 1);
         MarkDirty();
     }
@@ -151,7 +156,10 @@ public sealed class ProfileTriggersGroupViewModel : ReactiveObject, IDisposable
     private void MoveDown(ProcessTriggerViewModel row)
     {
         var idx = Triggers.IndexOf(row);
-        if (idx < 0 || idx >= Triggers.Count - 1) return;
+        if (idx < 0 || idx >= Triggers.Count - 1)
+        {
+            return;
+        }
         Triggers.Move(idx, idx + 1);
         MarkDirty();
     }
@@ -177,11 +185,16 @@ public sealed class ProfileTriggersGroupViewModel : ReactiveObject, IDisposable
     /// <inheritdoc/>
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+        {
+            return;
+        }
         _disposed = true;
 
         foreach (var sub in _rowSubscriptions.Values)
+        {
             sub.Dispose();
+        }
         _rowSubscriptions.Clear();
     }
 
