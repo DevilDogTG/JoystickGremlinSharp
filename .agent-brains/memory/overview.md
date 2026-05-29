@@ -17,6 +17,8 @@
 
 **Current version**: v11.0.0 (breaking change — see `BREAKING-CHANGES.md` and Auto-Load section below).
 
+**README sync**: refreshed for v11.0 on 2026-05-29 (commit `8b0f32cc`) — now includes a feature-comparison table against the original Python JoystickGremlin and documents the v11 storage path consolidation.
+
 ---
 
 ## Installer Architecture (as of v10.7.0+)
