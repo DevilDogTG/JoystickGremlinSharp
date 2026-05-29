@@ -77,7 +77,9 @@ public sealed class HidHideManagerTests
         sut.Dispose();
 
         if (addedPath is not null)
+        {
             _controller.ApplicationPaths.Should().NotContain(addedPath);
+        }
     }
 
     [Fact]
