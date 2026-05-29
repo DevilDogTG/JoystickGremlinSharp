@@ -62,31 +62,4 @@ public sealed class AppSettings
     /// Defaults to <c>true</c>.
     /// </summary>
     public bool EnableLiveInputRefresh { get; set; } = true;
-
-    // ── HidHide ──────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Gets or sets whether HidHide integration is enabled.
-    /// When <c>false</c>, all HidHide operations are skipped regardless of other settings.
-    /// </summary>
-    public bool EnableHidHide { get; set; } = false;
-
-    /// <summary>
-    /// Gets or sets whether the HidHide hide/unhide cycle should be automatically
-    /// triggered by event-pipeline Start / Stop transitions.
-    /// Requires <see cref="EnableHidHide"/> to be <c>true</c>.
-    /// </summary>
-    public bool AutoHideOnPipelineRun { get; set; } = true;
-
-    /// <summary>
-    /// Gets or sets the Device Instance IDs of physical devices to be hidden while the pipeline runs.
-    /// Each entry matches a <see cref="HiddenDeviceEntry.InstanceId"/>.
-    /// </summary>
-    public List<string> HiddenDeviceInstanceIds { get; set; } = [];
-
-    /// <summary>
-    /// Gets or sets cached metadata for the hidden devices (friendly names, etc.).
-    /// This allows the settings UI to display stale entries even when the device is disconnected.
-    /// </summary>
-    public List<HiddenDeviceEntry> HiddenDevices { get; set; } = [];
 }
