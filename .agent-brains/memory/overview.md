@@ -13,9 +13,12 @@
 
 **Branch model**: main-first, tag-based releases. Feature branches → rebase-merge PR → main.
 
-**Test baseline**: 314 tests, 0 warnings (as of `chore/cleanup-hidhide-and-ci`, 2026-05-29 — drop from 332 reflects 18 deleted tests covering the now-removed HidHide Apply/Revert pipeline).
+**Test baseline**: 315 tests, 0 warnings (as of PR #69 merge, 2026-05-29 — drop from 332 reflects 17 deleted tests covering the removed HidHide Apply/Revert pipeline + 1 added `Dispose_CalledTwice` test).
 
-**Current version**: v11.0.0 (breaking change — see `BREAKING-CHANGES.md` and Auto-Load section below).
+**Current version**: v12.0.1 (v12.0.0 was the cleanup release; v12.0.1 was tagged immediately after). Previous breaking change at v11.0 — see `BREAKING-CHANGES.md` and Auto-Load section below.
+
+**Recent merges (2026-05-29)**:
+- PR #69 merged via rebase-merge — dropped `dotnet-ci.yml`, stripped HidHide Apply/Revert dead code, primary-ctor refactor.
 
 **README sync**: refreshed for v11.0 on 2026-05-29 (commit `8b0f32cc`) — now includes a feature-comparison table against the original Python JoystickGremlin and documents the v11 storage path consolidation.
 

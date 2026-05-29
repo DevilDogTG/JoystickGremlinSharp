@@ -44,9 +44,11 @@ PR-review trust.
 - [x] Trim `AGENTS.md` HidHide section
 - [x] Trim `HidHideManagerTests.cs`
 - [x] `dotnet build -warnaserror` clean (0 warnings)
-- [x] `dotnet test` passes (314/314)
+- [x] `dotnet test` passes (315/315)
 - [x] Update `overview.md` and `backlog.md`
-- [ ] Commit + push + open PR
+- [x] Commit + push + open PR (#69)
+- [x] Code review round 1 — 5 Warnings, all addressed in `47abbf78`
+- [x] Code review round 2 — Approved with 2 cosmetic Suggestions only (`3032cb2b`)
 
 ## Progress Log
 
@@ -56,7 +58,15 @@ PR-review trust.
   removes on dispose. Deleted `HidHideStatus.cs` (enum) and `HiddenDeviceEntry.cs`.
   Removed `EnableHidHide`/`AutoHideOnPipelineRun`/`HiddenDeviceInstanceIds`/`HiddenDevices`
   from `AppSettings`. Tests trimmed from 30 to 5 cases (Init/Dispose only). Build clean.
-  Test count 332 → 314. AGENTS.md HidHide section rewritten to match shipping reality.
+  AGENTS.md HidHide section rewritten to match shipping reality. PR #69 opened.
+- 2026-05-29 (review round 1): `global:code-review` surfaced 5 Warnings (3× missing
+  braces, constructor missing `<summary>`, PR body missing Breaking-changes section).
+  All addressed in commit `47abbf78` + `gh pr edit` for PR body.
+- 2026-05-29 (review round 2): Applied 3 non-blocking suggestions in commit `3032cb2b`:
+  primary-constructor refactor, dropped unused `CancellationToken` from
+  `InitializeAsync`, added `Dispose_CalledTwice_RemovesWhitelistEntryOnlyOnce` test
+  to guard the `_disposed` idempotency flag. Re-review: **Approved**. Test count
+  315/315. PR #69 ready to merge.
 
 ## Files to modify
 
