@@ -65,7 +65,10 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
                 .Throttle(TimeSpan.FromMilliseconds(800), AvaloniaScheduler.Instance)
                 .Subscribe(unit =>
                 {
-                    if (!_loading) _ = SaveAsync();
+                    if (!_loading)
+                    {
+                        _ = SaveAsync();
+                    }
                 }));
 
         _profileLibrary.LibraryChanged += OnLibraryChanged;
@@ -79,7 +82,9 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
         {
             this.RaiseAndSetIfChanged(ref _enableAutoLoading, value);
             if (!_loading)
+            {
                 _ = SaveSettingsAsync();
+            }
         }
     }
 
@@ -130,7 +135,9 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
         // subscriptions are released. Without this, every library scan would
         // accumulate detached subscriptions until GC eventually collects them.
         foreach (var oldGroup in ProfileGroups)
+        {
             oldGroup.Dispose();
+        }
         ProfileGroups.Clear();
 
         foreach (var entry in _profileLibrary.Entries)
@@ -147,7 +154,9 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
     private void ScheduleSave()
     {
         if (!_loading)
+        {
             _saveTrigger.OnNext(Unit.Default);
+        }
     }
 
     private async Task SaveAsync()
@@ -207,7 +216,9 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
         try
         {
             if (_settingsService.Settings.EnableAutoLoading == EnableAutoLoading)
+            {
                 return;
+            }
 
             _settingsService.Settings.EnableAutoLoading = EnableAutoLoading;
             await _settingsService.SaveAsync();
@@ -223,7 +234,9 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
     {
         _profileLibrary.LibraryChanged -= OnLibraryChanged;
         foreach (var group in ProfileGroups)
+        {
             group.Dispose();
+        }
         ProfileGroups.Clear();
         _subscriptions.Dispose();
         _saveTrigger.Dispose();
