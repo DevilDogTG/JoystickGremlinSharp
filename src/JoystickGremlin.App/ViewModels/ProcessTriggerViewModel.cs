@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Reactive;
+using Avalonia.Threading;
 using JoystickGremlin.App.Services;
 using JoystickGremlin.Core.ProcessMonitor;
 using JoystickGremlin.Core.Profile;
@@ -36,24 +38,26 @@ public sealed class ProcessTriggerViewModel : ReactiveObject
     /// Initializes a new instance of <see cref="ProcessTriggerViewModel"/>.
     /// </summary>
     /// <param name="model">The trigger domain model.</param>
-    /// <param name="selectedProfile">
-    /// The library entry matching the model's <see cref="AutoLoadTrigger.ProfilePath"/>, or
-    /// <c>null</c> when the referenced profile is not (or no longer) in the library.
+    /// <param name="availableProfiles">
+    /// The shared library entry collection the profile dropdown binds to. Owned by the page;
+    /// the row resolves its <see cref="SelectedProfile"/> from it.
     /// </param>
     /// <param name="processPicker">Service used to pick a running process.</param>
     /// <param name="filePicker">Service used to browse for an executable file.</param>
     public ProcessTriggerViewModel(
         AutoLoadTrigger model,
-        ProfileEntry? selectedProfile,
+        ObservableCollection<ProfileEntry> availableProfiles,
         IProcessPickerDialogService processPicker,
         IFilePickerService filePicker)
     {
         Model = model;
+        AvailableProfiles = availableProfiles;
         _processPicker = processPicker;
         _filePicker = filePicker;
 
-        _selectedProfile         = selectedProfile;
         _profilePath             = model.ProfilePath;
+        _selectedProfile         = availableProfiles.FirstOrDefault(e =>
+            string.Equals(e.FilePath, model.ProfilePath, StringComparison.OrdinalIgnoreCase));
         _matchType               = model.MatchType;
         _executableName          = model.ExecutableName;
         _executablePath          = model.ExecutablePath;
@@ -65,6 +69,9 @@ public sealed class ProcessTriggerViewModel : ReactiveObject
         BrowseExecutableCommand = ReactiveCommand.CreateFromTask(BrowseExecutableAsync);
     }
 
+    /// <summary>Gets the shared library entry collection shown in the profile dropdown.</summary>
+    public ObservableCollection<ProfileEntry> AvailableProfiles { get; }
+
     /// <summary>
     /// Gets or sets the library entry of the profile this trigger loads.
     /// <c>null</c> when no profile has been picked yet, or when the stored
@@ -75,6 +82,17 @@ public sealed class ProcessTriggerViewModel : ReactiveObject
         get => _selectedProfile;
         set
         {
+            // The ComboBox pushes null through the two-way binding while the view is
+            // re-attaching (SelectedItem can bind before ItemsSource has items) or while
+            // the shared items collection is being rebuilt. The UI offers no way to
+            // genuinely clear a trigger's profile — treat the null as transient: keep the
+            // current value and re-announce it so the control resyncs once items exist.
+            if (value is null && !string.IsNullOrEmpty(_profilePath))
+            {
+                Dispatcher.UIThread.Post(() => this.RaisePropertyChanged(nameof(SelectedProfile)));
+                return;
+            }
+
             this.RaiseAndSetIfChanged(ref _selectedProfile, value);
             if (value is not null)
             {

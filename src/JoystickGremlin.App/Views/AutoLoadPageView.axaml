@@ -67,7 +67,7 @@
 
                             <!-- Profile cell -->
                             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" Margin="2,0">
-                                <ComboBox ItemsSource="{Binding $parent[ItemsControl].((vm:AutoLoadPageViewModel)DataContext).AvailableProfiles}"
+                                <ComboBox ItemsSource="{Binding AvailableProfiles}"
                                           SelectedItem="{Binding SelectedProfile}"
                                           PlaceholderText="(select profile)"
                                           ToolTip.Tip="{Binding ProfileTooltip}"
