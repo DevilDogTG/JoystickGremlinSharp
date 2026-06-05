@@ -1,19 +1,27 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-namespace JoystickGremlin.Core.Profile;
+namespace JoystickGremlin.Core.ProcessMonitor;
 
 /// <summary>
-/// A process-based auto-load trigger embedded inside a <see cref="Profile"/>.
-/// When the matched executable becomes the foreground window, the owning profile
-/// is loaded automatically.
+/// A process-based auto-load trigger stored in the global trigger list
+/// (<c>AppSettings.AutoLoadTriggers</c>). When the matched executable becomes the
+/// foreground window, the profile referenced by <see cref="ProfilePath"/> is loaded
+/// automatically.
 /// </summary>
 /// <remarks>
-/// Triggers live inside their target profile (<see cref="Profile.AutoLoadTriggers"/>),
-/// so sharing or deleting a profile carries its triggers with it. There is no
-/// global mapping list — see release notes for v11.0 for the breaking change.
+/// Since v12.1 triggers live in <c>settings.json</c> rather than inside each profile
+/// (the v11.0 model). Triggers found embedded in profile files are lifted into the
+/// global list by <c>AutoLoadTriggerMigrator</c>. Triggers are evaluated in list order;
+/// the first enabled match wins.
 /// </remarks>
-public sealed class ProcessTrigger
+public sealed class AutoLoadTrigger
 {
+    /// <summary>
+    /// Gets or sets the absolute path of the profile JSON file to load when this
+    /// trigger activates. A trigger whose profile file no longer exists never matches.
+    /// </summary>
+    public string ProfilePath { get; set; } = string.Empty;
+
     /// <summary>
     /// Gets or sets how the foreground executable is matched against this trigger.
     /// Defaults to <see cref="ProcessMatchType.ExecutablePath"/> (enum value 0).

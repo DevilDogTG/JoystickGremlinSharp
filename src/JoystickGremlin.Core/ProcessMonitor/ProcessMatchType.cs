@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-namespace JoystickGremlin.Core.Profile;
+namespace JoystickGremlin.Core.ProcessMonitor;
 
 /// <summary>
-/// Determines how a <see cref="ProcessTrigger"/> is matched against the
+/// Determines how an <see cref="AutoLoadTrigger"/> is matched against the
 /// foreground process's executable path.
 /// </summary>
 public enum ProcessMatchType

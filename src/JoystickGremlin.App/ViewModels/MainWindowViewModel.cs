@@ -9,6 +9,7 @@ using Avalonia.Threading;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Devices;
 using JoystickGremlin.Core.Pipeline;
+using JoystickGremlin.Core.ProcessMonitor;
 using JoystickGremlin.Core.Profile;
 using JoystickGremlin.Interop.HidHide;
 using Microsoft.Extensions.Logging;
@@ -28,6 +29,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly IProfileState _profileState;
     private readonly IProfileLibrary _profileLibrary;
     private readonly ISettingsService _settingsService;
+    private readonly IAutoLoadTriggerMigrator _autoLoadMigrator;
     private readonly IDeviceManager _deviceManager;
     private readonly ControllerSetupPageViewModel _controllerSetupPage;
     private readonly SettingsPageViewModel _settingsPage;
@@ -60,6 +62,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         IProfileState profileState,
         IProfileLibrary profileLibrary,
         ISettingsService settingsService,
+        IAutoLoadTriggerMigrator autoLoadMigrator,
         IDeviceManager deviceManager,
         ILogger<MainWindowViewModel> logger)
     {
@@ -68,6 +71,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         _profileState = profileState;
         _profileLibrary = profileLibrary;
         _settingsService = settingsService;
+        _autoLoadMigrator = autoLoadMigrator;
         _deviceManager = deviceManager;
         _controllerSetupPage = controllerSetupPage;
         _settingsPage = settingsPage;
@@ -220,6 +224,18 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
         await _profileLibrary.ScanAsync();
         RebuildProfileEntries();
+
+        // One-time lift of legacy profile-embedded triggers into the global list
+        // (idempotent; profiles copied in later are handled by the Auto-load page's
+        // manual migration banner). Never let a migration failure break startup.
+        try
+        {
+            await _autoLoadMigrator.MigrateAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Auto-load trigger migration failed at startup");
+        }
 
         // Load auto-load mappings now that the profile library is populated so each
         // mapping's profile dropdown can resolve its selection.
