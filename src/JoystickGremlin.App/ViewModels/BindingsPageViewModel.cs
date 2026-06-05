@@ -285,8 +285,20 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     public string EditMapToKeyboardBehavior
     {
         get => _editMapToKeyboardBehavior;
-        set => this.RaiseAndSetIfChanged(ref _editMapToKeyboardBehavior, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _editMapToKeyboardBehavior, value);
+            this.RaisePropertyChanged(nameof(EditMapToKeyboardBehaviorDescription));
+        }
     }
+
+    /// <summary>
+    /// Gets the plain-language description of the currently selected map-to-keyboard
+    /// behavior, shown as a caption under the behavior picker.
+    /// </summary>
+    public string EditMapToKeyboardBehaviorDescription =>
+        MapToKeyboardBehaviors.FirstOrDefault(o => o.Value == EditMapToKeyboardBehavior)?.Description
+        ?? string.Empty;
 
     /// <summary>Gets or sets the key name fired for the Up direction (map-to-arrow-keys action).</summary>
     public string EditMapToArrowKeysUpKey
@@ -317,8 +329,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>Gets the available behavior options for the map-to-keyboard action.</summary>
-    public static IReadOnlyList<string> MapToKeyboardBehaviors { get; } =
-        ["Hold", "Toggle", "PressOnly", "ReleaseOnly"];
+    public static IReadOnlyList<KeyBehaviorOption> MapToKeyboardBehaviors => KeyBehaviorOption.All;
 
     /// <summary>Gets or sets the axis-to-button press threshold (0–1) for the vJoy-button action.</summary>
     public double EditVJoyButtonThreshold

@@ -37,24 +37,29 @@ two-line descriptions in the open dropdown + a caption under the closed combo.
 | ReleaseOnly | Release Only | Sends one quick key tap when the button is released. Pair with Press Only on the same input to send different keys on switch flip-up vs flip-down. |
 
 ## Checklist
-- [ ] Create branch `feature/keyboard-behavior-descriptions` from main
-- [ ] Commit pending backlog housekeeping (dropped items 2–4) as its own `chore:` commit on this branch
-- [ ] `KeyBehaviorOption` record (`Value`, `Label`, `Description`) in App ViewModels;
-      replace `MapToKeyboardBehaviors` string list with option list (keep static, shared
-      by both pages via `ControllerSetupPageViewModel.MapToKeyboardBehaviors` passthrough)
-- [ ] `BindingsPageViewModel`: expose `EditMapToKeyboardBehaviorDescription` computed
-      property (raises with `EditMapToKeyboardBehavior`) for the caption
-- [ ] `BindingsPageView.axaml`: ComboBox → `SelectedValue` binding + two-line
+- [x] Create branch `feature/keyboard-behavior-descriptions` from main
+- [x] Commit pending backlog housekeeping (dropped items 2–4) as its own `chore:` commit on this branch
+- [x] `KeyBehaviorOption` record (`Value`, `Label`, `Description`) in App ViewModels
+      with static `All` list; both pages share it via the existing
+      `ControllerSetupPageViewModel.MapToKeyboardBehaviors` passthrough
+- [x] `BindingsPageViewModel`: `EditMapToKeyboardBehaviorDescription` computed
+      property (raised from the `EditMapToKeyboardBehavior` setter) for the caption
+- [x] `BindingsPageView.axaml`: ComboBox → `SelectedValue` binding + two-line
       `ItemTemplate` (Label + dim wrapped Description, `x:DataType`) + single-line
       `SelectionBoxItemTemplate` + caption TextBlock below
-- [ ] `ControllerSetupPageView.axaml`: same treatment (binds via `BindingEditor.…`)
-- [ ] Optional polish: `BoundActionViewModel` summary (line ~116) shows spaced label
-      (`[Press Only]`) instead of raw enum name
-- [ ] Tests: option list covers every `KeyBehavior` enum value exactly once; values
-      parse via `Enum.TryParse`; description property follows selection
-- [ ] `dotnet build` 0 warnings + full test suite green (baseline 355)
+- [x] `ControllerSetupPageView.axaml`: same treatment (binds via `BindingEditor.…`)
+- [x] Polish: `BoundActionViewModel` summary shows spaced label (`[Press Only]`)
+- [x] Tests: ~~App-level option tests~~ — no App test project exists (UI layer untested
+      by convention); enum coverage is enforced at compile time instead: option values
+      use `nameof(MapToKeyboardActionDescriptor.KeyBehavior.…)`, so removing/renaming
+      an enum member breaks the build
+- [x] `dotnet build -warnaserror` 0 warnings + full test suite green (355/355)
 - [ ] Run app, visually verify both pages (dropdown, caption, save/reload round-trip)
 
 ## Progress Log
 - 2026-06-05 — Plan created after discussion reversed the drop-behaviors proposal;
   UX variant "Both" confirmed by user; Avalonia 12.0.1 API availability verified.
+- 2026-06-05 — Implemented: `KeyBehaviorOption` (record + `All`), VM description
+  property, both XAML pickers reworked (two-line items + caption, `SelectedValue`
+  keeps the persisted string untouched — no profile format change), summary label
+  polish. Build 0 warnings, 355/355 tests. Pending: visual verification in the app.
