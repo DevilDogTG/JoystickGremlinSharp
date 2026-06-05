@@ -92,6 +92,13 @@ _ReSharper*/
 .ncrunch*/
 
 # ============================================================
+# Claude Code
+# ============================================================
+# Per-developer local settings (permission grants, etc.) — shared
+# project config (.claude/CLAUDE.md, .claude/commands/) stays tracked.
+.claude/settings.local.json
+
+# ============================================================
 # Visual Studio Code
 # ============================================================
 .vscode/
