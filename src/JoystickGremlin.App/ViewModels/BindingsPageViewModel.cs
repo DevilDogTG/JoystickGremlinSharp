@@ -56,6 +56,7 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     private string _editMacroKeys = string.Empty;
     private string _editMapToKeyboardKeys = string.Empty;
     private string _editMapToKeyboardBehavior = "Hold";
+    private readonly ObservableAsPropertyHelper<string> _editMapToKeyboardBehaviorDescription;
     private string _editMapToArrowKeysUpKey    = "Up";
     private string _editMapToArrowKeysDownKey  = "Down";
     private string _editMapToArrowKeysLeftKey  = "Left";
@@ -101,6 +102,12 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
             .Select(k => !string.IsNullOrWhiteSpace(k));
         AddKeyToMapToKeyboardCommand = ReactiveCommand.Create(AddSelectedKeyToMapToKeyboard, canAddKey);
         RemoveKeyFromMapToKeyboardCommand = ReactiveCommand.Create<string>(RemoveKeyFromMapToKeyboard);
+
+        // Caption under the behavior picker follows the selected behavior.
+        _editMapToKeyboardBehaviorDescription = this
+            .WhenAnyValue(x => x.EditMapToKeyboardBehavior)
+            .Select(v => MapToKeyboardBehaviors.FirstOrDefault(o => o.Value == v)?.Description ?? string.Empty)
+            .ToProperty(this, x => x.EditMapToKeyboardBehaviorDescription);
 
         // Rebuild inputs when device selection changes
         _ = this.WhenAnyValue(x => x.SelectedDevice)
@@ -285,20 +292,14 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     public string EditMapToKeyboardBehavior
     {
         get => _editMapToKeyboardBehavior;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref _editMapToKeyboardBehavior, value);
-            this.RaisePropertyChanged(nameof(EditMapToKeyboardBehaviorDescription));
-        }
+        set => this.RaiseAndSetIfChanged(ref _editMapToKeyboardBehavior, value);
     }
 
     /// <summary>
     /// Gets the plain-language description of the currently selected map-to-keyboard
     /// behavior, shown as a caption under the behavior picker.
     /// </summary>
-    public string EditMapToKeyboardBehaviorDescription =>
-        MapToKeyboardBehaviors.FirstOrDefault(o => o.Value == EditMapToKeyboardBehavior)?.Description
-        ?? string.Empty;
+    public string EditMapToKeyboardBehaviorDescription => _editMapToKeyboardBehaviorDescription.Value;
 
     /// <summary>Gets or sets the key name fired for the Up direction (map-to-arrow-keys action).</summary>
     public string EditMapToArrowKeysUpKey
@@ -532,9 +533,17 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
                 EditHatToAxisYAxisIndex = cfg?["yAxisIndex"]?.GetValue<int>() ?? 2;
                 break;
             case MapToKeyboardActionDescriptor.ActionTag:
-                EditMapToKeyboardKeys     = cfg?["keys"]?.GetValue<string>() ?? string.Empty;
-                EditMapToKeyboardBehavior = cfg?["behavior"]?.GetValue<string>() ?? "Hold";
+            {
+                EditMapToKeyboardKeys = cfg?["keys"]?.GetValue<string>() ?? string.Empty;
+                // Canonicalize to the enum name so picker matching (ordinal) agrees with
+                // the functor's case-insensitive parse and its Hold fallback.
+                var rawBehavior = cfg?["behavior"]?.GetValue<string>() ?? string.Empty;
+                EditMapToKeyboardBehavior = Enum.TryParse<MapToKeyboardActionDescriptor.KeyBehavior>(
+                        rawBehavior, ignoreCase: true, out var parsedBehavior)
+                    ? parsedBehavior.ToString()
+                    : nameof(MapToKeyboardActionDescriptor.KeyBehavior.Hold);
                 break;
+            }
             case MapToArrowKeysActionDescriptor.ActionTag:
                 EditMapToArrowKeysUpKey    = cfg?["upKey"]?.GetValue<string>()    ?? "Up";
                 EditMapToArrowKeysDownKey  = cfg?["downKey"]?.GetValue<string>()  ?? "Down";
@@ -1025,5 +1034,6 @@ public sealed class BindingsPageViewModel : ViewModelBase, IDisposable
     {
         _profileState.ProfileChanged -= OnProfileChanged;
         _hasProfileSubject.Dispose();
+        _editMapToKeyboardBehaviorDescription.Dispose();
     }
 }
