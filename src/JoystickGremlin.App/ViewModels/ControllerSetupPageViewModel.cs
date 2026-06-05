@@ -120,7 +120,7 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
     public bool CanEditBinding => SelectedInputRow is not null && BindingEditor.HasProfile;
 
     /// <summary>Gets the behavior options used by the keyboard mapping editor.</summary>
-    public IReadOnlyList<string> MapToKeyboardBehaviors => BindingsPageViewModel.MapToKeyboardBehaviors;
+    public IReadOnlyList<KeyBehaviorOption> MapToKeyboardBehaviors => BindingsPageViewModel.MapToKeyboardBehaviors;
 
     /// <summary>Gets the command that saves the current binding editor changes.</summary>
     public ReactiveCommand<Unit, Unit> SaveBindingChangesCommand { get; }

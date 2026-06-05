@@ -635,9 +635,33 @@
                                              HorizontalAlignment="Left"/>
                                     <TextBlock Text="Behavior"/>
                                     <ComboBox ItemsSource="{Binding MapToKeyboardBehaviors}"
-                                              SelectedItem="{Binding BindingEditor.EditMapToKeyboardBehavior}"
-                                              MinWidth="140"
-                                              HorizontalAlignment="Left"/>
+                                              SelectedValue="{Binding BindingEditor.EditMapToKeyboardBehavior, Mode=TwoWay}"
+                                              SelectedValueBinding="{Binding Value, x:DataType=vm:KeyBehaviorOption}"
+                                              MinWidth="220"
+                                              HorizontalAlignment="Left">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:KeyBehaviorOption">
+                                                <StackPanel Spacing="2" MaxWidth="320">
+                                                    <TextBlock Text="{Binding Label}"/>
+                                                    <TextBlock Text="{Binding Description}"
+                                                               FontSize="11"
+                                                               TextWrapping="Wrap"
+                                                               Opacity="0.65"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                        <ComboBox.SelectionBoxItemTemplate>
+                                            <DataTemplate x:DataType="vm:KeyBehaviorOption">
+                                                <TextBlock Text="{Binding Label}"/>
+                                            </DataTemplate>
+                                        </ComboBox.SelectionBoxItemTemplate>
+                                    </ComboBox>
+                                    <TextBlock Text="{Binding BindingEditor.EditMapToKeyboardBehaviorDescription}"
+                                               FontSize="11"
+                                               TextWrapping="Wrap"
+                                               MaxWidth="320"
+                                               HorizontalAlignment="Left"
+                                               Opacity="0.65"/>
                                 </StackPanel>
 
                                 <StackPanel Spacing="6" IsVisible="{Binding BindingEditor.ShowHatToAxisConfig}">

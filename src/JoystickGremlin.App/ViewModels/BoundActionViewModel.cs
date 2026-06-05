@@ -113,7 +113,9 @@ public sealed class BoundActionViewModel : ViewModelBase
         var keys     = cfg["keys"]?.GetValue<string>() ?? string.Empty;
         var behavior = cfg["behavior"]?.GetValue<string>() ?? "Hold";
         var keysPart = keys.Length > 0 ? keys : "(no keys)";
-        return behavior == "Hold" ? keysPart : $"{keysPart} [{behavior}]";
+        if (behavior == "Hold") return keysPart;
+        var label = KeyBehaviorOption.All.FirstOrDefault(o => o.Value == behavior)?.Label ?? behavior;
+        return $"{keysPart} [{label}]";
     }
 
     private static string BuildButtonsToHatSummary(JsonObject? cfg)
