@@ -1,6 +1,6 @@
 # Plan: Global Auto-Load Trigger Store
 
-**Status:** active
+**Status:** completed (PR #71 merged 2026-06-05)
 **Created:** 2026-06-05
 **Branch:** feature/global-autoload
 
@@ -122,4 +122,4 @@ clean._
 _2026-06-05 — Review round 2 (re-review of fix commits): no new defects; one
 consistency suggestion (post-migration detect on UI thread) resolved in cacd0b39.
 **Verdict: Approved** (posted to PR). 328 tests, -warnaserror clean._
-_Remaining: merge (rebase-merge, delete branch) via workflow-end._
+_2026-06-05 — PR #71 rebase-merged to main; remote + local branches deleted. Plan closed._

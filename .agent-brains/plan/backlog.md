@@ -1,10 +1,8 @@
 # Project Roadmap
 
-## Active
-
-- [ ] **feature/global-autoload** — Move auto-load triggers from profile-embedded to a global trigger store in settings.json; auto-migrate; v12.1.0. *(Plan: [feature-global-autoload.md](feature-global-autoload.md), created 2026-06-05)*
-
 ## Completed
+
+- [x] **feature/global-autoload** — Auto-load triggers moved from profile-embedded to a global trigger store in `settings.json` (`AppSettings.AutoLoadTriggers`); idempotent auto-migration at startup + manual "Migrate now" banner; flat Auto-load page with per-row profile picker; v12.1.0. *(PR #71 merged via rebase 2026-06-05 after two review rounds — final verdict: Approved. Plan: [feature-global-autoload.md](feature-global-autoload.md))*
 
 - [x] **feature/autoload-rework** — Auto-load process→profile rework *(released v10.6.0; plan archived 2026-05-29)*
 - [x] **feature/wix-installer** — Replace Velopack with WiX v6 MSI installer *(PR #62, ready to merge)*
