@@ -54,7 +54,8 @@ two-line descriptions in the open dropdown + a caption under the closed combo.
       use `nameof(MapToKeyboardActionDescriptor.KeyBehavior.…)`, so removing/renaming
       an enum member breaks the build
 - [x] `dotnet build -warnaserror` 0 warnings + full test suite green (355/355)
-- [ ] Run app, visually verify both pages (dropdown, caption, save/reload round-trip)
+- [x] Run app, visually verify both pages (dropdown, caption, save/reload round-trip)
+      — user confirmed 2026-06-05: "visuality is good as expected"
 
 ## Progress Log
 - 2026-06-05 — Plan created after discussion reversed the drop-behaviors proposal;
