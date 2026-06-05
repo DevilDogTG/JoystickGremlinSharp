@@ -21,7 +21,9 @@
 
 **Current version**: v12.1.0 — released 2026-06-05 (global auto-load rework, PR #71; signed MSI on GitHub Releases). Previous breaking change at v11.0 — see `BREAKING-CHANGES.md` and Auto-Load section below.
 
-**Unreleased on main**: in-app version checker (PR #74, merged 2026-06-05) — ships with the next release skill run (minor bump).
+**Unreleased on main**: in-app version checker (PR #74) + map-to-keyboard behavior
+descriptions in the picker (PR #77, shared `KeyBehaviorPicker` UserControl) — both
+merged 2026-06-05; ship together with the next release skill run (minor bump).
 
 **Release flow (since v12.1.0)**: use the workspace `release` skill — analyze + recommend bump → confirm → `RELEASE-NOTES.md` + `release/vX.Y.Z` PR → merge → `tag.yml` tags from `version.json` → `publish.yml` builds/signs MSI and publishes the release with the curated notes (`body_path`). NEVER tag manually or `gh release create` in this repo.
 
