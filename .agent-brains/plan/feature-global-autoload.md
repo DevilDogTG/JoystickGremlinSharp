@@ -112,4 +112,11 @@ with `-warnaserror` clean. Notes vs. plan:_
   process monitor enumerates it off the UI thread._
 - _Test count 315 → 327 (13 new migrator tests, 2 settings round-trip, 1 legacy-tolerance
   repo test; minus removed per-profile trigger tests)._
-_Remaining: commit, PR, code review (use finish-feature / pr-workflow)._
+_2026-06-05 — Shipped for review: 5 atomic commits + PR #71 (ready, base main). User-found
+bug fixed (ComboBox selection lost on page navigation — SelectedItem/ItemsSource attach
+race; commit ca5fd43e). Code review round 1 posted to PR: 1 error (rows mutated live
+trigger instances read by the monitor thread — fixed via ToTrigger() snapshots), 3
+warnings (UI-thread file I/O on LibraryChanged; unsynchronized settings.json writes;
+stale README type) + 2 suggestions — all resolved in 47958672. 328 tests, -warnaserror
+clean._
+_Remaining: review approval + merge (rebase-merge, delete branch) via workflow-end._
