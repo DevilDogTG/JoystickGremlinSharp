@@ -1,14 +1,13 @@
 # Project Roadmap
 
-## Active
-
-- [~] **feature/keyboard-behavior-descriptions** — show plain-language descriptions for
-  the map-to-keyboard behaviors (Hold/Toggle/Press Only/Release Only) in both binding
-  editors: two-line dropdown items + caption under the combo. Outcome of the 2026-06-05
-  "drop behaviors?" discussion — keep all four, fix discoverability instead.
-  *(Plan: [feature-keyboard-behavior-descriptions.md](feature-keyboard-behavior-descriptions.md))*
-
 ## Completed
+
+- [x] **feature/keyboard-behavior-descriptions** — plain-language descriptions for the
+  map-to-keyboard behaviors in both binding editors (two-line dropdown items + caption)
+  via shared `KeyBehaviorPicker` UserControl; behavior string canonicalized at form-load.
+  Outcome of the 2026-06-05 "drop behaviors?" discussion — all four behaviors kept.
+  Merged 2026-06-05, unreleased pending next version bump. *(PR #77, two review rounds,
+  Approved. Plan archived: [archive/feature-keyboard-behavior-descriptions.md](archive/feature-keyboard-behavior-descriptions.md))*
 
 - [x] **feature/version-checker** — In-app GitHub Releases version checker on the About page: `IUpdateChecker`/`GitHubUpdateChecker` in Core (tag parsing, version normalization, graceful failure), Updates section with status line + download button; removed orphaned `MainWindowViewModel.CheckForUpdatesCommand`; `.claude/settings.local.json` untracked + gitignored. Merged 2026-06-05, unreleased pending next version bump. *(PR #74, review round 1 Approved + cosmetic fixes. Tests 327 → 355. Plan archived: [archive/feature-version-checker.md](archive/feature-version-checker.md))*
 
@@ -52,6 +51,7 @@
 ## Backlog (Optional Features)
 
 - [ ] **Winget distribution** — publish to microsoft/winget-pkgs (one-time manifest bootstrap) + auto-update PR step in publish.yml via `wingetcreate`. Feasibility confirmed 2026-06-05 — MSI/signing/URL setup already winget-ready. *(Plan: [feature-winget-distribution.md](feature-winget-distribution.md))*
+- [ ] Undefined-numeric `behavior` guard — `Enum.TryParse` accepts `"99"` → undefined enum value (runtime no-op, blank picker). Add `Enum.IsDefined` in **both** `MapToKeyboardActionDescriptor.CreateFunctor` and the VM load path together, or not at all (one-sided fix makes UI and runtime diverge). *Deferred from PR #77 round-2 review; pick up when the Core parse is next touched.*
 
 ## Dropped (2026-06-05 — no plan for now; revisit only on concrete demand)
 
