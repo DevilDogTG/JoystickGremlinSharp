@@ -1,5 +1,9 @@
 # Project Roadmap
 
+## Active
+
+- [ ] **feature/global-autoload** — Move auto-load triggers from profile-embedded to a global trigger store in settings.json; auto-migrate; v12.1.0. *(Plan: [feature-global-autoload.md](feature-global-autoload.md), created 2026-06-05)*
+
 ## Completed
 
 - [x] **feature/autoload-rework** — Auto-load process→profile rework *(released v10.6.0; plan archived 2026-05-29)*
@@ -41,4 +45,4 @@
 - [ ] Response curve editor (axes)
 - [ ] Condition-based action pipeline
 - [ ] UI for button mapping configuration
-- [ ] **`ProfileLibrary.ScanCore` async + parallel JSON read** *(deferred from PR #66 code review)* — currently per-file synchronous read of triggers during scan; becomes a perceptible hitch beyond ~50 profiles. Refactor `ReadTriggers` → `ReadTriggersAsync` and parallelize via `Task.WhenAll` when profile count growth makes it visible.
+- [x] ~~**`ProfileLibrary.ScanCore` async + parallel JSON read**~~ *(closed 2026-06-05 — the per-file trigger read during scan was removed entirely by feature/global-autoload; ScanCore now only lists files)*
