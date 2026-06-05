@@ -13,9 +13,9 @@
 
 **Branch model**: main-first, tag-based releases. Feature branches → rebase-merge PR → main.
 
-**Test baseline**: 315 tests, 0 warnings (as of PR #69 merge, 2026-05-29 — drop from 332 reflects 17 deleted tests covering the removed HidHide Apply/Revert pipeline + 1 added `Dispose_CalledTwice` test).
+**Test baseline**: 327 tests, 0 warnings (as of feature/global-autoload, 2026-06-05 — +12 net over the 315 PR #69 baseline: new migrator + settings round-trip coverage, minus deleted per-profile trigger tests).
 
-**Current version**: v12.0.1 (v12.0.0 was the cleanup release; v12.0.1 was tagged immediately after). Previous breaking change at v11.0 — see `BREAKING-CHANGES.md` and Auto-Load section below.
+**Current version**: v12.1.0 (global auto-load rework, in progress on `feature/global-autoload`). Previous breaking change at v11.0 — see `BREAKING-CHANGES.md` and Auto-Load section below.
 
 **Recent merges (2026-05-29)**:
 - PR #69 merged via rebase-merge — dropped `dotnet-ci.yml`, stripped HidHide Apply/Revert dead code, primary-ctor refactor.
@@ -35,23 +35,33 @@
 - **In-app updates**: Removed (Velopack). `Check for Updates` toolbar button opens GitHub Releases in browser.
   Full semver version checker planned for future release (see backlog).
 
-## Auto-Load Triggers (v11.0+)
+## Auto-Load Triggers (v12.1+, global store)
 
-- **Per-profile ownership**: process triggers live inside each profile's
-  `AutoLoadTriggers` list, not in a global `settings.json` mapping. Deleting or
-  sharing a profile carries its triggers with it.
+- **Global ownership** (v12.1 reversed the v11 per-profile design): triggers live in
+  `AppSettings.AutoLoadTriggers` (`settings.json`), each referencing its target
+  profile via `ProfilePath` (absolute path). Evaluated in list order, first enabled
+  match wins.
+- **Types**: `Core.ProcessMonitor` — `AutoLoadTrigger`, `ProcessMatchType`,
+  `ProcessProfileResolver.Resolve(string, IEnumerable<AutoLoadTrigger>)` returns the
+  matched trigger directly (the `ProcessTriggerMatch` wrapper is gone).
+- **Migration**: `AutoLoadTriggerMigrator` lifts v11.x/v12.0 profile-embedded
+  triggers — automatic at startup (`MainWindowViewModel.InitializeAsync`) + manual
+  "Migrate now" banner on the Auto-load page for profiles copied in later.
+  Safety order: settings saved BEFORE stripping profile files; dedup makes retries
+  duplicate-free. Idempotent.
+- **Thread-safety convention**: `AppSettings.AutoLoadTriggers` must be REPLACED
+  (reference swap), never mutated in place — `ProcessMonitorService` enumerates it
+  from a non-UI thread.
 - **Storage paths** (consolidated under `%APPDATA%\JoystickGremlinSharp\`):
   - Profiles: `%APPDATA%\JoystickGremlinSharp\profiles\`
-  - Settings: `%APPDATA%\JoystickGremlinSharp\settings.json` (moved from legacy
-    `JoystickGremlin\` folder in v11)
+  - Settings: `%APPDATA%\JoystickGremlinSharp\settings.json`
   - Logs: `%LOCALAPPDATA%\JoystickGremlinSharp\logs\`
-- **Resolver**: `ProcessProfileResolver.Resolve(string, IEnumerable<ProfileEntry>)`
-  returns `ProcessTriggerMatch(profile, trigger)`. Iteration order is the
-  library scan order (alphabetical by file path within each category).
 - **Global kill-switch**: `AppSettings.EnableAutoLoading` still gates the whole
   feature.
-- **Breaking change**: v10.x mappings in `%APPDATA%\JoystickGremlin\settings.json`
-  are NOT migrated. See `BREAKING-CHANGES.md`.
+- **Known limitation**: renaming/moving a profile breaks `ProfilePath` references
+  (trigger row shows ⚠ until re-pointed) — same as the v10.x design.
+- **History**: v10.x global mapping → v11.0 per-profile (breaking, no migration,
+  see `BREAKING-CHANGES.md`) → v12.1 global again (auto-migrated, lossless).
 
 ## Native Library Lifecycle Trap (recorded 2026-05-29)
 
@@ -80,4 +90,6 @@ HidHide is an optional device-hiding driver by Nefarius. Our integration is a **
 - Response curve editor (axes)
 - Condition-based action pipeline
 - UI for button mapping configuration
-- `ProfileLibrary.ScanCore` async + parallel JSON read (deferred from PR #66 code review; becomes relevant beyond ~50 profiles)
+
+(Closed 2026-06-05: "`ProfileLibrary.ScanCore` async + parallel JSON read" — the per-file
+trigger read it targeted was removed by the v12.1 global auto-load rework.)
