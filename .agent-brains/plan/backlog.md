@@ -39,10 +39,14 @@
   - [x] Trimmed `HidHideManagerTests` and added `Dispose_CalledTwice` (332 → 315 tests, all passing, 0 warnings)
   - [x] Two code-review rounds via `global:code-review` — final verdict: Approved
 
+## Active
+
+- [ ] **feature/version-checker** — In-app GitHub Releases version checker: compare semver, show release notes + download link (no auto-install). *(Plan: [feature-version-checker.md](feature-version-checker.md), started 2026-06-05)*
+
 ## Backlog (Optional Features)
 
-- [ ] **In-app GitHub Releases version checker** — check latest release, compare semver, show download link (no auto-install)
-- [ ] Response curve editor (axes)
-- [ ] Condition-based action pipeline
-- [ ] UI for button mapping configuration
+- [ ] **Winget distribution** — publish to microsoft/winget-pkgs (one-time manifest bootstrap) + auto-update PR step in publish.yml via `wingetcreate`. Feasibility confirmed 2026-06-05 — MSI/signing/URL setup already winget-ready. *(Plan: [feature-winget-distribution.md](feature-winget-distribution.md))*
+- [ ] **Response curve editor (axes)** — *next planned feature after version checker (confirmed 2026-06-05)*; phased: model + piecewise-linear math → interactive canvas editor → spline/presets
+- [ ] Condition-based action pipeline — *deferred 2026-06-05*: revisit with a modes-vs-conditions ADR when concrete demand exists
+- [ ] UI for button mapping configuration — *needs scoping: Bindings page may already cover this; confirm intent or close*
 - [x] ~~**`ProfileLibrary.ScanCore` async + parallel JSON read**~~ *(closed 2026-06-05 — the per-file trigger read during scan was removed entirely by feature/global-autoload; ScanCore now only lists files)*
