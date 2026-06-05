@@ -35,6 +35,10 @@ When a class's traditional constructor body only assigns its parameters to priva
 See `.agent-brains/memory/git-workflow.md` for the full rebase guide.
 
 **Key rules:**
+- **No direct pushes to `main` — ever.** ALL commits, including brains/plan/memory
+  housekeeping and session handover memos, go through a branch + PR (use `chore/*`
+  for housekeeping) and rebase-merge. Established 2026-06-05 (PR #75 replaced the
+  old direct-commit convention for brains records).
 - Always use `git rebase origin/main` (never `git merge main` or `git pull` on a feature branch)
 - Always use `git push --force-with-lease` after a rebase
 - Check `git log --oneline --graph` before pushing — look for merge commits or duplicate messages
