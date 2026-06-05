@@ -2,7 +2,9 @@
 
 ## Completed
 
-- [x] **feature/global-autoload** — Auto-load triggers moved from profile-embedded to a global trigger store in `settings.json` (`AppSettings.AutoLoadTriggers`); idempotent auto-migration at startup + manual "Migrate now" banner; flat Auto-load page with per-row profile picker; v12.1.0. *(PR #71 merged via rebase 2026-06-05 after two review rounds — final verdict: Approved. Plan: [feature-global-autoload.md](feature-global-autoload.md))*
+- [x] **feature/global-autoload** — Auto-load triggers moved from profile-embedded to a global trigger store in `settings.json` (`AppSettings.AutoLoadTriggers`); idempotent auto-migration at startup + manual "Migrate now" banner; flat Auto-load page with per-row profile picker; released as v12.1.0 on 2026-06-05. *(PR #71, two review rounds, Approved. ADR-0003. Plan archived: [archive/feature-global-autoload.md](archive/feature-global-autoload.md))*
+
+- [x] **feature/release-skill** — Workspace `release` skill (bump recommendation + confirm, curated `RELEASE-NOTES.md`, drives release/-PR → tag.yml → publish.yml chain); publish.yml switched to `body_path`. Verified live by the v12.1.0 release. *(PR #72 + release PR #73, 2026-06-05. Plan archived: [archive/release-skill.md](archive/release-skill.md))*
 
 - [x] **feature/autoload-rework** — Auto-load process→profile rework *(released v10.6.0; plan archived 2026-05-29)*
 - [x] **feature/wix-installer** — Replace Velopack with WiX v6 MSI installer *(PR #62, ready to merge)*

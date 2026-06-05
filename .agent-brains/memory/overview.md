@@ -9,6 +9,10 @@
 - **ADR-0002** (2026-05-28): Replace Velopack with WiX v6 MSI installer (`perMachine`, WixUI_Mondo).
   Rationale: Velopack installs per-user (HKCU), causing app to be invisible in Windows Installed Apps.
   WiX 6.0.2 chosen over WiX 7.0.0 (7.0.0 introduced commercial maintenance fee).
+  ⚠ ADR file was never written — decision recorded here only.
+- **ADR-0003** (2026-06-05): Global auto-load trigger store in settings.json (reverses
+  v11 per-profile embedding; lossless auto-migration; replace-only concurrency
+  convention). See `.agent-brains/decisions/ADR-0003-global-autoload-trigger-store.md`.
 
 
 **Branch model**: main-first, tag-based releases. Feature branches → rebase-merge PR → main.

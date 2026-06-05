@@ -17,6 +17,16 @@ Project-specific context and local overrides for JoystickGremlinSharp.
 <!-- Global and profile rules are active automatically. Add project-specific overrides here. -->
 <!-- end:framework -->
 
+### Shared-Collection Concurrency (settings ↔ background threads)
+Any collection on `AppSettings` (or similar singleton state) that a background thread
+reads — e.g. `AutoLoadTriggers`, enumerated by `ProcessMonitorService` off the UI
+thread — is **replace-only**: writers build a fresh list and swap the property
+reference atomically; neither the list nor any element instance already published may
+be mutated in place. UI row ViewModels must snapshot into NEW model instances on save
+(`ToTrigger()` pattern), never write through to instances they were initialized from.
+Reference: PR #71 review round 1 (torn-read defect) + `AppSettings.AutoLoadTriggers`
+doc remarks.
+
 ### Primary-Constructor Heuristic
 When a class's traditional constructor body only assigns its parameters to private readonly fields of the same name (modulo `_` prefix), convert to a C# 12 primary constructor and capture the parameters directly in member bodies. A computed field with non-trivial RHS (e.g. `_ownExePath = Environment.ProcessPath ?? ...`) stays as a field initializer; the captured parameters drop the backing field. This satisfies csharp-developer §47 ("prefer primary constructors where they improve clarity") with a concrete trigger. Reference: `HidHideManager.cs` after PR #69 commit `3032cb2b`.
 
