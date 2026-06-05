@@ -1,5 +1,13 @@
 # Project Roadmap
 
+## Active
+
+- [~] **feature/keyboard-behavior-descriptions** — show plain-language descriptions for
+  the map-to-keyboard behaviors (Hold/Toggle/Press Only/Release Only) in both binding
+  editors: two-line dropdown items + caption under the combo. Outcome of the 2026-06-05
+  "drop behaviors?" discussion — keep all four, fix discoverability instead.
+  *(Plan: [feature-keyboard-behavior-descriptions.md](feature-keyboard-behavior-descriptions.md))*
+
 ## Completed
 
 - [x] **feature/version-checker** — In-app GitHub Releases version checker on the About page: `IUpdateChecker`/`GitHubUpdateChecker` in Core (tag parsing, version normalization, graceful failure), Updates section with status line + download button; removed orphaned `MainWindowViewModel.CheckForUpdatesCommand`; `.claude/settings.local.json` untracked + gitignored. Merged 2026-06-05, unreleased pending next version bump. *(PR #74, review round 1 Approved + cosmetic fixes. Tests 327 → 355. Plan archived: [archive/feature-version-checker.md](archive/feature-version-checker.md))*
@@ -44,7 +52,10 @@
 ## Backlog (Optional Features)
 
 - [ ] **Winget distribution** — publish to microsoft/winget-pkgs (one-time manifest bootstrap) + auto-update PR step in publish.yml via `wingetcreate`. Feasibility confirmed 2026-06-05 — MSI/signing/URL setup already winget-ready. *(Plan: [feature-winget-distribution.md](feature-winget-distribution.md))*
-- [ ] **Response curve editor (axes)** — *next planned feature after version checker (confirmed 2026-06-05)*; phased: model + piecewise-linear math → interactive canvas editor → spline/presets
-- [ ] Condition-based action pipeline — *deferred 2026-06-05*: revisit with a modes-vs-conditions ADR when concrete demand exists
-- [ ] UI for button mapping configuration — *needs scoping: Bindings page may already cover this; confirm intent or close*
+
+## Dropped (2026-06-05 — no plan for now; revisit only on concrete demand)
+
+- [x] ~~Response curve editor (axes)~~ — *dropped 2026-06-05.* Scoping notes preserved: pipeline does NOT chain values between functors (EventPipeline dispatches the same immutable InputEvent to each action independently), so a chainable "response-curve" action à la Python JG would require an IActionFunctor/pipeline rework; the cheap alternative was an embedded `curve` config sub-object applied inside `VJoyAxisFunctor`.
+- [x] ~~Condition-based action pipeline~~ — *dropped 2026-06-05* (was deferred pending modes-vs-conditions ADR)
+- [x] ~~UI for button mapping configuration~~ — *dropped 2026-06-05* (Bindings page likely already covers it)
 - [x] ~~**`ProfileLibrary.ScanCore` async + parallel JSON read**~~ *(closed 2026-06-05 — the per-file trigger read during scan was removed entirely by feature/global-autoload; ScanCore now only lists files)*

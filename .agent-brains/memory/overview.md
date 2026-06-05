@@ -98,9 +98,9 @@ HidHide is an optional device-hiding driver by Nefarius. Our integration is a **
 ## Remaining Optional Features
 
 - Winget distribution (plan: `.agent-brains/plan/feature-winget-distribution.md` — MSI/signing already winget-ready)
-- Response curve editor (axes) — next planned feature (confirmed 2026-06-05)
-- Condition-based action pipeline — deferred; needs modes-vs-conditions ADR first
-- UI for button mapping configuration — needs scoping; Bindings page may already cover it
+
+(Dropped 2026-06-05, no plan for now: response curve editor, condition-based action
+pipeline, button-mapping UI — scoping notes preserved in backlog.md "Dropped" section.)
 
 (Closed 2026-06-05: "In-app GitHub Releases version checker" — shipped via PR #74.)
 
