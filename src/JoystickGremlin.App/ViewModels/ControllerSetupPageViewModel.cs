@@ -119,9 +119,6 @@ public sealed class ControllerSetupPageViewModel : ViewModelBase, IDisposable
     /// <summary>Gets whether the selected input can currently be edited.</summary>
     public bool CanEditBinding => SelectedInputRow is not null && BindingEditor.HasProfile;
 
-    /// <summary>Gets the behavior options used by the keyboard mapping editor.</summary>
-    public IReadOnlyList<KeyBehaviorOption> MapToKeyboardBehaviors => BindingsPageViewModel.MapToKeyboardBehaviors;
-
     /// <summary>Gets the command that saves the current binding editor changes.</summary>
     public ReactiveCommand<Unit, Unit> SaveBindingChangesCommand { get; }
 

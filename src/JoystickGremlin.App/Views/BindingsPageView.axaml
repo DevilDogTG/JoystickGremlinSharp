@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:JoystickGremlin.App.ViewModels"
              xmlns:actions="using:JoystickGremlin.Core.Actions"
+             xmlns:views="using:JoystickGremlin.App.Views"
              x:Class="JoystickGremlin.App.Views.BindingsPageView"
              x:DataType="vm:BindingsPageViewModel">
 
@@ -321,35 +322,7 @@
                                      IsReadOnly="True"
                                      Width="220"
                                      HorizontalAlignment="Left"/>
-                            <TextBlock Text="Behavior"/>
-                            <ComboBox ItemsSource="{Binding MapToKeyboardBehaviors}"
-                                      SelectedValue="{Binding EditMapToKeyboardBehavior, Mode=TwoWay}"
-                                      SelectedValueBinding="{Binding Value, x:DataType=vm:KeyBehaviorOption}"
-                                      MinWidth="220"
-                                      HorizontalAlignment="Left">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:KeyBehaviorOption">
-                                        <StackPanel Spacing="2" MaxWidth="320">
-                                            <TextBlock Text="{Binding Label}"/>
-                                            <TextBlock Text="{Binding Description}"
-                                                       FontSize="11"
-                                                       TextWrapping="Wrap"
-                                                       Opacity="0.65"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                                <ComboBox.SelectionBoxItemTemplate>
-                                    <DataTemplate x:DataType="vm:KeyBehaviorOption">
-                                        <TextBlock Text="{Binding Label}"/>
-                                    </DataTemplate>
-                                </ComboBox.SelectionBoxItemTemplate>
-                            </ComboBox>
-                            <TextBlock Text="{Binding EditMapToKeyboardBehaviorDescription}"
-                                       FontSize="11"
-                                       TextWrapping="Wrap"
-                                       MaxWidth="320"
-                                       HorizontalAlignment="Left"
-                                       Opacity="0.65"/>
+                            <views:KeyBehaviorPicker/>
                         </StackPanel>
 
                         <!-- Hat to Axes config -->

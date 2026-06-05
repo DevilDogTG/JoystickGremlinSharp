@@ -57,6 +57,16 @@ two-line descriptions in the open dropdown + a caption under the closed combo.
 - [x] Run app, visually verify both pages (dropdown, caption, save/reload round-trip)
       — user confirmed 2026-06-05: "visuality is good as expected"
 
+## Review Round 1 (PR #77) — all findings fixed
+- [x] WARNING: behavior string canonicalized at form-load via `Enum.TryParse`
+      (ignoreCase) → enum name, mirroring the functor's Hold fallback
+- [x] STYLE: caption property converted to `ObservableAsPropertyHelper` driven by
+      `WhenAnyValue`; setter back to plain `RaiseAndSetIfChanged`; OAPH disposed
+- [x] STYLE: duplicated picker XAML lifted into shared `Views/KeyBehaviorPicker`
+      UserControl (BindingsPageView inherits DataContext; ControllerSetupPageView
+      passes `BindingEditor`); unused `ControllerSetupPageViewModel.MapToKeyboardBehaviors`
+      passthrough removed
+
 ## Progress Log
 - 2026-06-05 — Plan created after discussion reversed the drop-behaviors proposal;
   UX variant "Both" confirmed by user; Avalonia 12.0.1 API availability verified.
