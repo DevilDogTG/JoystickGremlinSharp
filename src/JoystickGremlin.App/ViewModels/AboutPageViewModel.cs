@@ -2,7 +2,6 @@
 
 using System.Diagnostics;
 using System.Reactive;
-using System.Reactive.Linq;
 using System.Reflection;
 using JoystickGremlin.Core.Update;
 using Microsoft.Extensions.Logging;
@@ -25,6 +24,8 @@ public sealed class AboutPageViewModel : ViewModelBase
     /// <summary>
     /// Initializes a new instance of <see cref="AboutPageViewModel"/>.
     /// </summary>
+    /// <param name="updateChecker">Service that queries GitHub Releases for a newer version.</param>
+    /// <param name="logger">Logger for browser-launch failures.</param>
     public AboutPageViewModel(IUpdateChecker updateChecker, ILogger<AboutPageViewModel> logger)
     {
         _updateChecker = updateChecker;
@@ -102,6 +103,7 @@ public sealed class AboutPageViewModel : ViewModelBase
         "The original Python implementation and DILL input library are the work of the original author and contributors. " +
         "This project would not exist without their foundational work.";
 
+    /// <summary>Runs the update check and projects the result into the status properties.</summary>
     private async Task CheckForUpdatesAsync()
     {
         IsUpdateAvailable = false;
@@ -130,6 +132,7 @@ public sealed class AboutPageViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Opens the latest release's installer download (or release page) in the default browser.</summary>
     private void OpenDownloadPage()
     {
         var url = _updateDownloadUrl;
@@ -146,5 +149,8 @@ public sealed class AboutPageViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Formats a version for the status line (<c>v12.1.0</c> style).</summary>
+    /// <param name="version">Version to format; null renders as "an unknown version".</param>
+    /// <returns>The display string.</returns>
     private static string Format(Version? version) => version is null ? "an unknown version" : $"v{version}";
 }

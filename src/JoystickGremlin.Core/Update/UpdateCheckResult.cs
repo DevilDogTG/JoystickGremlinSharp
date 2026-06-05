@@ -45,6 +45,9 @@ public sealed record UpdateCheckResult
     public string? ErrorMessage { get; init; }
 
     /// <summary>Creates a <see cref="UpdateCheckStatus.Failed"/> result with the given description.</summary>
+    /// <param name="message">Human-readable failure description.</param>
+    /// <param name="currentVersion">The running application version the check compared against.</param>
+    /// <returns>A failed result.</returns>
     internal static UpdateCheckResult Failure(string message, Version currentVersion) => new()
     {
         Status = UpdateCheckStatus.Failed,
