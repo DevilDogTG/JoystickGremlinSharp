@@ -34,12 +34,16 @@ public sealed class GitHubUpdateChecker : IUpdateChecker, IDisposable
     /// Initializes a new instance comparing against the entry assembly version
     /// (stamped from <c>version.json</c> via <c>Directory.Build.props</c>).
     /// </summary>
+    /// <param name="logger">Logger for check failures.</param>
     public GitHubUpdateChecker(ILogger<GitHubUpdateChecker> logger)
         : this(logger, new HttpClientHandler(), GetEntryAssemblyVersion())
     {
     }
 
     /// <summary>Test seam: injects the HTTP transport and the version to compare against.</summary>
+    /// <param name="logger">Logger for check failures.</param>
+    /// <param name="handler">HTTP transport the internal <see cref="HttpClient"/> sends through.</param>
+    /// <param name="currentVersion">Version treated as the running application version.</param>
     internal GitHubUpdateChecker(
         ILogger<GitHubUpdateChecker> logger,
         HttpMessageHandler handler,
@@ -82,6 +86,9 @@ public sealed class GitHubUpdateChecker : IUpdateChecker, IDisposable
         }
     }
 
+    /// <summary>Maps a GitHub release JSON object to an <see cref="UpdateCheckResult"/>.</summary>
+    /// <param name="release">Root element of the <c>releases/latest</c> response.</param>
+    /// <returns>The comparison outcome, or a failure when the tag is unrecognizable.</returns>
     private UpdateCheckResult ParseRelease(JsonElement release)
     {
         var tag = release.TryGetProperty("tag_name", out var tagProp) ? tagProp.GetString() : null;
@@ -105,6 +112,9 @@ public sealed class GitHubUpdateChecker : IUpdateChecker, IDisposable
         };
     }
 
+    /// <summary>Finds the download URL of the MSI installer asset, if the release carries one.</summary>
+    /// <param name="release">Root element of the <c>releases/latest</c> response.</param>
+    /// <returns>The asset's browser download URL, or null when no installer asset exists.</returns>
     private static string? FindInstallerAssetUrl(JsonElement release)
     {
         if (!release.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array)
@@ -125,6 +135,9 @@ public sealed class GitHubUpdateChecker : IUpdateChecker, IDisposable
     /// Parses a release tag like <c>v12.1.0</c> into a 3-component <see cref="Version"/>.
     /// Accepts an optional <c>v</c> prefix and ignores semver prerelease/build suffixes.
     /// </summary>
+    /// <param name="tag">Raw release tag (e.g. <c>v12.1.0</c>).</param>
+    /// <param name="version">The parsed, normalized version; <c>0.0.0</c> when parsing fails.</param>
+    /// <returns>True when the tag parsed as a version.</returns>
     internal static bool TryParseVersionTag(string? tag, out Version version)
     {
         version = new Version(0, 0, 0);
@@ -153,6 +166,7 @@ public sealed class GitHubUpdateChecker : IUpdateChecker, IDisposable
     /// </summary>
     private static Version Normalize(Version v) => new(v.Major, Math.Max(v.Minor, 0), Math.Max(v.Build, 0));
 
+    /// <summary>Reads the entry assembly version; <c>0.0.0</c> when unavailable (e.g. unit tests).</summary>
     private static Version GetEntryAssemblyVersion() =>
         Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(0, 0, 0);
 
