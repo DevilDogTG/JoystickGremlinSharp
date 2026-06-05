@@ -234,9 +234,7 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
 
     private void AddRow(AutoLoadTrigger model)
     {
-        var selectedProfile = AvailableProfiles.FirstOrDefault(e =>
-            string.Equals(e.FilePath, model.ProfilePath, StringComparison.OrdinalIgnoreCase));
-        var row = new ProcessTriggerViewModel(model, selectedProfile, _processPicker, _filePicker);
+        var row = new ProcessTriggerViewModel(model, AvailableProfiles, _processPicker, _filePicker);
         Triggers.Add(row);
         _rowSubscriptions[row] = row.Changed.Subscribe(_ => ScheduleSave());
     }
