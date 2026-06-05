@@ -19,7 +19,7 @@ Built with **Avalonia UI** and **ReactiveUI** for a modern, maintainable MVVM ar
 - **Flat JSON profiles** — one profile per file, no nested modes; folder-based library with category support via subfolders.
 - **Per-profile storage** — `%APPDATA%\JoystickGremlinSharp\profiles\`, customisable via Settings.
 - **Quick-switch toolbar** — change the active profile from a dropdown in the top toolbar at any time.
-- **Per-profile auto-load triggers** (v11) — each profile owns its own list of process triggers; sharing or copying a profile carries its triggers with it.
+- **Global auto-load triggers** (v12.1) — one central trigger list maps applications to profiles; profiles shared from older versions are migrated automatically.
 
 ### Action Types
 - **Map to vJoy axis / button / hat** — drive virtual devices from any physical input.
@@ -29,11 +29,13 @@ Built with **Avalonia UI** and **ReactiveUI** for a modern, maintainable MVVM ar
 - **Buttons-to-Axes** — four physical buttons → dual vJoy axes (e.g. WASD → analog stick).
 - **Hat-to-Axes** — physical hat → dual vJoy axes.
 
-### Auto-Load (v11 design)
-- **Process monitor** — when a configured executable becomes the active (focused) window, its owning profile loads and (optionally) auto-starts the pipeline.
+### Auto-Load (v12.1 design)
+- **Global trigger list** — triggers live in `settings.json`, each referencing the profile it loads; managed as one flat table on the Auto-load page (triggers are checked top to bottom, first enabled match wins).
+- **Process monitor** — when a configured executable becomes the active (focused) window, the referenced profile loads and (optionally) auto-starts the pipeline.
 - **Match modes** — by process name (case-insensitive) or full executable path.
 - **Per-trigger options** — `AutoStart` (start pipeline on activation), `RemainActiveOnFocusLoss` (keep running after focus change), `IsEnabled` (per-trigger kill-switch), priority ordering.
 - **Global kill-switch** — `Enable Auto-loading` checkbox on the Auto-load page.
+- **Automatic migration** — triggers embedded in v11/v12.0 profile files are lifted into the global list at startup; profiles copied in later are detected on the Auto-load page with a one-click *Migrate now* banner.
 
 ### Force Feedback Bridge
 - **Game → physical wheel** — forwards FFB commands written by a game (via vJoy) to a physical DirectInput racing wheel (MOZA wheels auto-detected).
@@ -66,7 +68,7 @@ Legend: ✅ available · 🚧 backlog / planned · ❌ intentionally not impleme
 | **Platform & runtime** | Python 3 + PyQt5 | .NET 10 + Avalonia 12 |
 | **Distribution** | Bundled `.exe` (PyInstaller) / source | 🆕 Signed WiX MSI installer (per-machine, in *Installed Apps*) |
 | **Modes** (named, switchable, hierarchical) | ✅ Full mode tree per profile | ❌ Removed — one flat profile per file; switch profiles instead |
-| **Profile activation** | Manual + executable-based auto-load (global mapping list) | ✅ Manual + 🆕 **per-profile auto-load triggers** (triggers live inside each profile JSON) |
+| **Profile activation** | Manual + executable-based auto-load (global mapping list) | ✅ Manual + executable-based auto-load (global trigger list in settings) |
 | **vJoy output** (axis / button / hat) | ✅ | ✅ |
 | **Map to keyboard** | ✅ | ✅ Hold / Toggle / Press-Only / Release-Only |
 | **Map to mouse** | ✅ | ❌ Not implemented |
@@ -83,15 +85,15 @@ Legend: ✅ available · 🚧 backlog / planned · ❌ intentionally not impleme
 | **HidHide integration** | ❌ Manual / external | 🆕 ✅ Auto-whitelist + native client launcher + on-demand UAC |
 | **Device calibration UI** | ✅ | ❌ Use Windows joy.cpl / DirectInput properties |
 | **Input repeater / virtual cycle** | ✅ | ❌ Not implemented |
-| **Process monitor** (foreground-window watch) | ✅ Global mapping | ✅ 🆕 Owned by each profile |
+| **Process monitor** (foreground-window watch) | ✅ Global mapping | ✅ Global trigger list with per-trigger AutoStart / Stay-Active options |
 | **System tray** | Partial | ✅ Close-to-tray, start-minimised, start-with-Windows |
 | **In-app updates** | ❌ Manual download | ❌ Removed (was Velopack in v10.x). **Check for Updates** opens GitHub Releases; semver checker on roadmap |
 | **Settings UI** | ✅ | ✅ Settings page (profiles folder, tray, FFB, live-input refresh) |
-| **Test coverage** | Limited | 🆕 332 unit tests, 0 warnings on the baseline |
+| **Test coverage** | Limited | 🆕 327 unit tests, 0 warnings on the baseline |
 | **License** | MIT | GPL-3.0-only |
 
 ### Why drop modes?
-The mode system in the Python original was its most powerful — and most complex — feature. Real-world experience showed many users built one mode per game and never used mode switching within a profile. JoystickGremlinSharp replaces that with **one profile per game** plus per-profile auto-load triggers, which keeps the mental model flat and makes profiles portable. If you need mode-like behaviour, create multiple profiles and switch via the toolbar dropdown or a process trigger.
+The mode system in the Python original was its most powerful — and most complex — feature. Real-world experience showed many users built one mode per game and never used mode switching within a profile. JoystickGremlinSharp replaces that with **one profile per game** plus global auto-load triggers, which keeps the mental model flat and makes profiles portable. If you need mode-like behaviour, create multiple profiles and switch via the toolbar dropdown or a process trigger.
 
 ### Migrating from the Python original
 There is no file-level migration path: profile files are not format-compatible. Rebuild profiles in JoystickGremlinSharp using the Bindings editor. The action vocabulary covers the most common use cases (vJoy / keyboard / macros / hat / buttons-to-axes); response curves and merge-axis users may want to wait for the response-curve editor on the roadmap.

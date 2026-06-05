@@ -124,10 +124,14 @@ src/JoystickGremlin.Core/
   Profile/          Profile, InputBinding, ProfileRepository (JSON serialization)
                       IProfileState — singleton holding current Profile + FilePath, raises events
                       IProfileLibrary / ProfileLibrary — scans profiles folder; category = subfolder name
-                      ProfileEntry — record(Name, Category, FilePath, AutoLoadTriggers)
-                      ProcessTrigger / ProcessMatchType — per-profile auto-load triggers
-                                                          (embedded in Profile.AutoLoadTriggers since v11.0)
+                      ProfileEntry — record(Name, Category, FilePath)
                       LegacyProfileMigrator — migrates old modes-based JSON on load; drops change-mode actions
+  ProcessMonitor/   Global auto-load triggers (stored in AppSettings.AutoLoadTriggers since v12.1):
+                      AutoLoadTrigger / ProcessMatchType — trigger referencing its target profile by file path
+                      ProcessProfileResolver — exe path → first enabled matching trigger (list order wins)
+                      IAutoLoadTriggerMigrator / AutoLoadTriggerMigrator — lifts legacy (v11.x/v12.0)
+                                                profile-embedded triggers into the global list (startup +
+                                                manual banner on the Auto-load page); idempotent
   Startup/          IStartupService, NullStartupService (overridable by Interop for real registry use)
   HidHide/          IHidHideController, NullHidHideController, IHidHideManager, HidHideManager
                       — soft-optional driver integration (see HidHide Integration section)
