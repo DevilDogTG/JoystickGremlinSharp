@@ -3,21 +3,25 @@
 using System.IO;
 using System.Reactive;
 using JoystickGremlin.App.Services;
+using JoystickGremlin.Core.ProcessMonitor;
 using JoystickGremlin.Core.Profile;
 using ReactiveUI;
 
 namespace JoystickGremlin.App.ViewModels;
 
 /// <summary>
-/// Wraps a <see cref="ProcessTrigger"/> for display in a profile's auto-load triggers list.
-/// The executable is chosen either via the process picker (name match) or by browsing for an
-/// .exe file (path match). The owning profile is identified by the parent group.
+/// Wraps an <see cref="AutoLoadTrigger"/> for display as one row of the global auto-load
+/// trigger list. The target profile is chosen from the library dropdown; the executable is
+/// chosen either via the process picker (name match) or by browsing for an .exe file
+/// (path match).
 /// </summary>
 public sealed class ProcessTriggerViewModel : ReactiveObject
 {
     private readonly IProcessPickerDialogService _processPicker;
     private readonly IFilePickerService _filePicker;
 
+    private ProfileEntry? _selectedProfile;
+    private string _profilePath;
     private ProcessMatchType _matchType;
     private string _executableName;
     private string _executablePath;
@@ -26,16 +30,21 @@ public sealed class ProcessTriggerViewModel : ReactiveObject
     private bool _remainActiveOnFocusLoss;
 
     /// <summary>Gets the underlying domain model, updated by <see cref="ApplyToModel"/>.</summary>
-    public ProcessTrigger Model { get; }
+    public AutoLoadTrigger Model { get; }
 
     /// <summary>
     /// Initializes a new instance of <see cref="ProcessTriggerViewModel"/>.
     /// </summary>
     /// <param name="model">The trigger domain model.</param>
+    /// <param name="selectedProfile">
+    /// The library entry matching the model's <see cref="AutoLoadTrigger.ProfilePath"/>, or
+    /// <c>null</c> when the referenced profile is not (or no longer) in the library.
+    /// </param>
     /// <param name="processPicker">Service used to pick a running process.</param>
     /// <param name="filePicker">Service used to browse for an executable file.</param>
     public ProcessTriggerViewModel(
-        ProcessTrigger model,
+        AutoLoadTrigger model,
+        ProfileEntry? selectedProfile,
         IProcessPickerDialogService processPicker,
         IFilePickerService filePicker)
     {
@@ -43,6 +52,8 @@ public sealed class ProcessTriggerViewModel : ReactiveObject
         _processPicker = processPicker;
         _filePicker = filePicker;
 
+        _selectedProfile         = selectedProfile;
+        _profilePath             = model.ProfilePath;
         _matchType               = model.MatchType;
         _executableName          = model.ExecutableName;
         _executablePath          = model.ExecutablePath;
@@ -53,6 +64,44 @@ public sealed class ProcessTriggerViewModel : ReactiveObject
         PickProcessCommand = ReactiveCommand.CreateFromTask(PickProcessAsync);
         BrowseExecutableCommand = ReactiveCommand.CreateFromTask(BrowseExecutableAsync);
     }
+
+    /// <summary>
+    /// Gets or sets the library entry of the profile this trigger loads.
+    /// <c>null</c> when no profile has been picked yet, or when the stored
+    /// <see cref="ProfilePath"/> points at a profile that left the library.
+    /// </summary>
+    public ProfileEntry? SelectedProfile
+    {
+        get => _selectedProfile;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _selectedProfile, value);
+            if (value is not null)
+            {
+                ProfilePath = value.FilePath;
+            }
+            this.RaisePropertyChanged(nameof(IsProfileUnresolved));
+            this.RaisePropertyChanged(nameof(ProfileTooltip));
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the absolute path of the profile to load. Kept even when the profile
+    /// is missing from the library so the reference survives until the user re-points it.
+    /// </summary>
+    public string ProfilePath
+    {
+        get => _profilePath;
+        private set => this.RaiseAndSetIfChanged(ref _profilePath, value);
+    }
+
+    /// <summary>Gets a value indicating whether the stored profile path resolves to no library entry.</summary>
+    public bool IsProfileUnresolved => _selectedProfile is null && !string.IsNullOrEmpty(_profilePath);
+
+    /// <summary>Gets the tooltip for the profile column (the stored profile path, when available).</summary>
+    public string ProfileTooltip => string.IsNullOrEmpty(_profilePath)
+        ? "Select the profile to load when this trigger activates"
+        : _profilePath;
 
     /// <summary>Gets how the foreground executable is matched (by name or by full path).</summary>
     public ProcessMatchType MatchType
@@ -127,16 +176,30 @@ public sealed class ProcessTriggerViewModel : ReactiveObject
 
     /// <summary>
     /// Writes the current ViewModel values back to the underlying domain model.
-    /// Call before saving the owning profile.
+    /// Call before persisting the global trigger list.
     /// </summary>
     public void ApplyToModel()
     {
+        Model.ProfilePath             = ProfilePath;
         Model.MatchType               = MatchType;
         Model.ExecutableName          = ExecutableName;
         Model.ExecutablePath          = ExecutablePath;
         Model.IsEnabled               = IsEnabled;
         Model.AutoStart               = AutoStart;
         Model.RemainActiveOnFocusLoss = RemainActiveOnFocusLoss;
+    }
+
+    /// <summary>
+    /// Re-resolves <see cref="SelectedProfile"/> against a fresh library entry list after
+    /// the library changed, without touching the stored <see cref="ProfilePath"/>.
+    /// </summary>
+    public void ResolveProfile(IReadOnlyList<ProfileEntry> entries)
+    {
+        var resolved = entries.FirstOrDefault(e =>
+            string.Equals(e.FilePath, _profilePath, StringComparison.OrdinalIgnoreCase));
+        this.RaiseAndSetIfChanged(ref _selectedProfile, resolved, nameof(SelectedProfile));
+        this.RaisePropertyChanged(nameof(IsProfileUnresolved));
+        this.RaisePropertyChanged(nameof(ProfileTooltip));
     }
 
     private async System.Threading.Tasks.Task PickProcessAsync()

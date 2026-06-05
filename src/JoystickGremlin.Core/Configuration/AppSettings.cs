@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
+using JoystickGremlin.Core.ProcessMonitor;
+
 namespace JoystickGremlin.Core.Configuration;
 
 /// <summary>
@@ -32,9 +34,20 @@ public sealed class AppSettings
 
     /// <summary>
     /// Gets or sets a value indicating whether the auto-load feature is globally enabled.
-    /// When <c>false</c>, all per-profile <c>AutoLoadTriggers</c> are ignored.
+    /// When <c>false</c>, all <see cref="AutoLoadTriggers"/> are ignored.
     /// </summary>
     public bool EnableAutoLoading { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets the global list of process-based auto-load triggers. Each trigger
+    /// references its target profile by file path. Triggers are evaluated in list order;
+    /// the first enabled match wins.
+    /// </summary>
+    /// <remarks>
+    /// Writers must REPLACE the list (atomic reference swap), never mutate it in place —
+    /// the process monitor enumerates it from a non-UI thread.
+    /// </remarks>
+    public List<AutoLoadTrigger> AutoLoadTriggers { get; set; } = [];
 
     /// <summary>Gets or sets whether the FFB bridge is enabled.</summary>
     public bool EnableFfbBridge { get; set; } = false;

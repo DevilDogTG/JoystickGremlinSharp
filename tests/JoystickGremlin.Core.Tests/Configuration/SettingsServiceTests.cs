@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using JoystickGremlin.Core.Configuration;
+using JoystickGremlin.Core.ProcessMonitor;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace JoystickGremlin.Core.Tests.Configuration;
@@ -49,6 +50,64 @@ public sealed class SettingsServiceTests : IDisposable
         svc2.Settings.UiUpdateIntervalMs.Should().Be(5);
         svc2.Settings.ProfilesFolderPath.Should().Be(@"C:\Profiles");
         svc2.Settings.StartMinimized.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SaveThenLoad_AutoLoadTriggers_RoundTripCorrectly()
+    {
+        var svc = CreateService();
+        svc.Settings.AutoLoadTriggers =
+        [
+            new AutoLoadTrigger
+            {
+                ProfilePath             = @"C:\Profiles\DCS.json",
+                MatchType               = ProcessMatchType.ExecutableName,
+                ExecutableName          = "DCS.exe",
+                ExecutablePath          = "C:/Games/DCS/DCS.exe",
+                IsEnabled               = true,
+                AutoStart               = true,
+                RemainActiveOnFocusLoss = false,
+            },
+            new AutoLoadTrigger
+            {
+                ProfilePath             = @"C:\Profiles\Other.json",
+                MatchType               = ProcessMatchType.ExecutablePath,
+                ExecutablePath          = "C:/Games/Other/other.exe",
+                IsEnabled               = false,
+                AutoStart               = false,
+                RemainActiveOnFocusLoss = true,
+            },
+        ];
+
+        await svc.SaveAsync();
+
+        var svc2 = CreateService();
+        await svc2.LoadAsync();
+
+        var triggers = svc2.Settings.AutoLoadTriggers;
+        triggers.Should().HaveCount(2);
+        triggers[0].ProfilePath.Should().Be(@"C:\Profiles\DCS.json");
+        triggers[0].MatchType.Should().Be(ProcessMatchType.ExecutableName);
+        triggers[0].ExecutableName.Should().Be("DCS.exe");
+        triggers[0].IsEnabled.Should().BeTrue();
+        triggers[1].MatchType.Should().Be(ProcessMatchType.ExecutablePath);
+        triggers[1].IsEnabled.Should().BeFalse();
+        triggers[1].RemainActiveOnFocusLoss.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SaveAsync_AutoLoadTriggerMatchType_IsSerializedAsString()
+    {
+        var svc = CreateService();
+        svc.Settings.AutoLoadTriggers =
+        [
+            new AutoLoadTrigger { MatchType = ProcessMatchType.ExecutableName },
+        ];
+
+        await svc.SaveAsync();
+
+        var json = await File.ReadAllTextAsync(Path.Combine(_tempDir, "settings.json"));
+        json.Should().Contain("\"ExecutableName\"");
     }
 
     [Fact]

@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using JoystickGremlin.Core.Configuration;
 using JoystickGremlin.Core.Exceptions;
 using Microsoft.Extensions.Logging;
@@ -203,7 +201,7 @@ public sealed class ProfileLibrary : IProfileLibrary, IDisposable
                                       .OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
         {
             var name = Path.GetFileNameWithoutExtension(file);
-            found.Add(new ProfileEntry(name, null, file, ReadTriggers(file)));
+            found.Add(new ProfileEntry(name, null, file));
         }
 
         foreach (var subdir in Directory.GetDirectories(folder)
@@ -223,7 +221,7 @@ public sealed class ProfileLibrary : IProfileLibrary, IDisposable
             foreach (var file in files)
             {
                 var name = Path.GetFileNameWithoutExtension(file);
-                found.Add(new ProfileEntry(name, category, file, ReadTriggers(file)));
+                found.Add(new ProfileEntry(name, category, file));
             }
         }
 
@@ -232,36 +230,6 @@ public sealed class ProfileLibrary : IProfileLibrary, IDisposable
         _logger.LogTrace("Found {Count} profiles, {EmptyCount} empty categories",
             _entries.Count, _emptyCategories.Count);
         LibraryChanged?.Invoke(this, EventArgs.Empty);
-    }
-
-    // Lightweight read of only the AutoLoadTriggers section, avoiding the full
-    // (potentially large) Bindings list and the legacy-profile migration path.
-    private static readonly JsonSerializerOptions _triggerReadOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter() },
-    };
-
-    private sealed class TriggersOnlyDto
-    {
-        public List<ProcessTrigger>? AutoLoadTriggers { get; set; }
-    }
-
-    private IReadOnlyList<ProcessTrigger> ReadTriggers(string filePath)
-    {
-        try
-        {
-            using var stream = File.OpenRead(filePath);
-            var dto = JsonSerializer.Deserialize<TriggersOnlyDto>(stream, _triggerReadOptions);
-            var list = dto?.AutoLoadTriggers;
-            return list is null ? Array.Empty<ProcessTrigger>() : list.AsReadOnly();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex,
-                "Failed to read AutoLoadTriggers from '{Path}' — treating as empty.", filePath);
-            return Array.Empty<ProcessTrigger>();
-        }
     }
 
     private static string SanitizeName(string name)

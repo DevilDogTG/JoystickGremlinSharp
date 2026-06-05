@@ -107,44 +107,29 @@ public sealed class ProfileRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task SaveThenLoad_AutoLoadTriggers_RoundTripCorrectly()
+    public async Task LoadAsync_ProfileWithLegacyEmbeddedTriggers_IgnoresThemWithoutError()
     {
-        var path = Path.Combine(_tempDir, "with-triggers.json");
-        var original = new JoystickGremlin.Core.Profile.Profile
-        {
-            Name = "DCS",
-            AutoLoadTriggers =
-            [
-                new ProcessTrigger
+        // v11.x/v12.0 profiles carried an autoLoadTriggers array. The property is gone
+        // from the model (triggers are global since v12.1); loading must tolerate it.
+        var path = Path.Combine(_tempDir, "legacy-triggers.json");
+        var json = """
+            {
+              "name": "DCS",
+              "autoLoadTriggers": [
                 {
-                    MatchType               = ProcessMatchType.ExecutableName,
-                    ExecutableName          = "DCS.exe",
-                    ExecutablePath          = "C:/Games/DCS/DCS.exe",
-                    IsEnabled               = true,
-                    AutoStart               = true,
-                    RemainActiveOnFocusLoss = false,
-                },
-                new ProcessTrigger
-                {
-                    MatchType               = ProcessMatchType.ExecutablePath,
-                    ExecutablePath          = "C:/Games/Other/other.exe",
-                    IsEnabled               = false,
-                    AutoStart               = false,
-                    RemainActiveOnFocusLoss = true,
-                },
-            ],
-        };
+                  "matchType": "ExecutableName",
+                  "executableName": "DCS.exe",
+                  "isEnabled": true
+                }
+              ]
+            }
+            """;
+        await File.WriteAllTextAsync(path, json);
 
-        await _sut.SaveAsync(original, path);
         var loaded = await _sut.LoadAsync(path);
 
-        loaded.AutoLoadTriggers.Should().HaveCount(2);
-        loaded.AutoLoadTriggers[0].MatchType.Should().Be(ProcessMatchType.ExecutableName);
-        loaded.AutoLoadTriggers[0].ExecutableName.Should().Be("DCS.exe");
-        loaded.AutoLoadTriggers[0].IsEnabled.Should().BeTrue();
-        loaded.AutoLoadTriggers[1].MatchType.Should().Be(ProcessMatchType.ExecutablePath);
-        loaded.AutoLoadTriggers[1].IsEnabled.Should().BeFalse();
-        loaded.AutoLoadTriggers[1].RemainActiveOnFocusLoss.Should().BeTrue();
+        loaded.Name.Should().Be("DCS");
+        loaded.Bindings.Should().BeEmpty();
     }
 
     // ── Error cases ────────────────────────────────────────────────────────

@@ -11,20 +11,19 @@ namespace JoystickGremlin.App.Services;
 
 /// <summary>
 /// Orchestrates automatic profile loading and pipeline start/stop based on
-/// <see cref="IProcessMonitor.ForegroundProcessChanged"/> events and the
-/// <see cref="Profile.AutoLoadTriggers"/> on each profile in <see cref="IProfileLibrary.Entries"/>.
+/// <see cref="IProcessMonitor.ForegroundProcessChanged"/> events and the global
+/// trigger list in <see cref="AppSettings.AutoLoadTriggers"/>.
 /// </summary>
 public sealed class ProcessMonitorService : IDisposable
 {
     private readonly IProcessMonitor _processMonitor;
     private readonly ISettingsService _settingsService;
-    private readonly IProfileLibrary _profileLibrary;
     private readonly IProfileRepository _profileRepository;
     private readonly IProfileState _profileState;
     private readonly IEventPipeline _eventPipeline;
     private readonly ILogger<ProcessMonitorService> _logger;
 
-    private ProcessTriggerMatch? _activeMatchWithPipeline;
+    private AutoLoadTrigger? _activeTriggerWithPipeline;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ProcessMonitorService"/>.
@@ -32,7 +31,6 @@ public sealed class ProcessMonitorService : IDisposable
     public ProcessMonitorService(
         IProcessMonitor processMonitor,
         ISettingsService settingsService,
-        IProfileLibrary profileLibrary,
         IProfileRepository profileRepository,
         IProfileState profileState,
         IEventPipeline eventPipeline,
@@ -40,7 +38,6 @@ public sealed class ProcessMonitorService : IDisposable
     {
         _processMonitor    = processMonitor;
         _settingsService   = settingsService;
-        _profileLibrary    = profileLibrary;
         _profileRepository = profileRepository;
         _profileState      = profileState;
         _eventPipeline     = eventPipeline;
@@ -70,21 +67,28 @@ public sealed class ProcessMonitorService : IDisposable
     {
         if (!_settingsService.Settings.EnableAutoLoading) return;
 
-        var match = ProcessProfileResolver.Resolve(executablePath, _profileLibrary.Entries);
+        var trigger = ProcessProfileResolver.Resolve(
+            executablePath, _settingsService.Settings.AutoLoadTriggers);
 
-        if (match is not null)
+        if (trigger is not null)
         {
-            _ = HandleMatchActivatedAsync(match);
+            _ = HandleTriggerActivatedAsync(trigger);
         }
         else
         {
-            HandleMatchDeactivated();
+            HandleTriggerDeactivated();
         }
     }
 
-    private async Task HandleMatchActivatedAsync(ProcessTriggerMatch match)
+    private async Task HandleTriggerActivatedAsync(AutoLoadTrigger trigger)
     {
-        var profilePath = match.Profile.FilePath;
+        var profilePath = trigger.ProfilePath;
+
+        // A trigger saved before its profile was picked has no path yet — nothing to load.
+        if (string.IsNullOrWhiteSpace(profilePath))
+        {
+            return;
+        }
 
         // Skip if same profile is already loaded.
         var currentPath = _profileState.FilePath;
@@ -99,19 +103,19 @@ public sealed class ProcessMonitorService : IDisposable
             _logger.LogInformation(
                 "Auto-loading profile '{Profile}' triggered by '{Match}'.",
                 profilePath,
-                match.Trigger.MatchType == ProcessMatchType.ExecutableName
-                    ? match.Trigger.ExecutableName
-                    : match.Trigger.ExecutablePath);
+                trigger.MatchType == ProcessMatchType.ExecutableName
+                    ? trigger.ExecutableName
+                    : trigger.ExecutablePath);
 
             var profile = await _profileRepository.LoadAsync(profilePath);
             Dispatcher.UIThread.Post(() =>
             {
                 _profileState.SetProfile(profile, profilePath);
 
-                if (match.Trigger.AutoStart && !_eventPipeline.IsRunning)
+                if (trigger.AutoStart && !_eventPipeline.IsRunning)
                 {
                     _eventPipeline.Start(profile);
-                    _activeMatchWithPipeline = match;
+                    _activeTriggerWithPipeline = trigger;
                 }
             });
         }
@@ -121,16 +125,16 @@ public sealed class ProcessMonitorService : IDisposable
         }
     }
 
-    private void HandleMatchDeactivated()
+    private void HandleTriggerDeactivated()
     {
-        if (_activeMatchWithPipeline is null) return;
-        if (_activeMatchWithPipeline.Trigger.RemainActiveOnFocusLoss) return;
+        if (_activeTriggerWithPipeline is null) return;
+        if (_activeTriggerWithPipeline.RemainActiveOnFocusLoss) return;
 
         _logger.LogInformation("Triggered process left foreground; stopping pipeline.");
         Dispatcher.UIThread.Post(() =>
         {
             _eventPipeline.Stop();
-            _activeMatchWithPipeline = null;
+            _activeTriggerWithPipeline = null;
         });
     }
 }

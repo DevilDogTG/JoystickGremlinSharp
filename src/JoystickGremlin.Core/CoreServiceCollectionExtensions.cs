@@ -34,6 +34,7 @@ public static class CoreServiceCollectionExtensions
         services.AddSingleton<IEventPipeline, EventPipeline>();
         services.AddSingleton<IProfileState, ProfileState>();
         services.AddSingleton<IProfileLibrary, ProfileLibrary>();
+        services.AddSingleton<IAutoLoadTriggerMigrator, AutoLoadTriggerMigrator>();
 
         // Built-in vJoy action descriptors — auto-registered into IActionRegistry at startup
         services.AddSingleton<IActionDescriptor, VJoyAxisDescriptor>();

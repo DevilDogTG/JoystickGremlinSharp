@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 
 namespace JoystickGremlin.Core.Configuration;
@@ -19,6 +20,9 @@ public sealed class SettingsService : ISettingsService
     private static readonly JsonSerializerOptions _options = new()
     {
         WriteIndented = true,
+        // Enum values (e.g. AutoLoadTrigger.MatchType) are stored by name for readability,
+        // matching the profile-file convention.
+        Converters = { new JsonStringEnumConverter() },
     };
 
     private readonly ILogger<SettingsService> _logger;
