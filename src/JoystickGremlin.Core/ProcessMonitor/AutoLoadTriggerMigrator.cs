@@ -28,7 +28,8 @@ public sealed class AutoLoadTriggerMigrator(
         Converters = { new JsonStringEnumConverter() },
     };
 
-    // Matches ProfileRepository's output formatting so stripped files stay diff-friendly.
+    // Applies 2-space indentation on write-back; all remaining profile content is
+    // preserved verbatim by the JsonNode round-trip.
     private static readonly JsonSerializerOptions _writeOptions = new()
     {
         WriteIndented = true,
