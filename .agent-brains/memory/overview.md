@@ -17,9 +17,11 @@
 
 **Branch model**: main-first, tag-based releases. Feature branches → rebase-merge PR → main.
 
-**Test baseline**: 327 tests, 0 warnings (as of feature/global-autoload, 2026-06-05 — +12 net over the 315 PR #69 baseline: new migrator + settings round-trip coverage, minus deleted per-profile trigger tests).
+**Test baseline**: 355 tests, 0 warnings (as of feature/version-checker, 2026-06-05 — +28 over the 327 global-autoload baseline: GitHubUpdateChecker coverage).
 
 **Current version**: v12.1.0 — released 2026-06-05 (global auto-load rework, PR #71; signed MSI on GitHub Releases). Previous breaking change at v11.0 — see `BREAKING-CHANGES.md` and Auto-Load section below.
+
+**Unreleased on main**: in-app version checker (PR #74, merged 2026-06-05) — ships with the next release skill run (minor bump).
 
 **Release flow (since v12.1.0)**: use the workspace `release` skill — analyze + recommend bump → confirm → `RELEASE-NOTES.md` + `release/vX.Y.Z` PR → merge → `tag.yml` tags from `version.json` → `publish.yml` builds/signs MSI and publishes the release with the curated notes (`body_path`). NEVER tag manually or `gh release create` in this repo.
 
@@ -38,8 +40,11 @@
 - **Shortcuts**: Start Menu (always); Desktop (Level=1, on by default, deselectable in Custom mode)
 - **Upgrade**: `MajorUpgrade` with stable `UpgradeCode={3BE7219A-DAE0-41D4-BDB3-E0530808F9C3}`
 - **CI**: `publish.yml` runs `dotnet publish` → `dotnet build .wixproj` → sign MSI → release as `*-Setup.msi`
-- **In-app updates**: Removed (Velopack). `Check for Updates` toolbar button opens GitHub Releases in browser.
-  Full semver version checker planned for future release (see backlog).
+- **In-app updates**: no auto-install (Velopack removed). Since PR #74 (2026-06-05) the About
+  page has an Updates section: `IUpdateChecker`/`GitHubUpdateChecker` (Core, `Update`
+  namespace) queries `releases/latest`, compares the tag against the assembly version
+  (3-component normalization), and offers the `*-Setup.msi` asset link in the browser.
+  Failures (offline/rate-limit/bad tag) render as a status line, never throw.
 
 ## Auto-Load Triggers (v12.1+, global store)
 
@@ -92,10 +97,12 @@ HidHide is an optional device-hiding driver by Nefarius. Our integration is a **
 
 ## Remaining Optional Features
 
-- In-app GitHub Releases version checker (compare semver, show download link, no auto-install)
-- Response curve editor (axes)
-- Condition-based action pipeline
-- UI for button mapping configuration
+- Winget distribution (plan: `.agent-brains/plan/feature-winget-distribution.md` — MSI/signing already winget-ready)
+- Response curve editor (axes) — next planned feature (confirmed 2026-06-05)
+- Condition-based action pipeline — deferred; needs modes-vs-conditions ADR first
+- UI for button mapping configuration — needs scoping; Bindings page may already cover it
+
+(Closed 2026-06-05: "In-app GitHub Releases version checker" — shipped via PR #74.)
 
 (Closed 2026-06-05: "`ProfileLibrary.ScanCore` async + parallel JSON read" — the per-file
 trigger read it targeted was removed by the v12.1 global auto-load rework.)

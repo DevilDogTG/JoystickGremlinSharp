@@ -2,6 +2,8 @@
 
 ## Completed
 
+- [x] **feature/version-checker** — In-app GitHub Releases version checker on the About page: `IUpdateChecker`/`GitHubUpdateChecker` in Core (tag parsing, version normalization, graceful failure), Updates section with status line + download button; removed orphaned `MainWindowViewModel.CheckForUpdatesCommand`; `.claude/settings.local.json` untracked + gitignored. Merged 2026-06-05, unreleased pending next version bump. *(PR #74, review round 1 Approved + cosmetic fixes. Tests 327 → 355. Plan archived: [archive/feature-version-checker.md](archive/feature-version-checker.md))*
+
 - [x] **feature/global-autoload** — Auto-load triggers moved from profile-embedded to a global trigger store in `settings.json` (`AppSettings.AutoLoadTriggers`); idempotent auto-migration at startup + manual "Migrate now" banner; flat Auto-load page with per-row profile picker; released as v12.1.0 on 2026-06-05. *(PR #71, two review rounds, Approved. ADR-0003. Plan archived: [archive/feature-global-autoload.md](archive/feature-global-autoload.md))*
 
 - [x] **feature/release-skill** — Workspace `release` skill (bump recommendation + confirm, curated `RELEASE-NOTES.md`, drives release/-PR → tag.yml → publish.yml chain); publish.yml switched to `body_path`. Verified live by the v12.1.0 release. *(PR #72 + release PR #73, 2026-06-05. Plan archived: [archive/release-skill.md](archive/release-skill.md))*
@@ -38,10 +40,6 @@
   - [x] Primary-constructor refactor of `HidHideManager`; dropped unused `CancellationToken` param
   - [x] Trimmed `HidHideManagerTests` and added `Dispose_CalledTwice` (332 → 315 tests, all passing, 0 warnings)
   - [x] Two code-review rounds via `global:code-review` — final verdict: Approved
-
-## Active
-
-- [ ] **feature/version-checker** — In-app GitHub Releases version checker: compare semver, show release notes + download link (no auto-install). *(Plan: [feature-version-checker.md](feature-version-checker.md), started 2026-06-05)*
 
 ## Backlog (Optional Features)
 
