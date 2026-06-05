@@ -110,7 +110,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 .Subscribe());
 
         ToggleActiveCommand     = ReactiveCommand.CreateFromTask(ToggleActiveAsync);
-        CheckForUpdatesCommand  = ReactiveCommand.CreateFromTask(CheckForUpdatesAsync);
         OpenHidHideClientCommand = ReactiveCommand.Create(OpenHidHideClient,
             canExecute: Observable.Return(_hasHidHideClient));
 
@@ -190,9 +189,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Gets the command that toggles the Gremlin event pipeline on or off.</summary>
     public ReactiveCommand<Unit, Unit> ToggleActiveCommand { get; }
-
-    /// <summary>Gets the command that opens the GitHub Releases page to check for updates.</summary>
-    public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
 
     /// <summary>Gets the command that launches the HidHide configuration client GUI.</summary>
     public ReactiveCommand<Unit, Unit> OpenHidHideClientCommand { get; }
@@ -345,25 +341,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         {
             _logger.LogError(ex, "Failed to launch HidHide configuration client at {Path}", clientPath);
         }
-    }
-
-    private Task CheckForUpdatesAsync()
-    {
-        // Full in-app version checker is planned for a future release.
-        // For now, open the GitHub Releases page so the user can check manually.
-        try
-        {
-            Process.Start(new ProcessStartInfo(
-                "https://github.com/DevilDogTG/JoystickGremlinSharp/releases")
-            {
-                UseShellExecute = true
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to open GitHub Releases page");
-        }
-        return Task.CompletedTask;
     }
 
     private void OnLibraryChanged(object? sender, EventArgs e)
