@@ -373,7 +373,7 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
                 _loading = false;
             }
 
-            LegacyProfileCount = (await _migrator.DetectAsync()).Count;
+            LegacyProfileCount = (await Task.Run(() => _migrator.DetectAsync())).Count;
         }
         catch (Exception ex)
         {
