@@ -13,7 +13,7 @@ public sealed class GitHubUpdateCheckerTests
     // ── Version comparison ─────────────────────────────────────────────────
 
     [Fact]
-    public async Task NewerRelease_ReportsUpdateAvailable()
+    public async Task CheckForUpdateAsync_NewerRelease_ReportsUpdateAvailable()
     {
         var checker = CreateChecker(JsonResponse(ReleaseJson("v12.2.0")));
 
@@ -25,7 +25,7 @@ public sealed class GitHubUpdateCheckerTests
     }
 
     [Fact]
-    public async Task SameVersion_ReportsUpToDate()
+    public async Task CheckForUpdateAsync_SameVersion_ReportsUpToDate()
     {
         var checker = CreateChecker(JsonResponse(ReleaseJson("v12.1.0")));
 
@@ -36,7 +36,7 @@ public sealed class GitHubUpdateCheckerTests
     }
 
     [Fact]
-    public async Task OlderRelease_ReportsUpToDate()
+    public async Task CheckForUpdateAsync_OlderRelease_ReportsUpToDate()
     {
         var checker = CreateChecker(JsonResponse(ReleaseJson("v12.0.0")));
 
@@ -46,7 +46,7 @@ public sealed class GitHubUpdateCheckerTests
     }
 
     [Fact]
-    public async Task FourPartAssemblyVersion_ComparesEqualToThreePartTag()
+    public async Task CheckForUpdateAsync_FourPartAssemblyVersion_ComparesEqualToThreePartTag()
     {
         // Assembly versions are stamped as 12.1.0.0 while release tags are v12.1.0.
         var checker = CreateChecker(JsonResponse(ReleaseJson("v12.1.0")), currentVersion: new Version(12, 1, 0, 0));
@@ -66,7 +66,7 @@ public sealed class GitHubUpdateCheckerTests
     [InlineData("v12.2.0-rc.1", 12, 2, 0)]
     [InlineData("v12.2.0+build5", 12, 2, 0)]
     [InlineData("v12.2", 12, 2, 0)]
-    public void TryParseVersionTag_AcceptsKnownFormats(string tag, int major, int minor, int build)
+    public void TryParseVersionTag_KnownFormats_ParsesAndNormalizes(string tag, int major, int minor, int build)
     {
         GitHubUpdateChecker.TryParseVersionTag(tag, out var version).Should().BeTrue();
         version.Should().Be(new Version(major, minor, build));
@@ -79,13 +79,13 @@ public sealed class GitHubUpdateCheckerTests
     [InlineData("latest")]
     [InlineData("v12")]
     [InlineData("va.b.c")]
-    public void TryParseVersionTag_RejectsMalformedTags(string? tag)
+    public void TryParseVersionTag_MalformedTag_ReturnsFalse(string? tag)
     {
         GitHubUpdateChecker.TryParseVersionTag(tag, out _).Should().BeFalse();
     }
 
     [Fact]
-    public async Task MalformedTag_ReportsFailed()
+    public async Task CheckForUpdateAsync_MalformedTag_ReportsFailed()
     {
         var checker = CreateChecker(JsonResponse(ReleaseJson("latest")));
 
@@ -96,7 +96,7 @@ public sealed class GitHubUpdateCheckerTests
     }
 
     [Fact]
-    public async Task MissingTagProperty_ReportsFailed()
+    public async Task CheckForUpdateAsync_MissingTagProperty_ReportsFailed()
     {
         var checker = CreateChecker(JsonResponse("{}"));
 
@@ -108,7 +108,7 @@ public sealed class GitHubUpdateCheckerTests
     // ── Release metadata extraction ────────────────────────────────────────
 
     [Fact]
-    public async Task InstallerAsset_SurfacedAsDownloadUrl()
+    public async Task CheckForUpdateAsync_InstallerAsset_SurfacedAsDownloadUrl()
     {
         var checker = CreateChecker(JsonResponse(ReleaseJson("v12.2.0")));
 
@@ -121,7 +121,7 @@ public sealed class GitHubUpdateCheckerTests
     }
 
     [Fact]
-    public async Task NoInstallerAsset_LeavesDownloadUrlNull()
+    public async Task CheckForUpdateAsync_NoInstallerAsset_LeavesDownloadUrlNull()
     {
         var checker = CreateChecker(JsonResponse(ReleaseJson("v12.2.0", withMsiAsset: false)));
 
@@ -132,7 +132,7 @@ public sealed class GitHubUpdateCheckerTests
     }
 
     [Fact]
-    public async Task MissingHtmlUrl_FallsBackToReleasesPage()
+    public async Task CheckForUpdateAsync_MissingHtmlUrl_FallsBackToReleasesPage()
     {
         var checker = CreateChecker(JsonResponse(ReleaseJson("v12.2.0", withHtmlUrl: false)));
 
@@ -144,7 +144,7 @@ public sealed class GitHubUpdateCheckerTests
     // ── Failure paths ──────────────────────────────────────────────────────
 
     [Fact]
-    public async Task NonSuccessStatusCode_ReportsFailed()
+    public async Task CheckForUpdateAsync_NonSuccessStatusCode_ReportsFailed()
     {
         // 403 is what GitHub returns when the unauthenticated rate limit is exhausted.
         var checker = CreateChecker(new HttpResponseMessage(HttpStatusCode.Forbidden));
@@ -156,7 +156,7 @@ public sealed class GitHubUpdateCheckerTests
     }
 
     [Fact]
-    public async Task NetworkFailure_ReportsFailed()
+    public async Task CheckForUpdateAsync_NetworkFailure_ReportsFailed()
     {
         var checker = CreateChecker(new StubHandler(_ => throw new HttpRequestException("connection refused")));
 
@@ -167,7 +167,7 @@ public sealed class GitHubUpdateCheckerTests
     }
 
     [Fact]
-    public async Task InvalidJsonBody_ReportsFailed()
+    public async Task CheckForUpdateAsync_InvalidJsonBody_ReportsFailed()
     {
         var checker = CreateChecker(JsonResponse("not json"));
 
@@ -177,7 +177,7 @@ public sealed class GitHubUpdateCheckerTests
     }
 
     [Fact]
-    public async Task CallerCancellation_Propagates()
+    public async Task CheckForUpdateAsync_CallerCancellation_Propagates()
     {
         using var cts = new CancellationTokenSource();
         var checker = CreateChecker(new StubHandler(_ =>
@@ -194,7 +194,7 @@ public sealed class GitHubUpdateCheckerTests
     // ── Request shape ──────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Request_CarriesUserAgentAndAcceptHeaders()
+    public async Task CheckForUpdateAsync_AnyCall_SendsUserAgentAndAcceptHeaders()
     {
         // GitHub's API rejects requests without a User-Agent.
         var handler = new StubHandler(_ => JsonResponse(ReleaseJson("v12.1.0")));

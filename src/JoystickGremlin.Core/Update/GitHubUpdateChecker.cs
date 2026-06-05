@@ -26,6 +26,12 @@ public sealed class GitHubUpdateChecker : IUpdateChecker, IDisposable
     /// <summary>Filename suffix that identifies the MSI installer asset published by CI.</summary>
     private const string InstallerAssetSuffix = "-Setup.msi";
 
+    /// <summary>
+    /// Upper bound for the whole check; an on-demand UI action should fail fast
+    /// rather than sit on the default 100 s <see cref="HttpClient"/> timeout.
+    /// </summary>
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(10);
+
     private readonly HttpClient _http;
     private readonly Version _currentVersion;
     private readonly ILogger<GitHubUpdateChecker> _logger;
@@ -51,7 +57,7 @@ public sealed class GitHubUpdateChecker : IUpdateChecker, IDisposable
     {
         _logger = logger;
         _currentVersion = Normalize(currentVersion);
-        _http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(10) };
+        _http = new HttpClient(handler) { Timeout = RequestTimeout };
         // GitHub's API rejects requests without a User-Agent.
         _http.DefaultRequestHeaders.UserAgent.ParseAdd($"JoystickGremlinSharp/{_currentVersion}");
         _http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
