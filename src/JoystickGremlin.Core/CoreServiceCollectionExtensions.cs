@@ -11,6 +11,7 @@ using JoystickGremlin.Core.HidHide;
 using JoystickGremlin.Core.Pipeline;
 using JoystickGremlin.Core.Profile;
 using JoystickGremlin.Core.Startup;
+using JoystickGremlin.Core.Update;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -74,6 +75,9 @@ public static class CoreServiceCollectionExtensions
         // HidHide — NullHidHideController by default; override in Interop for real driver access.
         services.TryAddSingleton<IHidHideController, NullHidHideController>();
         services.AddSingleton<IHidHideManager, HidHideManager>();
+
+        // In-app update checker — queries GitHub Releases for a newer published version.
+        services.TryAddSingleton<IUpdateChecker, GitHubUpdateChecker>();
 
         return services;
     }
