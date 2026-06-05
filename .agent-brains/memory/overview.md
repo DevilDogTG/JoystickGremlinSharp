@@ -15,7 +15,9 @@
 
 **Test baseline**: 327 tests, 0 warnings (as of feature/global-autoload, 2026-06-05 — +12 net over the 315 PR #69 baseline: new migrator + settings round-trip coverage, minus deleted per-profile trigger tests).
 
-**Current version**: v12.1.0 (global auto-load rework — PR #71 merged 2026-06-05, not yet tagged/released). Previous breaking change at v11.0 — see `BREAKING-CHANGES.md` and Auto-Load section below.
+**Current version**: v12.1.0 — released 2026-06-05 (global auto-load rework, PR #71; signed MSI on GitHub Releases). Previous breaking change at v11.0 — see `BREAKING-CHANGES.md` and Auto-Load section below.
+
+**Release flow (since v12.1.0)**: use the workspace `release` skill — analyze + recommend bump → confirm → `RELEASE-NOTES.md` + `release/vX.Y.Z` PR → merge → `tag.yml` tags from `version.json` → `publish.yml` builds/signs MSI and publishes the release with the curated notes (`body_path`). NEVER tag manually or `gh release create` in this repo.
 
 **Recent merges (2026-05-29)**:
 - PR #69 merged via rebase-merge — dropped `dotnet-ci.yml`, stripped HidHide Apply/Revert dead code, primary-ctor refactor.

@@ -1,6 +1,6 @@
 # Plan: Workspace Release Skill + Curated Release Notes
 
-**Status:** active
+**Status:** completed (PR #72 merged; verified by the v12.1.0 release 2026-06-05)
 **Created:** 2026-06-05
 **Branch:** feature/release-skill
 
@@ -32,3 +32,6 @@ publish.yml switched from auto-generated notes to the curated committed file.
 
 ## Progress Log
 _2026-06-05 — Plan created from release-flow discussion; decisions captured._
+_2026-06-05 — Implemented + merged (PR #72). First real run released v12.1.0 end to end:
+release/v12.1.0 PR #73 → tag.yml → publish.yml → signed MSI + curated notes body.
+The body_path risk is verified — release body matched RELEASE-NOTES.md exactly._
