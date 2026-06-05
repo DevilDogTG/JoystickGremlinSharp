@@ -1,5 +1,6 @@
 # Triggered when a vX.Y.Z tag is pushed to main (by tag.yml after a release PR merge).
-# Builds a self-contained Windows MSI installer with WiX v6 and creates a GitHub Release.
+# Builds a self-contained Windows MSI installer with WiX v6 and creates a GitHub Release
+# whose body is the curated RELEASE-NOTES.md committed by the release PR.
 name: Publish
 
 on:
@@ -105,6 +106,18 @@ jobs:
             Write-Host "Already named correctly: $newName"
           }
 
+      # Release notes are curated in RELEASE-NOTES.md by the release PR (see the
+      # workspace `release` skill). Fallback keeps hotfix/manual tags from failing
+      # when the file is absent at the tagged commit.
+      - name: Ensure release notes file
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'RELEASE-NOTES.md')) {
+            Write-Host 'RELEASE-NOTES.md not found at tagged commit - writing fallback.'
+            "See the commit history for changes in ${{ steps.version.outputs.tag }}." |
+              Set-Content 'RELEASE-NOTES.md'
+          }
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -112,7 +125,7 @@ jobs:
           name: Joystick Gremlin ${{ steps.version.outputs.tag }}
           draft: false
           prerelease: false
-          generate_release_notes: true
+          body_path: RELEASE-NOTES.md
           files: installer/out/*-Setup.msi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
