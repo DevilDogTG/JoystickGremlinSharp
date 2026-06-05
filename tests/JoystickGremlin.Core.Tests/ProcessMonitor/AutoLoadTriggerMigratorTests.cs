@@ -244,6 +244,31 @@ public sealed class AutoLoadTriggerMigratorTests : IDisposable
     }
 
     [Fact]
+    public async Task MigrateAsync_ReadOnlyProfileFile_TriggerIsLiftedAndStripFailureReported()
+    {
+        // Exercises the pass-3 window the settings-first ordering protects: the trigger
+        // must land in the global list even when the profile file cannot be rewritten.
+        var path = await WriteProfileWithTriggersAsync("Locked.json", exeNames: "game.exe");
+        File.SetAttributes(path, FileAttributes.ReadOnly);
+
+        try
+        {
+            var result = await _sut.MigrateAsync();
+
+            result.TriggerCount.Should().Be(1);
+            result.MigratedProfileCount.Should().Be(0);
+            result.Failures.Should().ContainSingle().Which.ProfilePath.Should().Be(path);
+            _settings.AutoLoadTriggers.Should().ContainSingle()
+                .Which.ExecutableName.Should().Be("game.exe");
+            _settingsMock.Verify(s => s.SaveAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+        finally
+        {
+            File.SetAttributes(path, FileAttributes.Normal); // allow Dispose() cleanup
+        }
+    }
+
+    [Fact]
     public async Task MigrateAsync_NothingToMigrate_DoesNotSaveSettings()
     {
         await WriteBareProfileAsync("Bare.json");

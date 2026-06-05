@@ -31,13 +31,15 @@ public sealed class ProcessTriggerViewModel : ReactiveObject
     private bool _autoStart;
     private bool _remainActiveOnFocusLoss;
 
-    /// <summary>Gets the underlying domain model, updated by <see cref="ApplyToModel"/>.</summary>
-    public AutoLoadTrigger Model { get; }
-
     /// <summary>
     /// Initializes a new instance of <see cref="ProcessTriggerViewModel"/>.
     /// </summary>
-    /// <param name="model">The trigger domain model.</param>
+    /// <param name="model">
+    /// The trigger to copy the initial row values from. The instance is NOT retained —
+    /// it may be referenced by the live settings list, which the process monitor reads
+    /// from a non-UI thread, so the row must never write through to it. Snapshots for
+    /// persistence are produced by <see cref="ToTrigger"/>.
+    /// </param>
     /// <param name="availableProfiles">
     /// The shared library entry collection the profile dropdown binds to. Owned by the page;
     /// the row resolves its <see cref="SelectedProfile"/> from it.
@@ -50,7 +52,6 @@ public sealed class ProcessTriggerViewModel : ReactiveObject
         IProcessPickerDialogService processPicker,
         IFilePickerService filePicker)
     {
-        Model = model;
         AvailableProfiles = availableProfiles;
         _processPicker = processPicker;
         _filePicker = filePicker;
@@ -193,19 +194,21 @@ public sealed class ProcessTriggerViewModel : ReactiveObject
     public ReactiveCommand<Unit, Unit> BrowseExecutableCommand { get; }
 
     /// <summary>
-    /// Writes the current ViewModel values back to the underlying domain model.
-    /// Call before persisting the global trigger list.
+    /// Produces a fresh <see cref="AutoLoadTrigger"/> snapshot of the current row state.
+    /// Always a new instance: trigger objects already published to the settings list are
+    /// enumerated by the process monitor on a non-UI thread and must never be mutated.
     /// </summary>
-    public void ApplyToModel()
+    /// <returns>A new trigger carrying the row's current values.</returns>
+    public AutoLoadTrigger ToTrigger() => new()
     {
-        Model.ProfilePath             = ProfilePath;
-        Model.MatchType               = MatchType;
-        Model.ExecutableName          = ExecutableName;
-        Model.ExecutablePath          = ExecutablePath;
-        Model.IsEnabled               = IsEnabled;
-        Model.AutoStart               = AutoStart;
-        Model.RemainActiveOnFocusLoss = RemainActiveOnFocusLoss;
-    }
+        ProfilePath             = ProfilePath,
+        MatchType               = MatchType,
+        ExecutableName          = ExecutableName,
+        ExecutablePath          = ExecutablePath,
+        IsEnabled               = IsEnabled,
+        AutoStart               = AutoStart,
+        RemainActiveOnFocusLoss = RemainActiveOnFocusLoss,
+    };
 
     /// <summary>
     /// Re-resolves <see cref="SelectedProfile"/> against a fresh library entry list after

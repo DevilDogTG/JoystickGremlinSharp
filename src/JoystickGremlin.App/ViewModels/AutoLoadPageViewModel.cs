@@ -296,15 +296,11 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
 
         try
         {
-            // Snapshot row state into the models, then REPLACE the settings list —
-            // the process monitor enumerates it from a non-UI thread, so it must
-            // never be mutated in place.
-            var snapshot = new List<AutoLoadTrigger>(Triggers.Count);
-            foreach (var row in Triggers)
-            {
-                row.ApplyToModel();
-                snapshot.Add(row.Model);
-            }
+            // Snapshot every row into FRESH trigger instances, then REPLACE the settings
+            // list. The process monitor enumerates the published list (and its elements)
+            // from a non-UI thread, so neither the list nor any trigger instance it
+            // contains may ever be mutated in place.
+            var snapshot = Triggers.Select(row => row.ToTrigger()).ToList();
 
             _settingsService.Settings.AutoLoadTriggers = snapshot;
             _settingsService.Settings.EnableAutoLoading = EnableAutoLoading;
@@ -341,7 +337,9 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            var legacy = await _migrator.DetectAsync();
+            // DetectAsync reads every profile file; keep that I/O off the UI thread —
+            // this runs on every LibraryChanged (profile add/rename/delete).
+            var legacy = await Task.Run(() => _migrator.DetectAsync());
             Dispatcher.UIThread.Post(() => LegacyProfileCount = legacy.Count);
         }
         catch (Exception ex)
@@ -355,7 +353,8 @@ public sealed class AutoLoadPageViewModel : ViewModelBase, IDisposable
         IsMigrating = true;
         try
         {
-            var result = await _migrator.MigrateAsync();
+            // Whole-library file I/O — run off the UI thread to keep the page responsive.
+            var result = await Task.Run(() => _migrator.MigrateAsync());
 
             MigrationStatusMessage = result.Failures.Count == 0
                 ? $"Imported {result.TriggerCount} trigger{(result.TriggerCount == 1 ? string.Empty : "s")} " +

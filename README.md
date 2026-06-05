@@ -177,7 +177,7 @@ tests/
 
 | Layer | Project | Key Types |
 |---|---|---|
-| Domain | `Core` | `Profile`, `ProcessTrigger`, `InputBinding`, `ProfileLibrary`, `EventPipeline`, `ActionRegistry`, `ForceFeedbackBridge`, `ProcessProfileResolver`, `HidHideManager` |
+| Domain | `Core` | `Profile`, `AutoLoadTrigger`, `InputBinding`, `ProfileLibrary`, `EventPipeline`, `ActionRegistry`, `ForceFeedbackBridge`, `ProcessProfileResolver`, `HidHideManager` |
 | Interop | `Interop` | `VJoyDeviceManager`, `DillDeviceManager`, `SendInputKeyboardSimulator`, `MozaFfbSink`, `HidHideCliClient` |
 | UI | `App` | `MainWindowViewModel`, `ControllerSetupPageViewModel`, `VirtualDevicesPageViewModel`, `ProfilePageViewModel`, `AutoLoadPageViewModel`, `SettingsPageViewModel`, `AboutPageViewModel` |
 | Installer | `installer/` | WiX v6 SDK project producing the signed MSI |

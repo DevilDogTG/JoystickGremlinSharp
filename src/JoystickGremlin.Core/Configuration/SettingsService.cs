@@ -10,7 +10,7 @@ namespace JoystickGremlin.Core.Configuration;
 /// JSON-backed implementation of <see cref="ISettingsService"/>.
 /// The settings file is stored in <c>%APPDATA%\JoystickGremlinSharp\settings.json</c> by default.
 /// </summary>
-public sealed class SettingsService : ISettingsService
+public sealed class SettingsService : ISettingsService, IDisposable
 {
     internal static readonly string DefaultSettingsPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -27,6 +27,11 @@ public sealed class SettingsService : ISettingsService
 
     private readonly ILogger<SettingsService> _logger;
     private readonly string _settingsPath;
+
+    // Serializes writers: independent save paths (e.g. an immediate flag save and a
+    // debounced bulk save) may overlap, and concurrent File.Create truncations would
+    // corrupt the settings file.
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
 
     /// <summary>
     /// Initializes a new instance of <see cref="SettingsService"/> using the default settings path.
@@ -85,6 +90,7 @@ public sealed class SettingsService : ISettingsService
     {
         _logger.LogTrace("Start saving settings to {Path}", _settingsPath);
 
+        await _saveGate.WaitAsync(cancellationToken);
         try
         {
             var directory = Path.GetDirectoryName(_settingsPath)!;
@@ -98,7 +104,14 @@ public sealed class SettingsService : ISettingsService
             _logger.LogError(ex, "Failed to save settings to {Path}", _settingsPath);
             throw;
         }
+        finally
+        {
+            _saveGate.Release();
+        }
 
         _logger.LogTrace("Finished saving settings to {Path}", _settingsPath);
     }
+
+    /// <inheritdoc/>
+    public void Dispose() => _saveGate.Dispose();
 }
