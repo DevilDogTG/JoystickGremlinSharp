@@ -22,6 +22,33 @@
                            Opacity="0.6"/>
             </StackPanel>
 
+            <!-- Updates -->
+            <Border Padding="0,8,0,0"
+                    BorderThickness="0,1,0,0"
+                    BorderBrush="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Updates" FontWeight="SemiBold" FontSize="15"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Check for Updates"
+                                Command="{Binding CheckForUpdatesCommand}"
+                                FontSize="12"
+                                Cursor="Hand"
+                                ToolTip.Tip="Check GitHub Releases for a newer version"/>
+                        <Button Content="⬇ Download Update"
+                                Command="{Binding DownloadUpdateCommand}"
+                                IsVisible="{Binding IsUpdateAvailable}"
+                                FontSize="12"
+                                Cursor="Hand"
+                                ToolTip.Tip="Open the latest installer download in your browser"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding UpdateStatusMessage}"
+                               IsVisible="{Binding UpdateStatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               TextWrapping="Wrap"
+                               FontSize="12"
+                               Opacity="0.8"/>
+                </StackPanel>
+            </Border>
+
             <!-- Repository link -->
             <Border Padding="0,8,0,0"
                     BorderThickness="0,1,0,0"

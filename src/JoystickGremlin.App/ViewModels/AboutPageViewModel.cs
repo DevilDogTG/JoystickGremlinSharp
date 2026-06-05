@@ -2,30 +2,65 @@
 
 using System.Diagnostics;
 using System.Reactive;
+using System.Reactive.Linq;
 using System.Reflection;
+using JoystickGremlin.Core.Update;
+using Microsoft.Extensions.Logging;
 using ReactiveUI;
 
 namespace JoystickGremlin.App.ViewModels;
 
 /// <summary>
 /// ViewModel for the About page — displays application name, version,
-/// repository link, and license information.
+/// repository link, license information, and the in-app update check.
 /// </summary>
 public sealed class AboutPageViewModel : ViewModelBase
 {
+    private readonly IUpdateChecker _updateChecker;
+    private readonly ILogger<AboutPageViewModel> _logger;
+    private string _updateStatusMessage = string.Empty;
+    private string? _updateDownloadUrl;
+    private bool _isUpdateAvailable;
+
     /// <summary>
     /// Initializes a new instance of <see cref="AboutPageViewModel"/>.
     /// </summary>
-    public AboutPageViewModel()
+    public AboutPageViewModel(IUpdateChecker updateChecker, ILogger<AboutPageViewModel> logger)
     {
+        _updateChecker = updateChecker;
+        _logger = logger;
+
         OpenRepositoryCommand = ReactiveCommand.Create(() =>
             Process.Start(new ProcessStartInfo(RepositoryUrl) { UseShellExecute = true }));
         OpenOriginalRepoCommand = ReactiveCommand.Create(() =>
             Process.Start(new ProcessStartInfo(OriginalRepoUrl) { UseShellExecute = true }));
+        CheckForUpdatesCommand = ReactiveCommand.CreateFromTask(CheckForUpdatesAsync);
+        DownloadUpdateCommand = ReactiveCommand.Create(OpenDownloadPage,
+            canExecute: this.WhenAnyValue(x => x.IsUpdateAvailable));
     }
 
     /// <summary>Gets the command that opens the GitHub repository in the default browser.</summary>
     public ReactiveCommand<Unit, Process?> OpenRepositoryCommand { get; }
+
+    /// <summary>Gets the command that queries GitHub Releases for a newer version.</summary>
+    public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
+
+    /// <summary>Gets the command that opens the latest release download in the default browser.</summary>
+    public ReactiveCommand<Unit, Unit> DownloadUpdateCommand { get; }
+
+    /// <summary>Gets the status line below the update-check button (empty until the first check).</summary>
+    public string UpdateStatusMessage
+    {
+        get => _updateStatusMessage;
+        private set => this.RaiseAndSetIfChanged(ref _updateStatusMessage, value);
+    }
+
+    /// <summary>Gets a value indicating whether the last check found a newer release.</summary>
+    public bool IsUpdateAvailable
+    {
+        get => _isUpdateAvailable;
+        private set => this.RaiseAndSetIfChanged(ref _isUpdateAvailable, value);
+    }
 
     /// <summary>Gets the application display name.</summary>
     public string AppName => "Joystick Gremlin Sharp";
@@ -66,4 +101,50 @@ public sealed class AboutPageViewModel : ViewModelBase
         "Based on JoystickGremlin by WhiteMagic. " +
         "The original Python implementation and DILL input library are the work of the original author and contributors. " +
         "This project would not exist without their foundational work.";
+
+    private async Task CheckForUpdatesAsync()
+    {
+        IsUpdateAvailable = false;
+        _updateDownloadUrl = null;
+        UpdateStatusMessage = "Checking for updates…";
+
+        // The checker never throws on network/parse failures; those come back as Failed.
+        var result = await _updateChecker.CheckForUpdateAsync();
+
+        switch (result.Status)
+        {
+            case UpdateCheckStatus.UpdateAvailable:
+                _updateDownloadUrl = result.DownloadUrl ?? result.ReleaseUrl;
+                IsUpdateAvailable = true;
+                UpdateStatusMessage =
+                    $"Version {Format(result.LatestVersion)} is available — you have {Format(result.CurrentVersion)}.";
+                break;
+
+            case UpdateCheckStatus.UpToDate:
+                UpdateStatusMessage = $"You're up to date — {Format(result.CurrentVersion)} is the latest version.";
+                break;
+
+            default:
+                UpdateStatusMessage = $"Update check failed: {result.ErrorMessage}";
+                break;
+        }
+    }
+
+    private void OpenDownloadPage()
+    {
+        var url = _updateDownloadUrl;
+        if (url is null)
+            return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to open update download URL {Url}", url);
+        }
+    }
+
+    private static string Format(Version? version) => version is null ? "an unknown version" : $"v{version}";
 }
